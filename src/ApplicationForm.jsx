@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Container, TextField, Button, Typography, Box, Grid2 as Grid, MenuItem, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio } from '@mui/material';
 
 function ApplicationForm({ username }) {
-    const [formDataList, setFormDataList] = useState([{ date: '', description: '', destination: '', category: '', amount: '' }]);
+    const [formDataList, setFormDataList] = useState([{ date: '', description: '', destination: '', category: '', amount: '', receipt: null, receiptName: '' }]);
     const [paymentType, setPaymentType] = useState('個人立替払用');
 
     const handleChange = (index, e) => {
@@ -13,11 +13,18 @@ function ApplicationForm({ username }) {
     };
 
     const handleAddFields = () => {
-        setFormDataList([...formDataList, { date: '', description: '', destination: '', category: '', amount: '' }]);
+        setFormDataList([...formDataList, { date: '', description: '', destination: '', category: '', amount: '', receipt: null, receiptName: '' }]);
     };
 
     const handleDeleteFields = (index) => {
         const newFormDataList = formDataList.filter((_, i) => i !== index);
+        setFormDataList(newFormDataList);
+    };
+
+    const handleReceiptUpload = (index, e) => {
+        const newFormDataList = [...formDataList];
+        newFormDataList[index].receipt = e.target.files[0];
+        newFormDataList[index].receiptName = e.target.files[0].name;
         setFormDataList(newFormDataList);
     };
 
@@ -49,7 +56,7 @@ function ApplicationForm({ username }) {
                 </FormControl>
                 <form onSubmit={handleSubmit}>
                     {formDataList.map((formData, index) => (
-                        <Grid container spacing={2} key={index} alignItems="center">
+                        <Grid container spacing={1} key={index} alignItems="center">
                             <Grid item xs={2}>
                                 <TextField
                                     fullWidth
@@ -132,6 +139,25 @@ function ApplicationForm({ username }) {
                                 >
                                     削除
                                 </Button>
+                            </Grid>
+                            <Grid item xs={2} container alignItems="baseline">
+                                <Button
+                                    variant="outlined"
+                                    component="label"
+                                    sx={{ mb: 2 }}
+                                >
+                                    領収書アップロード
+                                    <input
+                                        type="file"
+                                        hidden
+                                        onChange={(e) => handleReceiptUpload(index, e)}
+                                    />
+                                </Button>
+                                {formData.receiptName && (
+                                    <Typography variant="body2" sx={{ mb: 2, ml: 2 }}>
+                                        {formData.receiptName}
+                                    </Typography>
+                                )}
                             </Grid>
                         </Grid>
                     ))}
