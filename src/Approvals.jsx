@@ -1,13 +1,33 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Container, Typography, Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, MenuItem, Select, FormControl, InputLabel } from '@mui/material';
 
-function SubmittedApplications() {
-    // ダミーデータを状態として管理
-    const [data, setData] = useState([
-        { date: '2023-10-01', description: '出張電車代', destination: '東京-新大阪', category: '旅費交通費', amount: 13870, status: '未承認' },
-        { date: '2023-10-02', description: '〇〇（店名）', destination: '××社××様　会食', category: '接待交際費', amount: 19440, status: '未承認' },
-        { date: '2023-10-03', description: 'Amazon', destination: '業務PC用　ケーブル', category: '消耗品※事務用品含', amount: 970, status: '未承認' },
-    ]);
+function Approvals() {
+
+    const [data, setData] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    // データをサーバから取得する関数（モック）
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            // サーバからのデータ取得を模倣
+            const response = [
+                { date: '2023-10-01', description: '出張電車代', destination: '東京-新大阪', category: '旅費交通費', amount: 13870, status: '未承認' },
+                { date: '2023-10-02', description: '〇〇（店名）', destination: '××社××様　会食', category: '接待交際費', amount: 19440, status: '未承認' },
+                { date: '2023-10-03', description: 'Amazon', destination: '業務PC用　ケーブル', category: '消耗品※事務用品含', amount: 970, status: '非承認' },
+            ];
+            setData(response);
+        } catch (error) {
+            console.error('データの取得に失敗しました:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // コンポーネントのマウント時にデータを取得
+    useEffect(() => {
+        fetchData();
+    }, []);
 
     // ステータスを変更する関数
     const handleChangeStatus = (index, newStatus) => {
@@ -70,4 +90,4 @@ function SubmittedApplications() {
     );
 }
 
-export default SubmittedApplications;
+export default Approvals;

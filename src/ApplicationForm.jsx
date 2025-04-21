@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { Container, TextField, Button, Typography, Box, Grid2 as Grid, MenuItem, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio } from '@mui/material';
+import { Container, TextField, Button, Typography, Box, Grid2 as Grid, MenuItem, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio, Dialog, DialogContent } from '@mui/material';
 
 function ApplicationForm({ username }) {
-    const [formDataList, setFormDataList] = useState([{ date: '', description: '', destination: '', category: '', amount: '' }]);
+    const [formDataList, setFormDataList] = useState([{ date: '', description: '', destination: '', category: '', amount: '', receipt: null, receiptName: '', receiptPreview: '' }]);
     const [paymentType, setPaymentType] = useState('個人立替払用');
+    const [openDialog, setOpenDialog] = useState(false);
+    const [selectedReceipt, setSelectedReceipt] = useState(null);
 
     const handleChange = (index, e) => {
         const { name, value } = e.target;
@@ -13,7 +15,7 @@ function ApplicationForm({ username }) {
     };
 
     const handleAddFields = () => {
-        setFormDataList([...formDataList, { date: '', description: '', destination: '', category: '', amount: '' }]);
+        setFormDataList([...formDataList, { date: '', description: '', destination: '', category: '', amount: '', receipt: null, receiptName: '', receiptPreview: '' }]);
     };
 
     const handleDeleteFields = (index) => {
@@ -21,10 +23,30 @@ function ApplicationForm({ username }) {
         setFormDataList(newFormDataList);
     };
 
+    const handleReceiptUpload = (index, e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const newFormDataList = [...formDataList];
+            newFormDataList[index].receipt = file;
+            newFormDataList[index].receiptName = file.name;
+            newFormDataList[index].receiptPreview = URL.createObjectURL(file);
+            setFormDataList(newFormDataList);
+        }
+    };
+
+    const handleOpenDialog = (receiptPreview) => {
+        setSelectedReceipt(receiptPreview);
+        setOpenDialog(true);
+    };
+
+    const handleCloseDialog = () => {
+        setOpenDialog(false);
+        setSelectedReceipt(null);
+    };
+
     const handleSubmit = (e) => {
         e.preventDefault();
         console.log('Form Data Submitted:', formDataList, 'Payment Type:', paymentType);
-        // Add logic here to send formDataList and paymentType to your server or API
     };
 
     return (
@@ -49,7 +71,7 @@ function ApplicationForm({ username }) {
                 </FormControl>
                 <form onSubmit={handleSubmit}>
                     {formDataList.map((formData, index) => (
-                        <Grid container spacing={2} key={index} alignItems="center">
+                        <Grid container spacing={1} key={index} alignItems="center">
                             <Grid item xs={2}>
                                 <TextField
                                     fullWidth
@@ -133,6 +155,33 @@ function ApplicationForm({ username }) {
                                     削除
                                 </Button>
                             </Grid>
+                            <Grid item xs={2} container alignItems="flex-start">
+                                <Button
+                                    variant="outlined"
+                                    component="label"
+                                    sx={{ mb: 2 }}
+                                >
+                                    領収書アップロード
+                                    <input
+                                        type="file"
+                                        hidden
+                                        onChange={(e) => handleReceiptUpload(index, e)}
+                                    />
+                                </Button>
+                                {formData.receiptPreview && (
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                        <img
+                                            src={formData.receiptPreview}
+                                            alt="領収書プレビュー"
+                                            style={{ width: '100px', height: '100px', cursor: 'pointer', marginTop: '8px' }}
+                                            onClick={() => handleOpenDialog(formData.receiptPreview)}
+                                        />
+                                        <Typography variant="body2" sx={{ mt: 1 }}>
+                                            {formData.receiptName}
+                                        </Typography>
+                                    </Box>
+                                )}
+                            </Grid>
                         </Grid>
                     ))}
                     <Button variant="outlined" color="secondary" onClick={handleAddFields} fullWidth sx={{ mt: 2 }}>
@@ -143,6 +192,19 @@ function ApplicationForm({ username }) {
                     </Button>
                 </form>
             </Box>
+
+            {/* 領収書拡大表示ダイアログ */}
+            <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
+                <DialogContent>
+                    {selectedReceipt && (
+                        <img
+                            src={selectedReceipt}
+                            alt="領収書拡大表示"
+                            style={{ width: '100%', height: 'auto' }}
+                        />
+                    )}
+                </DialogContent>
+            </Dialog>
         </Container>
     );
 }
