@@ -1,20 +1,33 @@
 import { useState, useEffect } from 'react';
-import { Container, Typography, Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, MenuItem, Select, FormControl, InputLabel } from '@mui/material';
+import { Container, Typography, Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, MenuItem, Select, FormControl, TextField } from '@mui/material';
 
 function Approvals() {
-
+    // 申請単位のデータ構造に変更
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [commentMap, setCommentMap] = useState({}); // 申請単位のコメント管理
 
     // データをサーバから取得する関数（モック）
     const fetchData = async () => {
         setLoading(true);
         try {
-            // サーバからのデータ取得を模倣
+            // 申請単位でグループ化したモックデータ
             const response = [
-                { date: '2023-10-01', description: '出張電車代', destination: '東京-新大阪', category: '旅費交通費', amount: 13870, status: '未承認' },
-                { date: '2023-10-02', description: '〇〇（店名）', destination: '××社××様　会食', category: '接待交際費', amount: 19440, status: '未承認' },
-                { date: '2023-10-03', description: 'Amazon', destination: '業務PC用　ケーブル', category: '消耗品※事務用品含', amount: 970, status: '非承認' },
+                {
+                    applicationId: 'A20240528001',
+                    applicationDate: '2024-05-28',
+                    details: [
+                        { date: '2024-05-25', description: '出張電車代', destination: '東京-新大阪', category: '旅費交通費', amount: 13870, status: '未承認' },
+                        { date: '2024-05-25', description: '〇〇（店名）', destination: '××社××様　会食', category: '接待交際費', amount: 19440, status: '未承認' },
+                    ]
+                },
+                {
+                    applicationId: 'A20240528002',
+                    applicationDate: '2024-05-27',
+                    details: [
+                        { date: '2024-05-26', description: 'Amazon', destination: '業務PC用　ケーブル', category: '消耗品※事務用品含', amount: 970, status: '非承認' },
+                    ]
+                }
             ];
             setData(response);
         } catch (error) {
@@ -24,15 +37,25 @@ function Approvals() {
         }
     };
 
-    // コンポーネントのマウント時にデータを取得
     useEffect(() => {
         fetchData();
     }, []);
 
     // ステータスを変更する関数
-    const handleChangeStatus = (index, newStatus) => {
-        const newData = data.map((row, i) => i === index ? { ...row, status: newStatus } : row);
+    const handleChangeStatus = (groupIdx, rowIdx, newStatus) => {
+        const newData = [...data];
+        newData[groupIdx].details[rowIdx] = { ...newData[groupIdx].details[rowIdx], status: newStatus };
         setData(newData);
+    };
+
+    // 申請単位で承認・非承認
+    const handleGroupStatus = (groupIdx, newStatus) => {
+        const newData = [...data];
+        newData[groupIdx].details = newData[groupIdx].details.map(row => ({ ...row, status: newStatus }));
+        setData(newData);
+        // ここでコメント(commentMap[group.applicationId])も利用可能
+        // 例: サーバー送信など
+        setCommentMap({ ...commentMap, [data[groupIdx].applicationId]: '' }); // コメント欄リセット
     };
 
     return (
@@ -47,47 +70,65 @@ function Approvals() {
                         <MenuItem value="user2">油ニ 和平(univapay@univa.tech)</MenuItem>
                     </Select>
                 </FormControl>
-                <TableContainer component={Paper}>
-                    <Table>
-                        <TableHead>
-                            <TableRow>
-                                <TableCell sx={{ width: 150 }}>日付</TableCell>
-                                <TableCell sx={{ width: 200 }}>内容</TableCell>
-                                <TableCell sx={{ width: 300 }}>用途・行き先</TableCell>
-                                <TableCell sx={{ width: 200 }}>費目</TableCell>
-                                <TableCell sx={{ width: 150 }}>金額</TableCell>
-                                <TableCell>操作</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {data.map((row, index) => (
-                                <TableRow key={index}>
-                                    <TableCell>{row.date}</TableCell>
-                                    <TableCell>{row.description}</TableCell>
-                                    <TableCell>{row.destination}</TableCell>
-                                    <TableCell>{row.category}</TableCell>
-                                    <TableCell>{row.amount}</TableCell>
-                                    <TableCell>
-                                        <Box sx={{ display: 'flex', gap: 1 }}>
-                                            <Button variant="outlined" color="primary"
-                                                    onClick={() => handleChangeStatus(index, '承認済')}>
-                                                承認
-                                            </Button>
-                                            <Button variant="outlined" color="error"
-                                                    onClick={() => handleChangeStatus(index, '非承認')}
-                                                    sx={{ whiteSpace: 'nowrap' }}>
-                                                非承認
-                                            </Button>
-                                        </Box>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
+                {data.map((group, groupIdx) => (
+                    <Box key={group.applicationId} sx={{ mb: 4 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
+                            申請ID: {group.applicationId}　申請日: {group.applicationDate}
+                        </Typography>
+                        <TableContainer component={Paper}>
+                            <Table>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell sx={{ width: 150 }}>日付</TableCell>
+                                        <TableCell sx={{ width: 200 }}>内容</TableCell>
+                                        <TableCell sx={{ width: 300 }}>用途・行き先</TableCell>
+                                        <TableCell sx={{ width: 200 }}>費目</TableCell>
+                                        <TableCell sx={{ width: 150 }}>金額</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {group.details.map((row, rowIdx) => (
+                                        <TableRow key={rowIdx}>
+                                            <TableCell>{row.date}</TableCell>
+                                            <TableCell>{row.description}</TableCell>
+                                            <TableCell>{row.destination}</TableCell>
+                                            <TableCell>{row.category}</TableCell>
+                                            <TableCell>{row.amount}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                        <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <TextField
+                                label="備考"
+                                size="small"
+                                value={commentMap[group.applicationId] || ''}
+                                onChange={e => setCommentMap({ ...commentMap, [group.applicationId]: e.target.value })}
+                                sx={{ minWidth: 300 }}
+                            />
+                            <Button variant="contained" color="primary"
+                                onClick={() => handleGroupStatus(groupIdx, '承認済')}
+                                disabled={group.details.every(row => row.status === '承認済')}
+                            >
+                                承認
+                            </Button>
+                            <Button variant="contained" color="error"
+                                onClick={() => handleGroupStatus(groupIdx, '非承認')}
+                                disabled={group.details.every(row => row.status === '非承認')}
+                            >
+                                非承認
+                            </Button>
+                        </Box>
+                    </Box>
+                ))}
             </Box>
         </Container>
     );
 }
 
 export default Approvals;
+
+
+
+
