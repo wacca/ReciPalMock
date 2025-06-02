@@ -13,6 +13,7 @@ import Login from './Login';
 import ApplicationForm from './ApplicationForm';
 import SubmittedApplications from './SubmittedApplications';
 import Approvals from './Approvals';
+import ApprovalFlowSettings from './ApprovalFlowSettings';
 
 function App() {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -126,6 +127,14 @@ function App() {
                                 <Badge badgeContent={6} color="secondary" />
                             </ListItem>
                         </List>
+                        <List>
+                            <ListItem button component={NavLink} to="/approval-flow-settings">
+                                <ListItemIcon>
+                                    <ApprovalIcon />
+                                </ListItemIcon>
+                                <ListItemText primary="申請フロー設定" className="MuiListItemText-primary" />
+                            </ListItem>
+                        </List>
                     </Box>
                 </Drawer>
                 <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
@@ -134,6 +143,7 @@ function App() {
                         <Route path="/application" element={<ApplicationForm username={username} />} />
                         <Route path="/submitted" element={<SubmittedApplications />} />
                         <Route path="/approvals" element={<Approvals />} />
+                        <Route path="/approval-flow-settings" element={<ApprovalFlowSettings />} />
                     </Routes>
                 </Box>
             </Box>
@@ -142,3 +152,4 @@ function App() {
 }
 
 export default App;
+
