@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Container, TextField, Button, Typography, Box, Grid2 as Grid, MenuItem, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio, Dialog, DialogContent, Select, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Paper } from '@mui/material';
+import { Container, TextField, Button, Typography, Box, Grid2 as Grid, MenuItem, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio, Dialog, DialogContent, Select, TableContainer, Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
 
 function ApplicationForm({ username }) {
     const [formDataList, setFormDataList] = useState([{ date: '', description: '', destination: '', category: '', amount: '', receipt: null, receiptName: '', receiptPreview: '' }]);
@@ -95,14 +95,14 @@ function ApplicationForm({ username }) {
                 <Box>
                     <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>経費精算 下書き一覧</Typography>
                     <Button variant="contained" color="primary" sx={{ mb: 2 }} onClick={handleNew}>新規作成</Button>
-                    <TableContainer component={Paper} sx={{ mb: 4 }}>
+                    <TableContainer>
                         <Table size="small">
                             <TableHead>
                                 <TableRow>
-                                    <TableCell sx={{ width: 180, fontSize: '1rem' }}>作成日</TableCell>
-                                    <TableCell sx={{ width: 300, fontSize: '1rem' }}>内容</TableCell>
-                                    <TableCell sx={{ width: 120, fontSize: '1rem' }}>支払種別</TableCell>
-                                    <TableCell sx={{ width: 120, fontSize: '1rem' }}>操作</TableCell>
+                                    <TableCell sx={{ width: 180 }}>作成日</TableCell>
+                                    <TableCell sx={{ width: 300 }}>内容</TableCell>
+                                    <TableCell sx={{ width: 120 }}>支払種別</TableCell>
+                                    <TableCell sx={{ width: 120 }}>操作</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
@@ -111,9 +111,9 @@ function ApplicationForm({ username }) {
                                 )}
                                 {drafts.map(draft => (
                                     <TableRow key={draft.id}>
-                                        <TableCell sx={{ fontSize: '0.98rem' }}>{draft.updated ? new Date(draft.updated).toLocaleString() : '-'}</TableCell>
-                                        <TableCell sx={{ fontSize: '0.98rem' }}>{draft.formDataList?.[0]?.description || '-'}</TableCell>
-                                        <TableCell sx={{ fontSize: '0.98rem' }}>{draft.paymentType}</TableCell>
+                                        <TableCell>{draft.updated ? new Date(draft.updated).toLocaleString() : '-'}</TableCell>
+                                        <TableCell>{draft.formDataList?.[0]?.description || '-'}</TableCell>
+                                        <TableCell>{draft.paymentType}</TableCell>
                                         <TableCell>
                                             <Button size="small" variant="outlined" onClick={() => handleSelectDraft(draft.id)}>編集</Button>
                                         </TableCell>
@@ -125,161 +125,152 @@ function ApplicationForm({ username }) {
                 </Box>
             )}
             {mode === 'edit' && (
-                <Paper sx={{ p: 3, boxShadow: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                        <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: '1.2rem' }}>経費精算申請</Typography>
-                        <Button variant="text" sx={{ ml: 3 }} onClick={() => setMode('list')}>← 一覧に戻る</Button>
-                    </Box>
-                    <FormControl component="fieldset" sx={{ mb: 2 }}>
-                        <FormLabel component="legend">支払方法</FormLabel>
-                        <RadioGroup
-                            row
-                            aria-label="paymentType"
-                            name="paymentType"
-                            value={paymentType}
-                            onChange={(e) => setPaymentType(e.target.value)}
-                        >
-                            <FormControlLabel value="個人立替払用" control={<Radio />} label="個人立替払用" />
-                            <FormControlLabel value="法人カード経費分" control={<Radio />} label="法人カード経費分" />
-                        </RadioGroup>
-                    </FormControl>
-                    <TableContainer>
-                        <Table size="small">
-                            <TableHead>
-                                <TableRow>
-                                    <TableCell sx={{ width: 120, fontSize: '1rem' }}>日付</TableCell>
-                                    <TableCell sx={{ width: 180, fontSize: '1rem' }}>内容</TableCell>
-                                    <TableCell sx={{ width: 220, fontSize: '1rem' }}>用途・行き先</TableCell>
-                                    <TableCell sx={{ width: 140, fontSize: '1rem' }}>費目</TableCell>
-                                    <TableCell sx={{ width: 100, fontSize: '1rem' }}>金額</TableCell>
-                                    <TableCell sx={{ width: 120, fontSize: '1rem' }}>領収書</TableCell>
-                                    <TableCell sx={{ width: 80, fontSize: '1rem' }}>操作</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {formDataList.map((formData, index) => (
-                                    <TableRow key={index}>
-                                        <TableCell sx={{ fontSize: '0.98rem' }}>
-                                            <TextField
-                                                fullWidth
-                                                margin="none"
-                                                type="date"
-                                                InputLabelProps={{ shrink: true }}
-                                                name="date"
-                                                value={formData.date}
-                                                onChange={(e) => handleChange(index, e)}
-                                                required
-                                                size="small"
+                <Box>
+                    <Button variant="text" sx={{ mb: 2 }} onClick={() => setMode('list')}>← 一覧に戻る</Button>
+                    <Box sx={{ my: 4 }}>
+                        <Typography variant="h6" component="h1" gutterBottom>
+                            経費精算申請
+                        </Typography>
+                        <FormControl component="fieldset">
+                            <FormLabel component="legend">支払方法</FormLabel>
+                            <RadioGroup
+                                row
+                                aria-label="paymentType"
+                                name="paymentType"
+                                value={paymentType}
+                                onChange={(e) => setPaymentType(e.target.value)}
+                            >
+                                <FormControlLabel value="個人立替払用" control={<Radio />} label="個人立替払用" />
+                                <FormControlLabel value="法人カード経費分" control={<Radio />} label="法人カード経費分" />
+                            </RadioGroup>
+                        </FormControl>
+                        <form onSubmit={handleSubmit}>
+                            {formDataList.map((formData, index) => (
+                                <Grid container spacing={1} key={index} alignItems="center">
+                                    <Grid item xs={2}>
+                                        <TextField
+                                            fullWidth
+                                            margin="normal"
+                                            label="日付"
+                                            type="date"
+                                            InputLabelProps={{ shrink: true }}
+                                            name="date"
+                                            value={formData.date}
+                                            onChange={(e) => handleChange(index, e)}
+                                            required
+                                            sx={{ width: 150 }}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={2}>
+                                        <TextField
+                                            fullWidth
+                                            margin="normal"
+                                            label="内容"
+                                            name="description"
+                                            value={formData.description}
+                                            onChange={(e) => handleChange(index, e)}
+                                            required
+                                            sx={{ width: 200 }}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={2}>
+                                        <TextField
+                                            fullWidth
+                                            margin="normal"
+                                            label="用途・行き先"
+                                            name="destination"
+                                            value={formData.destination}
+                                            onChange={(e) => handleChange(index, e)}
+                                            required
+                                            sx={{ width: 300 }}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={2}>
+                                        <TextField
+                                            fullWidth
+                                            margin="normal"
+                                            select
+                                            label="費目"
+                                            name="category"
+                                            value={formData.category}
+                                            onChange={(e) => handleChange(index, e)}
+                                            required
+                                            sx={{ width: 200 }}
+                                        >
+                                            <MenuItem value="旅費交通費">旅費交通費</MenuItem>
+                                            <MenuItem value="会議費">会議費</MenuItem>
+                                            <MenuItem value="接待交際費">接待交際費</MenuItem>
+                                            <MenuItem value="消耗品※事務用品含">消耗品※事務用品含</MenuItem>
+                                            <MenuItem value="新聞図書費">新聞図書費</MenuItem>
+                                            <MenuItem value="送料※切手代含">送料※切手代含</MenuItem>
+                                            <MenuItem value="その他">その他</MenuItem>
+                                        </TextField>
+                                    </Grid>
+                                    <Grid item xs={2}>
+                                        <TextField
+                                            fullWidth
+                                            margin="normal"
+                                            label="金額"
+                                            type="number"
+                                            name="amount"
+                                            value={formData.amount}
+                                            onChange={(e) => handleChange(index, e)}
+                                            required
+                                            sx={{ width: 150 }}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={2}>
+                                        <Button
+                                            variant="outlined"
+                                            color="secondary"
+                                            onClick={() => handleDeleteFields(index)}
+                                            fullWidth
+                                            sx={{ mt: 2 }}
+                                        >
+                                            削除
+                                        </Button>
+                                    </Grid>
+                                    <Grid item xs={2} container alignItems="flex-start">
+                                        <Button
+                                            variant="outlined"
+                                            component="label"
+                                            sx={{ mb: 2 }}
+                                        >
+                                            領収書アップロード
+                                            <input
+                                                type="file"
+                                                hidden
+                                                onChange={(e) => handleReceiptUpload(index, e)}
                                             />
-                                        </TableCell>
-                                        <TableCell sx={{ fontSize: '0.98rem' }}>
-                                            <TextField
-                                                fullWidth
-                                                margin="none"
-                                                name="description"
-                                                value={formData.description}
-                                                onChange={(e) => handleChange(index, e)}
-                                                required
-                                                size="small"
-                                            />
-                                        </TableCell>
-                                        <TableCell sx={{ fontSize: '0.98rem' }}>
-                                            <TextField
-                                                fullWidth
-                                                margin="none"
-                                                name="destination"
-                                                value={formData.destination}
-                                                onChange={(e) => handleChange(index, e)}
-                                                required
-                                                size="small"
-                                            />
-                                        </TableCell>
-                                        <TableCell sx={{ fontSize: '0.98rem' }}>
-                                            <TextField
-                                                fullWidth
-                                                margin="none"
-                                                select
-                                                name="category"
-                                                value={formData.category}
-                                                onChange={(e) => handleChange(index, e)}
-                                                required
-                                                size="small"
-                                            >
-                                                <MenuItem value="旅費交通費">旅費交通費</MenuItem>
-                                                <MenuItem value="会議費">会議費</MenuItem>
-                                                <MenuItem value="接待交際費">接待交際費</MenuItem>
-                                                <MenuItem value="消耗品※事務用品含">消耗品※事務用品含</MenuItem>
-                                                <MenuItem value="新聞図書費">新聞図書費</MenuItem>
-                                                <MenuItem value="送料※切手代含">送料※切手代含</MenuItem>
-                                                <MenuItem value="その他">その他</MenuItem>
-                                            </TextField>
-                                        </TableCell>
-                                        <TableCell sx={{ fontSize: '0.98rem' }}>
-                                            <TextField
-                                                fullWidth
-                                                margin="none"
-                                                type="number"
-                                                name="amount"
-                                                value={formData.amount}
-                                                onChange={(e) => handleChange(index, e)}
-                                                required
-                                                size="small"
-                                            />
-                                        </TableCell>
-                                        <TableCell sx={{ fontSize: '0.98rem' }}>
-                                            <Button
-                                                variant="outlined"
-                                                component="label"
-                                                size="small"
-                                            >
-                                                領収書
-                                                <input
-                                                    type="file"
-                                                    hidden
-                                                    onChange={(e) => handleReceiptUpload(index, e)}
+                                        </Button>
+                                        {formData.receiptPreview && (
+                                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                <img
+                                                    src={formData.receiptPreview}
+                                                    alt="領収書プレビュー"
+                                                    style={{ width: '100px', height: '100px', cursor: 'pointer', marginTop: '8px' }}
+                                                    onClick={() => handleOpenDialog(formData.receiptPreview)}
                                                 />
-                                            </Button>
-                                            {formData.receiptPreview && (
-                                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                                    <img
-                                                        src={formData.receiptPreview}
-                                                        alt="領収書プレビュー"
-                                                        style={{ width: '60px', height: '60px', cursor: 'pointer', marginTop: '4px' }}
-                                                        onClick={() => handleOpenDialog(formData.receiptPreview)}
-                                                    />
-                                                    <Typography variant="body2" sx={{ mt: 1, fontSize: '0.85rem' }}>
-                                                        {formData.receiptName}
-                                                    </Typography>
-                                                </Box>
-                                            )}
-                                        </TableCell>
-                                        <TableCell sx={{ fontSize: '0.98rem' }}>
-                                            <Button
-                                                variant="outlined"
-                                                color="secondary"
-                                                onClick={() => handleDeleteFields(index)}
-                                                size="small"
-                                            >
-                                                削除
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
-                    <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-                        <Button variant="outlined" color="secondary" onClick={handleAddFields} sx={{ fontSize: '1rem', minWidth: 120 }}>
-                            行追加
-                        </Button>
-                        <Button variant="contained" color="primary" type="submit" onClick={handleSubmit} sx={{ fontSize: '1rem', minWidth: 120 }}>
-                            送信
-                        </Button>
-                        <Button variant="outlined" color="primary" onClick={handleSaveDraft} sx={{ fontSize: '1rem', minWidth: 120 }}>
-                            下書き保存
-                        </Button>
+                                                <Typography variant="body2" sx={{ mt: 1 }}>
+                                                    {formData.receiptName}
+                                                </Typography>
+                                            </Box>
+                                        )}
+                                    </Grid>
+                                </Grid>
+                            ))}
+                            <Button variant="outlined" color="secondary" onClick={handleAddFields} fullWidth sx={{ mt: 2 }}>
+                                行追加
+                            </Button>
+                            <Button variant="contained" color="primary" type="submit" fullWidth sx={{ mt: 2 }}>
+                                送信
+                            </Button>
+                            <Button variant="outlined" color="primary" onClick={handleSaveDraft} fullWidth sx={{ mt: 2 }}>
+                                下書き保存
+                            </Button>
+                        </form>
                     </Box>
-                </Paper>
+                </Box>
             )}
             <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
                 <DialogContent>
