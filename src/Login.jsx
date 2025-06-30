@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Container, TextField, Button, Box, Typography } from '@mui/material';
 
 function Login({ onLogin }) {
-    const username = useState('由仁場 技朗');
+    const [username, setUsername] = useState('由仁場 技朗');
     const [userId, setUserId] = useState('univatech@univa.tech');
     const [password, setPassword] = useState('1111111');
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Container, Typography, Box, Button, TextField, Paper, Table, TableHead, TableRow, TableCell, TableBody, IconButton, Select, MenuItem, FormControl, InputLabel, Snackbar, Alert, Tabs, Tab, Autocomplete, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Container, Typography, Box, Button, TextField, Paper, Table, TableHead, TableRow, TableCell, TableBody, IconButton, Select, MenuItem, FormControl, InputLabel, Snackbar, Alert, Autocomplete, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 
@@ -20,20 +20,10 @@ const SAMPLE_FLOWS = [
             { role: '一次承認者', name: '油ニ 和平', email: 'univapay@univa.tech' },
             { role: '最終承認者', name: '由引 安人', email: 'ubiast@univa.tech' }
         ]
-    },
-    {
-        type: 'department',
-        target: '開発部',
-        steps: [
-            { role: '申請者', name: '', email: '' },
-            { role: '一次承認者', name: '油ニ 和平', email: 'univapay@univa.tech' },
-            { role: '経理', name: '由引 安人', email: 'ubiast@univa.tech' }
-        ]
     }
 ];
 
-function ApprovalFlowSettings() {
-    const [tab, setTab] = useState(0); // 0: 個人単位, 1: 部署単位
+function LeaveApprovalFlowSettings() {
     const [accounts, setAccounts] = useState([]);
     const [departments, setDepartments] = useState([]);
     const [flows, setFlows] = useState([]);
@@ -47,7 +37,6 @@ function ApprovalFlowSettings() {
         { role: '申請者', name: '', email: '' },
         { role: '一次承認者', name: '', email: '' }
     ]);
-    const [addNextId, setAddNextId] = useState(3);
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [editType, setEditType] = useState('user');
     const [editTarget, setEditTarget] = useState(null);
@@ -59,11 +48,10 @@ function ApprovalFlowSettings() {
     useEffect(() => {
         setAccounts(JSON.parse(localStorage.getItem('accounts') || '[]'));
         setDepartments(JSON.parse(localStorage.getItem('departments') || '[]'));
-        // サンプルデータ初期化
-        const stored = JSON.parse(localStorage.getItem('approvalFlows') || '[]');
+        const stored = JSON.parse(localStorage.getItem('leaveApprovalFlows') || '[]');
         if (!stored || stored.length === 0) {
             setFlows(SAMPLE_FLOWS);
-            localStorage.setItem('approvalFlows', JSON.stringify(SAMPLE_FLOWS));
+            localStorage.setItem('leaveApprovalFlows', JSON.stringify(SAMPLE_FLOWS));
         } else {
             setFlows(stored);
         }
@@ -76,12 +64,9 @@ function ApprovalFlowSettings() {
             { role: '申請者', name: '', email: '' },
             { role: '一次承認者', name: '', email: '' }
         ]);
-        setAddNextId(3);
         setAddDialogOpen(true);
     };
-    const handleAddClose = () => {
-        setAddDialogOpen(false);
-    };
+    const handleAddClose = () => setAddDialogOpen(false);
     const handleAddStepChange = (idx, field, value) => {
         const newSteps = [...addSteps];
         newSteps[idx][field] = value;
@@ -94,7 +79,6 @@ function ApprovalFlowSettings() {
     };
     const handleAddStepAdd = () => {
         setAddSteps([...addSteps, { role: '一次承認者', name: '', email: '' }]);
-        setAddNextId(addNextId + 1);
     };
     const handleAddStepDelete = (idx) => {
         if (addSteps.length <= 2) return;
@@ -109,14 +93,14 @@ function ApprovalFlowSettings() {
         };
         const newFlows = [...flows, newFlow];
         setFlows(newFlows);
-        localStorage.setItem('approvalFlows', JSON.stringify(newFlows));
+        localStorage.setItem('leaveApprovalFlows', JSON.stringify(newFlows));
         setAddDialogOpen(false);
         setOpen(true);
     };
     const handleDelete = (idx) => {
         const newFlows = flows.filter((_, i) => i !== idx);
         setFlows(newFlows);
-        localStorage.setItem('approvalFlows', JSON.stringify(newFlows));
+        localStorage.setItem('leaveApprovalFlows', JSON.stringify(newFlows));
     };
     const handleEditOpen = (idx) => {
         setEditIdx(idx);
@@ -156,7 +140,7 @@ function ApprovalFlowSettings() {
             steps: editSteps
         };
         setFlows(newFlows);
-        localStorage.setItem('approvalFlows', JSON.stringify(newFlows));
+        localStorage.setItem('leaveApprovalFlows', JSON.stringify(newFlows));
         setEditDialogOpen(false);
         setOpen(true);
     };
@@ -165,7 +149,7 @@ function ApprovalFlowSettings() {
         <Container maxWidth="md" sx={{ py: 4 }}>
             <Paper sx={{ p: 3, mb: 4 }}>
                 <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
-                    申請フロー設定
+                    有給承認フロー設定
                 </Typography>
                 <Box sx={{ mb: 2, textAlign: 'right' }}>
                     <Button variant="contained" color="primary" onClick={handleAddOpen}>新規追加</Button>
@@ -196,8 +180,9 @@ function ApprovalFlowSettings() {
                     </TableBody>
                 </Table>
             </Paper>
+            {/* 新規追加ダイアログ */}
             <Dialog open={addDialogOpen} onClose={handleAddClose} maxWidth="sm" fullWidth>
-                <DialogTitle>申請フロー新規追加</DialogTitle>
+                <DialogTitle>有給承認フロー新規追加</DialogTitle>
                 <DialogContent>
                     <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
                         <FormControl sx={{ minWidth: 120 }}>
@@ -291,8 +276,9 @@ function ApprovalFlowSettings() {
                     <Button variant="contained" onClick={handleAddSave}>登録</Button>
                 </DialogActions>
             </Dialog>
+            {/* 編集ダイアログ */}
             <Dialog open={editDialogOpen} onClose={handleEditClose} maxWidth="sm" fullWidth>
-                <DialogTitle>申請フロー編集</DialogTitle>
+                <DialogTitle>有給承認フロー編集</DialogTitle>
                 <DialogContent>
                     <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
                         <FormControl sx={{ minWidth: 120 }}>
@@ -386,13 +372,8 @@ function ApprovalFlowSettings() {
                     <Button variant="contained" onClick={handleEditSave}>保存</Button>
                 </DialogActions>
             </Dialog>
-            <Snackbar open={open} autoHideDuration={2000} onClose={() => setOpen(false)}>
-                <Alert severity="success" sx={{ width: '100%' }}>
-                    申請フローを保存しました
-                </Alert>
-            </Snackbar>
         </Container>
     );
 }
 
-export default ApprovalFlowSettings;
+export default LeaveApprovalFlowSettings;

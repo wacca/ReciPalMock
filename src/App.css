@@ -41,11 +41,6 @@
   color: #888;
 }
 
-.drawer {
-  background-color: #2c3e50;
-  color: #ecf0f1;
-}
-
 .drawer .MuiListItem-root {
   padding: 16px;
 }
@@ -59,7 +54,8 @@
 }
 
 .drawer .MuiListItemText-primary {
-  font-size: 1.2rem;
+  font-size: 1rem;
+  white-space: nowrap;
 }
 
 .drawer .MuiListItemIcon-root {
@@ -77,4 +73,28 @@
 
 .drawer .MuiListItem-root.active .MuiListItemIcon-root {
   color: #ffffff;
+}
+
+.permission-role-list .MuiListItem-root.Mui-selected {
+  background-color: #1abc9c !important; /* drawerのアクティブな色と同じ */
+}
+
+/* 選択されたListItem内の主要テキストの色を白に指定 */
+.permission-role-list .MuiListItem-root.Mui-selected .MuiListItemText-primary {
+  color: #ffffff !important;
+  cursor: default; /* ← 追加: テキスト部分で矢印カーソルを維持 */
+}
+
+.permission-role-list .MuiListItem-root.Mui-selected:hover {
+  background-color: #16a085 !important; /* 少し濃い色 */
+}
+
+/* ホバー時もテキスト色が白のまま維持されるようにする場合 (任意) */
+.permission-role-list .MuiListItem-root.Mui-selected:hover .MuiListItemText-primary {
+  color: #ffffff !important;
+}
+
+.permission-role-list .MuiListItemText-root,
+.permission-role-list .MuiListItemText-primary {
+  cursor: default !important;
 }

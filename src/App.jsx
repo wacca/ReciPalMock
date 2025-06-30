@@ -1,174 +1,165 @@
 import { useState } from 'react';
 import './App.css';
-import {
-    Container,
-    TextField,
-    Button,
-    Typography,
-    Box,
-    Grid2,
-    MenuItem,
-    FormControl,
-    RadioGroup, FormControlLabel, Radio
-} from '@mui/material';
+import { Typography, Box, AppBar, Toolbar, IconButton, Menu, MenuItem, Avatar, Badge, Drawer, List, ListItem, ListItemIcon, ListItemText } from '@mui/material';
+import { Route, Routes, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import MenuIcon from '@mui/icons-material/Menu';
+import CloseIcon from '@mui/icons-material/ArrowBackIosNew';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import DoneIcon from '@mui/icons-material/Done';
+import ApprovalIcon from '@mui/icons-material/ThumbUp';
+import { Settings, ListAlt } from '@mui/icons-material';
+
 import Login from './Login';
+import ApplicationForm from './ApplicationForm';
+import SubmittedApplications from './SubmittedApplications';
+import Approvals from './Approvals';
+import ApprovalFlowSettings from './ApprovalFlowSettings';
+import ReminderSettings from './ReminderSettings';
+import AccountManagement from './AccountManagement';
+import MasterSettings from './MasterSettings';
+import LeaveApplication from './LeaveApplication';
+import LeaveSubmitted from './LeaveSubmitted';
+import LeaveApprovals from './LeaveApprovals';
+import LeaveApprovalFlowSettings from './LeaveApprovalFlowSettings';
+import FlowSettingsMenu from './FlowSettingsMenu';
+import PermissionSettings from './PermissionSettings';
+
+// RecrovaロゴSVG
+const RecrovaLogo = () => (
+    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="16" cy="16" r="16" fill="#1abc9c" />
+        <path d="M10 22c0-4 2-8 6-8s6 4 6 8" stroke="#fff" strokeWidth="2" fill="none"/>
+        <circle cx="16" cy="13" r="3" fill="#fff"/>
+        <path d="M12 10c1-2 7-2 8 0" stroke="#fff" strokeWidth="1.5" fill="none"/>
+    </svg>
+);
 
 function App() {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [username, setUsername] = useState('');
-    const [formDataList, setFormDataList] = useState([
-        { date: '', description: '', destination: '', category: '', amount: '' }
-    ]);
-    const [paymentType, setPaymentType] = useState('個人立替払用');
+    const [userId, setUserId] = useState('');
+    const [anchorEl, setAnchorEl] = useState(null);
+    const navigate = useNavigate();
+    const location = useLocation();
 
-    const handleLogin = (username) => {
+    const handleLogin = (username, userId) => {
         setUsername(username);
+        setUserId(userId);
         setIsLoggedIn(true);
     };
 
-    const handleChange = (index, e) => {
-        const { name, value } = e.target;
-        const newFormDataList = [...formDataList];
-        newFormDataList[index][name] = value;
-        setFormDataList(newFormDataList);
+    const handleMenuOpen = (event) => {
+        setAnchorEl(event.currentTarget);
     };
 
-    const handleAddFields = () => {
-        setFormDataList([...formDataList, { date: '', description: '', destination: '', category: '', amount: '' }]);
+    const handleMenuClose = () => {
+        setAnchorEl(null);
     };
 
-    const handleDeleteFields = (index) => {
-        const newFormDataList = formDataList.filter((_, i) => i !== index);
-        setFormDataList(newFormDataList);
+    const handleLogout = () => {
+        setIsLoggedIn(false);
+        handleMenuClose();
     };
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        console.log('Form Data Submitted:', formDataList, 'Payment Type:', paymentType);
-        // Add logic here to send formDataList and paymentType to your server or API
-    };
+    const menuItems = [
+        { label: '経費申請', path: '/application', icon: <AssignmentIcon /> },
+        { label: '経費申請済', path: '/submitted', icon: <DoneIcon /> },
+        { label: '経費承認', path: '/approvals', icon: <ApprovalIcon /> },
+        { label: '休暇申請', path: '/leave-application', icon: <AssignmentIcon /> },
+        { label: '休暇申請済', path: '/leave-submitted', icon: <DoneIcon /> },
+        { label: '休暇承認', path: '/leave-approvals', icon: <ApprovalIcon /> },
+        { label: '申請フロー設定', path: '/flow-settings-menu', icon: <Settings /> },
+        { label: 'アラート設定', path: '/reminder-settings', icon: <ListAlt /> },
+        { label: 'アカウント管理', path: '/account-management', icon: <AccountCircleIcon /> },
+        { label: 'マスタ管理', path: '/master-settings', icon: <Settings /> },
+        { label: '権限設定', path: '/permission-settings', icon: <Settings /> },
+    ];
 
     if (!isLoggedIn) {
         return <Login onLogin={handleLogin} />;
     }
+
     return (
-        <Container maxWidth="xl" sx={{ textAlign: 'left' }}>
-            <Box sx={{ my: 4 }}>
-                <Typography variant="h4" component="h1" gutterBottom>
-                    経費精算フォーム
-                </Typography>
-                <Typography variant="h6" component="div">
-                    {username}
-                </Typography>
-                <Box sx={{ width: 500, borderBottom: 1, borderColor: 'black', mb: 2 }} />
-                <FormControl component="fieldset">
-                    <RadioGroup
-                        row
-                        aria-label="paymentType"
-                        name="paymentType"
-                        value={paymentType}
-                        onChange={(e) => setPaymentType(e.target.value)}
-                    >
-                        <FormControlLabel value="個人立替払用" control={<Radio />} label="個人立替払用" />
-                        <FormControlLabel value="法人カード経費分" control={<Radio />} label="法人カード経費分" />
-                    </RadioGroup>
-                </FormControl>
-                <form onSubmit={handleSubmit}>
-                    {formDataList.map((formData, index) => (
-                        <Grid2 container spacing={2} key={index} alignItems="center">
-                            <Grid2 item xs={2}>
-                                <TextField
-                                    fullWidth
-                                    margin="normal"
-                                    label="日付"
-                                    type="date"
-                                    InputLabelProps={{ shrink: true }}
-                                    name="date"
-                                    value={formData.date}
-                                    onChange={(e) => handleChange(index, e)}
-                                    required
-                                />
-                            </Grid2>
-                            <Grid2 item xs={2}>
-                                <TextField
-                                    fullWidth
-                                    margin="normal"
-                                    label="内容"
-                                    name="description"
-                                    value={formData.description}
-                                    onChange={(e) => handleChange(index, e)}
-                                    required
-                                />
-                            </Grid2>
-                            <Grid2 item xs={2}>
-                                <TextField
-                                    fullWidth
-                                    margin="normal"
-                                    label="用途・行き先"
-                                    name="destination"
-                                    value={formData.destination}
-                                    onChange={(e) => handleChange(index, e)}
-                                    required
-                                    sx={{ width: 300 }}
-                                />
-                            </Grid2>
-                            <Grid2 item xs={2}>
-                                <TextField
-                                    fullWidth
-                                    margin="normal"
-                                    select
-                                    label="費目"
-                                    name="category"
-                                    value={formData.category}
-                                    onChange={(e) => handleChange(index, e)}
-                                    required
-                                    sx={{ width: 200 }}
+        <>
+            <AppBar position="fixed">
+                <Toolbar>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
+                        <RecrovaLogo />
+                        <Typography variant="h6" noWrap component="div" sx={{ ml: 1, fontWeight: 'bold', letterSpacing: 1 }}>
+                            Recrova
+                        </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', ml: 2 }}>
+                        <IconButton color="inherit" onClick={handleMenuOpen}>
+                            <Avatar>
+                                <AccountCircleIcon sx={{ width: 32, height: 32 }} />
+                            </Avatar>
+                        </IconButton>
+                        <Typography variant="body1" sx={{ mr: 2 }}>
+                            {username} ({userId})
+                        </Typography>
+                        <Menu
+                            anchorEl={anchorEl}
+                            open={Boolean(anchorEl)}
+                            onClose={handleMenuClose}
+                        >
+                            <MenuItem onClick={handleLogout}>ログアウト</MenuItem>
+                        </Menu>
+                    </Box>
+                </Toolbar>
+            </AppBar>
+            <Box sx={{ display: 'flex', height: '100vh' }}>
+                <Drawer
+                    variant="permanent"
+                    className="drawer"
+                    sx={{
+                        width: 220,
+                        flexShrink: 0,
+                        zIndex: (theme) => theme.zIndex.appBar - 1,
+                        [`& .MuiDrawer-paper`]: { width: 220, boxSizing: 'border-box' },
+                    }}
+                >
+                    <Toolbar />
+                    <List>
+                        {menuItems.map((item, idx) => {
+                            const isActive = location.pathname.startsWith(item.path.replace(/-menu$/, ''));
+                            return (
+                                <ListItem
+                                    button
+                                    key={item.path}
+                                    selected={isActive}
+                                    onClick={() => navigate(item.path)}
+                                    className={`MuiListItem-root${isActive ? ' active' : ''}`}
                                 >
-                                    <MenuItem value="旅費交通費">旅費交通費</MenuItem>
-                                    <MenuItem value="会議費">会議費</MenuItem>
-                                    <MenuItem value="接待交際費">接待交際費</MenuItem>
-                                    <MenuItem value="消耗品※事務用品含">消耗品※事務用品含</MenuItem>
-                                    <MenuItem value="新聞図書費">新聞図書費</MenuItem>
-                                    <MenuItem value="送料※切手代含">送料※切手代含</MenuItem>
-                                    <MenuItem value="その他">その他</MenuItem>
-                                </TextField>
-                            </Grid2>
-                            <Grid2 item xs={2}>
-                                <TextField
-                                    fullWidth
-                                    margin="normal"
-                                    label="金額"
-                                    type="number"
-                                    name="amount"
-                                    value={formData.amount}
-                                    onChange={(e) => handleChange(index, e)}
-                                    required
-                                    sx={{ width: 150 }}
-                                />
-                            </Grid2>
-                            <Grid2 item xs={2}>
-                                <Button
-                                    variant="outlined"
-                                    color="secondary"
-                                    onClick={() => handleDeleteFields(index)}
-                                    fullWidth
-                                    sx={{ mt: 2 }}
-                                >
-                                    削除
-                                </Button>
-                            </Grid2>
-                        </Grid2>
-                    ))}
-                    <Button variant="outlined" color="secondary" onClick={handleAddFields} fullWidth sx={{ mt: 2 }}>
-                        行追加
-                    </Button>
-                    <Button variant="contained" color="primary" type="submit" fullWidth sx={{ mt: 2 }}>
-                        送信
-                    </Button>
-                </form>
+                                    <ListItemIcon className="MuiListItemIcon-root">{item.icon}</ListItemIcon>
+                                    <ListItemText primary={item.label} className="MuiListItemText-primary" />
+                                </ListItem>
+                            );
+                        })}
+                    </List>
+                </Drawer>
+                <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
+                    <Toolbar />
+                    <Routes>
+                        <Route path="/application" element={<ApplicationForm username={username} />} />
+                        <Route path="/submitted" element={<SubmittedApplications />} />
+                        <Route path="/approvals" element={<Approvals />} />
+                        <Route path="/flow-settings-menu" element={<FlowSettingsMenu />} />
+                        <Route path="/approval-flow-settings" element={<ApprovalFlowSettings />} />
+                        <Route path="/leave-approval-flow-settings" element={<LeaveApprovalFlowSettings />} />
+                        <Route path="/reminder-settings" element={<ReminderSettings />} />
+                        <Route path="/account-management" element={<AccountManagement />} />
+                        <Route path="/master-settings" element={<MasterSettings />} />
+                        <Route path="/leave-application" element={<LeaveApplication />} />
+                        <Route path="/leave-submitted" element={<LeaveSubmitted />} />
+                        <Route path="/leave-approvals" element={<LeaveApprovals />} />
+                        <Route path="/permission-settings" element={<PermissionSettings />} />
+                    </Routes>
+                </Box>
             </Box>
-        </Container>
+        </>
     );
 }
 
-export default App
+export default App;
