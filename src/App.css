@@ -51,7 +51,7 @@
 
 .navGroupLabel {
   padding: 2px 10px;
-  color: #98a2b3;
+  color: #667085;
   font-weight: 800 !important;
   letter-spacing: 0 !important;
 }
@@ -229,14 +229,6 @@
   min-height: 44px;
 }
 
-.MuiTableContainer-root {
-  border-radius: 8px;
-}
-
-.MuiTableRow-hover:hover {
-  background-color: #fbfefd !important;
-}
-
 .MuiPaper-root .MuiPaper-root {
   box-shadow: none;
 }
@@ -265,15 +257,43 @@
 
 .pageViewport .MuiTableContainer-root {
   border: 1px solid #e4e8ee;
+  border-radius: 8px;
   background: #ffffff;
+  overflow-x: auto;
 }
 
 .pageViewport .MuiTable-root {
+  border: 1px solid #e4e8ee;
+  border-radius: 8px;
+  border-collapse: separate;
+  border-spacing: 0;
   background: #ffffff;
+}
+
+.pageViewport .MuiTableContainer-root .MuiTable-root {
+  border: 0;
+  border-radius: 0;
 }
 
 .pageViewport .MuiTableCell-root {
   vertical-align: middle;
+}
+
+.pageViewport .MuiTableHead-root .MuiTableRow-root:first-of-type .MuiTableCell-root:first-of-type {
+  border-top-left-radius: 8px;
+}
+
+.pageViewport .MuiTableHead-root .MuiTableRow-root:first-of-type .MuiTableCell-root:last-of-type {
+  border-top-right-radius: 8px;
+}
+
+.pageViewport .MuiTableBody-root .MuiTableRow-root:last-child .MuiTableCell-root {
+  border-bottom: 0;
+}
+
+.pageViewport .MuiTableContainer-root .MuiTableHead-root .MuiTableRow-root:first-of-type .MuiTableCell-root:first-of-type,
+.pageViewport .MuiTableContainer-root .MuiTableHead-root .MuiTableRow-root:first-of-type .MuiTableCell-root:last-of-type {
+  border-radius: 0;
 }
 
 .pageViewport .MuiTextField-root,
@@ -334,6 +354,66 @@
 
 .inlineActionGroup {
   flex-wrap: wrap;
+}
+
+.expenseSummaryStrip {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin: 16px 0 20px;
+  padding: 14px 16px;
+  border: 1px solid #e4e8ee;
+  border-radius: 8px;
+  background: #fbfdff;
+}
+
+.expenseSummaryStrip .MuiTypography-subtitle1 {
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.expenseDetailRow {
+  display: grid;
+  grid-template-columns: 40px minmax(130px, 0.8fr) minmax(160px, 1fr) minmax(220px, 1.4fr) minmax(160px, 1fr) minmax(120px, 0.7fr) minmax(180px, 1fr) 86px;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 0;
+  border-top: 1px solid #edf1f6;
+}
+
+.expenseDetailIndex {
+  padding-top: 22px;
+  color: #667085;
+}
+
+.expenseReceiptCell,
+.expenseRowAction {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding-top: 16px;
+}
+
+.expenseReceiptCell .MuiButton-root,
+.expenseRowAction .MuiButton-root {
+  width: 100%;
+}
+
+.applicationGroup {
+  margin-bottom: 24px;
+  padding: 20px;
+  border: 1px solid #e4e8ee;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.detailStack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 4px;
 }
 
 .pageViewport .MuiButton-sizeMedium {
@@ -413,8 +493,34 @@
   background: #fbfdff !important;
 }
 
+.alertSettingCard.isDisabled {
+  background: #f8fafc !important;
+}
+
 .alertSettingCard .MuiFormControlLabel-root {
   min-width: 240px;
+}
+
+.alertSettingHeader,
+.alertSettingFields {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.alertSettingHeader {
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.accountToolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
 }
 
 @media (max-width: 900px) {
@@ -423,26 +529,70 @@
   }
 }
 
-.permission-role-list .MuiListItem-root.Mui-selected {
-  background-color: #1abc9c !important;
+.permissionLayout {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 24px;
 }
 
-.permission-role-list .MuiListItem-root.Mui-selected .MuiListItemText-primary {
-  color: #ffffff !important;
-  cursor: default;
+.permissionRoleList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.permission-role-list .MuiListItem-root.Mui-selected:hover {
-  background-color: #16a085 !important;
+.permissionRoleList .MuiListItem-root {
+  border: 1px solid #e4e8ee;
+  border-radius: 8px;
+  background: #ffffff;
 }
 
-.permission-role-list .MuiListItem-root.Mui-selected:hover .MuiListItemText-primary {
-  color: #ffffff !important;
+.permissionRoleList .MuiListItemSecondaryAction-root {
+  right: 8px;
 }
 
-.permission-role-list .MuiListItemText-root,
-.permission-role-list .MuiListItemText-primary {
-  cursor: default !important;
+.permissionRoleButton {
+  min-height: 64px !important;
+  padding-right: 98px !important;
+  border-radius: 8px !important;
+}
+
+.permissionRoleButton.Mui-selected {
+  color: #00796b;
+  background-color: #e0f2ef !important;
+}
+
+.permissionRoleButton.Mui-selected:hover {
+  background-color: #d3eee8 !important;
+}
+
+.permissionGroupStack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.permissionGroup {
+  padding: 16px;
+  border: 1px solid #e4e8ee;
+  border-radius: 8px;
+  background: #fbfdff;
+}
+
+.permissionScreenGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.permissionScreenCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 76px;
+  padding: 12px;
+  background: #ffffff !important;
 }
 
 @media (max-width: 1200px) {
@@ -453,6 +603,14 @@
   .dashboardGrid {
     grid-template-columns: 1fr;
   }
+
+  .permissionLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .permissionScreenGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 760px) {
@@ -462,9 +620,21 @@
 
   .pageHeaderRow,
   .sectionHeaderRow,
-  .formActionBar {
+  .formActionBar,
+  .expenseDetailRow {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .expenseDetailRow {
+    display: flex;
+    gap: 4px;
+  }
+
+  .expenseDetailIndex,
+  .expenseReceiptCell,
+  .expenseRowAction {
+    padding-top: 0;
   }
 
   .pageActionBar,
@@ -489,7 +659,8 @@
   }
 
   .dashboardMetrics,
-  .actionGrid {
+  .actionGrid,
+  .permissionScreenGrid {
     grid-template-columns: 1fr;
   }
 }

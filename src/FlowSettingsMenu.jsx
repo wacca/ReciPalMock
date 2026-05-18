@@ -34,7 +34,7 @@ function FlowSettingsMenu() {
                         </Box>
                         <Box>
                             <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
-                                有給承認フロー設定
+                                休暇承認フロー設定
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
                                 休暇申請の承認者と順序を編集します。

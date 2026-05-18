@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Container, Typography, Box, TextField, Button, MenuItem, FormControl, InputLabel, Select, Snackbar, Alert, TableContainer, Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
-
-const LEAVE_TYPES = [
-    '有給休暇',
-    '特別休暇',
-    '欠勤',
-    '遅刻',
-    '早退',
-    'その他'
-];
+import { Container, Typography, Box, TextField, Button, MenuItem, FormControl, InputLabel, Select, Snackbar, Alert, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Chip } from '@mui/material';
+import {
+    LEAVE_TYPES,
+    buildLeaveApplication,
+    emptyLeaveDraft,
+    loadLeaveApplications,
+    loadLeaveDrafts,
+    saveLeaveApplications,
+    saveLeaveDrafts,
+} from './leaveApplicationStore';
 
 function LeaveApplication() {
     const [leaveList, setLeaveList] = useState([]); // 下書き一覧
@@ -20,46 +20,16 @@ function LeaveApplication() {
     const [snackbar, setSnackbar] = useState({ open: false, message: '' });
 
     useEffect(() => {
-        // サンプルデータがなければ初期投入
-        if (!localStorage.getItem('leaveApplications')) {
-            const sample = [
-                {
-                    id: 'leave_20240601',
-                    leaveType: '有給休暇',
-                    date: '2024-06-10',
-                    reason: '私用のため',
-                    status: '申請中',
-                    submittedAt: '2024-06-01T09:00:00.000Z',
-                },
-                {
-                    id: 'leave_20240602',
-                    leaveType: '遅刻',
-                    date: '2024-06-05',
-                    reason: '通院のため',
-                    status: '承認済',
-                    submittedAt: '2024-06-02T10:00:00.000Z',
-                },
-                {
-                    id: 'leave_20240603',
-                    leaveType: '早退',
-                    date: '2024-06-03',
-                    reason: '家庭の事情',
-                    status: '非承認',
-                    submittedAt: '2024-06-03T11:00:00.000Z',
-                }
-            ];
-            localStorage.setItem('leaveApplications', JSON.stringify(sample));
-        }
-        // 下書きの初期化
-        const saved = JSON.parse(localStorage.getItem('leaveDrafts') || '[]');
-        setLeaveList(saved);
+        loadLeaveApplications();
+        setLeaveList(loadLeaveDrafts());
     }, []);
 
     const resetForm = () => {
         setEditId('new');
-        setLeaveType('有給休暇');
-        setDate('');
-        setReason('');
+        const draft = emptyLeaveDraft();
+        setLeaveType(draft.leaveType);
+        setDate(draft.date);
+        setReason(draft.reason);
     };
 
     const handleEdit = (id) => {
@@ -77,7 +47,7 @@ function LeaveApplication() {
         if (!window.confirm('この下書きを削除しますか？')) return;
         const newList = leaveList.filter(d => d.id !== id);
         setLeaveList(newList);
-        localStorage.setItem('leaveDrafts', JSON.stringify(newList));
+        saveLeaveDrafts(newList);
         setSnackbar({ open: true, message: '下書きを削除しました' });
     };
 
@@ -91,7 +61,7 @@ function LeaveApplication() {
             newList = leaveList.map(d => d.id === id ? newDraft : d);
         }
         setLeaveList(newList);
-        localStorage.setItem('leaveDrafts', JSON.stringify(newList));
+        saveLeaveDrafts(newList);
         setEditId(id);
         setMode('list');
         setSnackbar({ open: true, message: '下書きを保存しました' });
@@ -99,21 +69,12 @@ function LeaveApplication() {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        // 申請としてleaveApplicationsに保存
-        const newApp = {
-            id: editId === 'new' ? `leave_${Date.now()}` : editId,
-            leaveType,
-            date,
-            reason,
-            status: '申請中',
-            submittedAt: new Date().toISOString(),
-        };
-        const prev = JSON.parse(localStorage.getItem('leaveApplications') || '[]');
-        localStorage.setItem('leaveApplications', JSON.stringify([...prev, newApp]));
-        // 下書きから削除
+        const newApp = buildLeaveApplication({ editId, leaveType, date, reason });
+        const prev = loadLeaveApplications();
+        saveLeaveApplications([newApp, ...prev]);
         const newList = leaveList.filter(d => d.id !== newApp.id);
         setLeaveList(newList);
-        localStorage.setItem('leaveDrafts', JSON.stringify(newList));
+        saveLeaveDrafts(newList);
         setSnackbar({ open: true, message: '勤怠（休暇）申請を送信しました' });
         resetForm();
         setMode('list');
@@ -171,6 +132,17 @@ function LeaveApplication() {
                         <Typography variant="h6" component="h1" gutterBottom>
                             勤怠（休暇）申請
                         </Typography>
+                        <Box className="expenseSummaryStrip">
+                            <Box>
+                                <Typography variant="caption" color="text.secondary">申請種別</Typography>
+                                <Typography variant="subtitle1">{leaveType}</Typography>
+                            </Box>
+                            <Box>
+                                <Typography variant="caption" color="text.secondary">対象日</Typography>
+                                <Typography variant="subtitle1">{date || '-'}</Typography>
+                            </Box>
+                            <Chip size="small" label="送信後は申請済・承認画面に反映" color="primary" variant="outlined" />
+                        </Box>
                         <form onSubmit={handleSubmit}>
                             <FormControl fullWidth sx={{ mb: 2 }}>
                                 <InputLabel>申請種別</InputLabel>

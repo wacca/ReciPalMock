@@ -1,25 +1,79 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-    Container, Typography, Paper, Grid, List, ListItem, ListItemText, Switch, Box, Tabs, Tab, Button, TextField, Select, MenuItem, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, Snackbar, Alert
+    Alert,
+    Box,
+    Button,
+    Chip,
+    Container,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    FormControl,
+    IconButton,
+    InputAdornment,
+    InputLabel,
+    List,
+    ListItem,
+    ListItemButton,
+    ListItemText,
+    MenuItem,
+    Paper,
+    Select,
+    Snackbar,
+    Switch,
+    Tab,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableRow,
+    Tabs,
+    TextField,
+    Typography,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import SearchIcon from '@mui/icons-material/Search';
 
-const SCREENS = [
-    { key: 'application', label: '経費申請' },
-    { key: 'submitted', label: '経費申請済' },
-    { key: 'approvals', label: '経費承認' },
-    { key: 'leave-application', label: '休暇申請' },
-    { key: 'leave-submitted', label: '休暇申請済' },
-    { key: 'leave-approvals', label: '休暇承認' },
-    { key: 'attendance-input', label: '勤怠入力' },
-    { key: 'flow-settings-menu', label: '申請フロー設定' },
-    { key: 'reminder-settings', label: 'アラート設定' },
-    { key: 'account-management', label: 'アカウント管理' },
-    { key: 'master-settings', label: 'マスタ管理' },
-    { key: 'permission-settings', label: '権限設定' },
+const SCREEN_GROUPS = [
+    {
+        title: 'ホーム',
+        screens: [
+            { key: 'dashboard', label: 'ダッシュボード' },
+        ],
+    },
+    {
+        title: '申請',
+        screens: [
+            { key: 'application', label: '経費申請' },
+            { key: 'submitted', label: '経費申請済' },
+            { key: 'approvals', label: '経費承認' },
+            { key: 'leave-application', label: '休暇申請' },
+            { key: 'leave-submitted', label: '休暇申請済' },
+            { key: 'leave-approvals', label: '休暇承認' },
+        ],
+    },
+    {
+        title: '勤怠',
+        screens: [
+            { key: 'attendance-input', label: '勤怠入力' },
+        ],
+    },
+    {
+        title: '管理',
+        screens: [
+            { key: 'flow-settings-menu', label: '申請フロー設定' },
+            { key: 'reminder-settings', label: 'アラート設定' },
+            { key: 'account-management', label: 'アカウント管理' },
+            { key: 'master-settings', label: 'マスタ管理' },
+            { key: 'permission-settings', label: '権限設定' },
+        ],
+    },
 ];
+
+const SCREENS = SCREEN_GROUPS.flatMap(group => group.screens);
 
 const INITIAL_ROLES = [
     { key: 'admin', label: '管理者' },
@@ -27,60 +81,150 @@ const INITIAL_ROLES = [
     { key: 'user', label: '一般ユーザー' },
 ];
 
+const SAMPLE_ACCOUNTS = [
+    { name: '由仁場 技朗', userId: 'univatech@univa.tech', department: '開発部', position: '部長', email: 'univatech@univa.tech', status: true },
+    { name: '油ニ 和平', userId: 'univapay@univa.tech', department: '営業部', position: '課長', email: 'univapay@univa.tech', status: true },
+    { name: '由引 安人', userId: 'ubiast@univa.tech', department: '総務部', position: '一般社員', email: 'ubiast@univa.tech', status: false },
+];
+
+const ROLE_PERMISSION_PRESETS = {
+    admin: SCREENS.map(screen => screen.key),
+    approver: ['dashboard', 'submitted', 'approvals', 'leave-submitted', 'leave-approvals', 'attendance-input'],
+    user: ['dashboard', 'application', 'submitted', 'leave-application', 'leave-submitted', 'attendance-input'],
+};
+
+const createPermissionsFromKeys = (screenKeys) => (
+    SCREENS.reduce((permissions, screen) => ({
+        ...permissions,
+        [screen.key]: screenKeys.includes(screen.key),
+    }), {})
+);
+
+const createDefaultPermissions = () => (
+    INITIAL_ROLES.reduce((permissions, role) => ({
+        ...permissions,
+        [role.key]: createPermissionsFromKeys(ROLE_PERMISSION_PRESETS[role.key] || []),
+    }), {})
+);
+
+const loadJson = (key, fallback) => {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(key) || 'null');
+        return parsed || fallback;
+    } catch {
+        return fallback;
+    }
+};
+
+const loadAccounts = () => {
+    const stored = loadJson('accounts', []);
+    return Array.isArray(stored) && stored.length > 0 ? stored : SAMPLE_ACCOUNTS;
+};
+
 function PermissionSettings() {
     const [currentTab, setCurrentTab] = useState(0);
     const [accounts, setAccounts] = useState([]);
-
-    // Roles state
     const [definedRoles, setDefinedRoles] = useState(INITIAL_ROLES);
     const [selectedRoleKey, setSelectedRoleKey] = useState(INITIAL_ROLES[0].key);
-    const [rolesPermissions, setRolesPermissions] = useState({}); // { roleKey: { screenKey: true/false } }
+    const [rolesPermissions, setRolesPermissions] = useState({});
+    const [userRoles, setUserRoles] = useState({});
     const [roleDialogOpen, setRoleDialogOpen] = useState(false);
-    const [editingRole, setEditingRole] = useState(null); // { key: string, label: string } or null for new
+    const [editingRole, setEditingRole] = useState(null);
     const [roleNameInput, setRoleNameInput] = useState('');
+    const [userSearchText, setUserSearchText] = useState('');
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
-    // User role assignment state
-    const [userRoles, setUserRoles] = useState({}); // { userId: roleKey }
-
     useEffect(() => {
-        const accData = JSON.parse(localStorage.getItem('accounts') || '[]');
-        setAccounts(accData);
+        const loadedAccounts = loadAccounts();
+        const loadedRoles = loadJson('definedRoles', INITIAL_ROLES);
+        const savedPermissions = loadJson('rolesPermissions', {});
+        const defaultPermissions = createDefaultPermissions();
+        const mergedPermissions = loadedRoles.reduce((permissions, role) => ({
+            ...permissions,
+            [role.key]: {
+                ...(defaultPermissions[role.key] || createPermissionsFromKeys([])),
+                ...(savedPermissions[role.key] || {}),
+            },
+        }), {});
+        const savedUserRoles = loadJson('userRoles', {});
+        const normalizedUserRoles = loadedAccounts.reduce((roles, account, index) => ({
+            ...roles,
+            [account.userId]: savedUserRoles[account.userId] || (index === 0 ? 'admin' : index === 1 ? 'approver' : 'user'),
+        }), {});
 
-        const savedDefinedRoles = JSON.parse(localStorage.getItem('definedRoles') || JSON.stringify(INITIAL_ROLES));
-        setDefinedRoles(savedDefinedRoles);
-        if (savedDefinedRoles.length > 0) {
-            setSelectedRoleKey(currentRoleKey =>
-                savedDefinedRoles.find(r => r.key === currentRoleKey)
-                    ? currentRoleKey
-                    : savedDefinedRoles[0].key
-            );
-        }
-
-        const savedRolesPermissions = JSON.parse(localStorage.getItem('rolesPermissions') || '{}');
-        setRolesPermissions(savedRolesPermissions);
-
-        const savedUserRoles = JSON.parse(localStorage.getItem('userRoles') || '{}');
-        setUserRoles(savedUserRoles);
+        setAccounts(loadedAccounts);
+        setDefinedRoles(loadedRoles);
+        setSelectedRoleKey(loadedRoles[0]?.key || '');
+        setRolesPermissions(mergedPermissions);
+        setUserRoles(normalizedUserRoles);
+        localStorage.setItem('rolesPermissions', JSON.stringify(mergedPermissions));
+        localStorage.setItem('userRoles', JSON.stringify(normalizedUserRoles));
     }, []);
 
-    const handleTabChange = (event, newValue) => {
-        setCurrentTab(newValue);
+    const selectedRole = definedRoles.find(role => role.key === selectedRoleKey);
+
+    const filteredAccounts = useMemo(() => {
+        const keyword = userSearchText.trim().toLowerCase();
+        return accounts.filter(account => (
+            !keyword
+            || [account.name, account.userId, account.department, account.position, account.email]
+                .some(value => String(value || '').toLowerCase().includes(keyword))
+        ));
+    }, [accounts, userSearchText]);
+
+    const showSnackbar = (message, severity = 'success') => {
+        setSnackbar({ open: true, message, severity });
     };
 
-    // --- Role Settings Tab Logic ---
-    const handleSelectRole = (roleKey) => {
-        setSelectedRoleKey(roleKey);
+    const persistDefinedRoles = (roles) => {
+        setDefinedRoles(roles);
+        localStorage.setItem('definedRoles', JSON.stringify(roles));
     };
+
+    const persistRolesPermissions = (permissions) => {
+        setRolesPermissions(permissions);
+        localStorage.setItem('rolesPermissions', JSON.stringify(permissions));
+    };
+
+    const persistUserRoles = (roles) => {
+        setUserRoles(roles);
+        localStorage.setItem('userRoles', JSON.stringify(roles));
+    };
+
+    const getRoleUsageCount = (roleKey) => Object.values(userRoles).filter(value => value === roleKey).length;
+
+    const getEnabledPermissionCount = (roleKey) => (
+        SCREENS.filter(screen => rolesPermissions[roleKey]?.[screen.key]).length
+    );
 
     const handleRolePermissionChange = (screenKey, canAccess) => {
-        setRolesPermissions(prev => ({
-            ...prev,
+        const nextPermissions = {
+            ...rolesPermissions,
             [selectedRoleKey]: {
-                ...(prev[selectedRoleKey] || {}),
+                ...(rolesPermissions[selectedRoleKey] || {}),
                 [screenKey]: canAccess,
             },
-        }));
+        };
+        persistRolesPermissions(nextPermissions);
+        showSnackbar('権限を保存しました');
+    };
+
+    const handleSetAllPermissions = (canAccess) => {
+        const nextPermissions = {
+            ...rolesPermissions,
+            [selectedRoleKey]: createPermissionsFromKeys(canAccess ? SCREENS.map(screen => screen.key) : []),
+        };
+        persistRolesPermissions(nextPermissions);
+        showSnackbar(canAccess ? 'すべての画面を許可しました' : 'すべての画面を解除しました');
+    };
+
+    const handleUserRoleChange = (userId, newRoleKey) => {
+        const nextUserRoles = {
+            ...userRoles,
+            [userId]: newRoleKey,
+        };
+        persistUserRoles(nextUserRoles);
+        showSnackbar('ロール割り当てを保存しました');
     };
 
     const openRoleDialog = (role = null) => {
@@ -88,6 +232,7 @@ function PermissionSettings() {
         setRoleNameInput(role ? role.label : '');
         setRoleDialogOpen(true);
     };
+
     const closeRoleDialog = () => {
         setRoleDialogOpen(false);
         setEditingRole(null);
@@ -95,201 +240,310 @@ function PermissionSettings() {
     };
 
     const handleSaveRole = () => {
-        if (!roleNameInput.trim()) return;
-        const newRoleKey = editingRole ? editingRole.key : roleNameInput.toLowerCase().replace(/\s+/g, '_');
-        let newDefinedRoles;
+        const trimmedName = roleNameInput.trim();
+        if (!trimmedName) {
+            showSnackbar('ロール名を入力してください', 'warning');
+            return;
+        }
+        const hasDuplicateLabel = definedRoles.some(role => (
+            role.key !== editingRole?.key && role.label.trim() === trimmedName
+        ));
+        if (hasDuplicateLabel) {
+            showSnackbar('同じロール名が既に存在します', 'warning');
+            return;
+        }
+
         if (editingRole) {
-            newDefinedRoles = definedRoles.map(r => r.key === editingRole.key ? { ...r, label: roleNameInput } : r);
-        } else {
-            if (definedRoles.find(r => r.key === newRoleKey)) {
-                setSnackbar({ open: true, message: '同じキーのロールが既に存在します', severity: 'warning' });
-                return;
-            }
-            newDefinedRoles = [...definedRoles, { key: newRoleKey, label: roleNameInput }];
+            const nextRoles = definedRoles.map(role => (
+                role.key === editingRole.key ? { ...role, label: trimmedName } : role
+            ));
+            persistDefinedRoles(nextRoles);
+            closeRoleDialog();
+            showSnackbar('ロールを保存しました');
+            return;
         }
-        setDefinedRoles(newDefinedRoles);
-        localStorage.setItem('definedRoles', JSON.stringify(newDefinedRoles));
-        if (!editingRole) {
-             setSelectedRoleKey(newRoleKey); // 新規作成時は新しいロールを選択状態にする
-        }
+
+        const newRoleKey = `role_${Date.now()}`;
+        const nextRoles = [...definedRoles, { key: newRoleKey, label: trimmedName }];
+        const nextPermissions = {
+            ...rolesPermissions,
+            [newRoleKey]: createPermissionsFromKeys([]),
+        };
+
+        persistDefinedRoles(nextRoles);
+        persistRolesPermissions(nextPermissions);
+        setSelectedRoleKey(newRoleKey);
         closeRoleDialog();
-        setSnackbar({ open: true, message: editingRole ? 'ロールを保存しました' : 'ロールを追加しました', severity: 'success' });
+        showSnackbar('ロールを追加しました');
     };
 
     const handleDeleteRole = (roleKeyToDelete) => {
         if (definedRoles.length <= 1) {
-            setSnackbar({ open: true, message: '最低1つのロールが必要です', severity: 'warning' });
+            showSnackbar('最低1つのロールが必要です', 'warning');
             return;
         }
-        if (window.confirm(`ロール「${definedRoles.find(r=>r.key === roleKeyToDelete)?.label}」を削除しますか？このロールが割り当てられているユーザーはデフォルトロール（最初のロール）になります。`)) {
-            const newDefinedRoles = definedRoles.filter(r => r.key !== roleKeyToDelete);
-            setDefinedRoles(newDefinedRoles);
-            localStorage.setItem('definedRoles', JSON.stringify(newDefinedRoles));
 
-            const newRolesPermissions = { ...rolesPermissions };
-            delete newRolesPermissions[roleKeyToDelete];
-            setRolesPermissions(newRolesPermissions);
-            localStorage.setItem('rolesPermissions', JSON.stringify(newRolesPermissions));
-
-            const defaultRoleKey = newDefinedRoles.length > 0 ? newDefinedRoles[0].key : '';
-            const newUserRoles = { ...userRoles };
-            Object.keys(newUserRoles).forEach(userId => {
-                if (newUserRoles[userId] === roleKeyToDelete) {
-                    newUserRoles[userId] = defaultRoleKey;
-                }
-            });
-            setUserRoles(newUserRoles);
-            localStorage.setItem('userRoles', JSON.stringify(newUserRoles));
-
-            if (selectedRoleKey === roleKeyToDelete) {
-                setSelectedRoleKey(defaultRoleKey);
-            }
-            setSnackbar({ open: true, message: 'ロールを削除しました', severity: 'success' });
+        const targetRole = definedRoles.find(role => role.key === roleKeyToDelete);
+        const affectedUserCount = getRoleUsageCount(roleKeyToDelete);
+        if (!window.confirm(`ロール「${targetRole?.label || ''}」を削除しますか？${affectedUserCount}名の割り当ては先頭のロールへ変更されます。`)) {
+            return;
         }
+
+        const nextRoles = definedRoles.filter(role => role.key !== roleKeyToDelete);
+        const defaultRoleKey = nextRoles[0]?.key || '';
+        const nextPermissions = { ...rolesPermissions };
+        const nextUserRoles = Object.fromEntries(
+            Object.entries(userRoles).map(([userId, roleKey]) => [
+                userId,
+                roleKey === roleKeyToDelete ? defaultRoleKey : roleKey,
+            ])
+        );
+
+        delete nextPermissions[roleKeyToDelete];
+        persistDefinedRoles(nextRoles);
+        persistRolesPermissions(nextPermissions);
+        persistUserRoles(nextUserRoles);
+        if (selectedRoleKey === roleKeyToDelete) {
+            setSelectedRoleKey(defaultRoleKey);
+        }
+        showSnackbar('ロールを削除しました');
     };
-
-    useEffect(() => {
-        // Save rolesPermissions whenever it changes
-        localStorage.setItem('rolesPermissions', JSON.stringify(rolesPermissions));
-    }, [rolesPermissions]);
-
-    // --- User Role Assignment Tab Logic ---
-    const handleUserRoleChange = (userId, newRoleKey) => {
-        setUserRoles(prev => ({
-            ...prev,
-            [userId]: newRoleKey,
-        }));
-    };
-
-    useEffect(() => {
-        // Save userRoles whenever it changes
-        localStorage.setItem('userRoles', JSON.stringify(userRoles));
-    }, [userRoles]);
-
 
     return (
-            <Container maxWidth="lg" sx={{ py: 4 }}>
-            <Box className="pageHeaderRow">
-                <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-                    権限設定
-                </Typography>
-            </Box>
-            <Paper>
-                <Tabs value={currentTab} onChange={handleTabChange} centered>
+        <Container maxWidth="lg" sx={{ py: 4 }}>
+            <Paper sx={{ p: 3 }}>
+                <Box className="pageHeaderRow">
+                    <Box>
+                        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                            権限設定
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            ロールごとの画面アクセスと、ユーザーへのロール割り当てを管理します。
+                        </Typography>
+                    </Box>
+                    <Box className="pageActionBar">
+                        <Button variant="contained" startIcon={<AddIcon />} onClick={() => openRoleDialog()}>
+                            ロール追加
+                        </Button>
+                    </Box>
+                </Box>
+
+                <Box className="expenseSummaryStrip">
+                    <Box>
+                        <Typography variant="caption" color="text.secondary">ロール</Typography>
+                        <Typography variant="subtitle1">{definedRoles.length}件</Typography>
+                    </Box>
+                    <Box>
+                        <Typography variant="caption" color="text.secondary">対象画面</Typography>
+                        <Typography variant="subtitle1">{SCREENS.length}画面</Typography>
+                    </Box>
+                    <Box>
+                        <Typography variant="caption" color="text.secondary">ユーザー</Typography>
+                        <Typography variant="subtitle1">{accounts.length}名</Typography>
+                    </Box>
+                    <Box>
+                        <Typography variant="caption" color="text.secondary">選択ロールの許可</Typography>
+                        <Typography variant="subtitle1">{selectedRole ? `${getEnabledPermissionCount(selectedRole.key)}画面` : '-'}</Typography>
+                    </Box>
+                </Box>
+
+                <Tabs value={currentTab} onChange={(event, newValue) => setCurrentTab(newValue)} sx={{ mb: 3 }}>
                     <Tab label="ロール設定" />
-                    <Tab label="ユーザーへのロール割り当て" />
+                    <Tab label="ユーザー割り当て" />
                 </Tabs>
 
-                {/* ロール設定タブ */}
                 {currentTab === 0 && (
-                    <Box sx={{ p: 3 }}>
-                        <Grid container spacing={3}>
-                            <Grid item xs={12} md={4}>
-                                <Box className="sectionHeaderRow">
-                                    <Typography variant="h6">ロール一覧</Typography>
-                                    <Box className="pageActionBar">
-                                        <Button variant="outlined" startIcon={<AddIcon />} onClick={() => openRoleDialog()}>ロール追加</Button>
-                                    </Box>
-                                </Box>
-                                <List component="nav" className="permission-role-list">
-                                    {definedRoles.map(role => (
-                                        <ListItem
-                                            button
-                                            key={role.key}
+                    <Box className="permissionLayout">
+                        <Box>
+                            <Box className="sectionHeaderRow">
+                                <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                                    ロール一覧
+                                </Typography>
+                            </Box>
+                            <List disablePadding className="permissionRoleList">
+                                {definedRoles.map(role => (
+                                    <ListItem
+                                        key={role.key}
+                                        disablePadding
+                                        secondaryAction={
+                                            <Box className="tableActionGroup">
+                                                <IconButton aria-label={`${role.label}を編集`} onClick={() => openRoleDialog(role)}>
+                                                    <EditIcon />
+                                                </IconButton>
+                                                <IconButton
+                                                    aria-label={`${role.label}を削除`}
+                                                    onClick={() => handleDeleteRole(role.key)}
+                                                    disabled={definedRoles.length <= 1}
+                                                >
+                                                    <DeleteIcon />
+                                                </IconButton>
+                                            </Box>
+                                        }
+                                    >
+                                        <ListItemButton
                                             selected={selectedRoleKey === role.key}
-                                            onClick={() => handleSelectRole(role.key)}
-                                            sx={{
-                                                border: selectedRoleKey === role.key ? '2px solid #1abc9c' : '2px solid transparent',
-                                                backgroundColor: selectedRoleKey === role.key ? '#e0f7fa' : 'inherit',
-                                                borderRadius: '8px',
-                                                mb: 1,
-                                                transition: 'border 0.2s, background 0.2s',
-                                                boxShadow: selectedRoleKey === role.key ? '0 0 8px #1abc9c44' : 'none',
-                                            }}
+                                            onClick={() => setSelectedRoleKey(role.key)}
+                                            className="permissionRoleButton"
                                         >
                                             <ListItemText
                                                 primary={role.label}
-                                                primaryTypographyProps={{
-                                                    fontWeight: selectedRoleKey === role.key ? 'bold' : 'normal',
-                                                    color: selectedRoleKey === role.key ? '#1abc9c' : 'inherit',
-                                                }}
+                                                secondary={`${getEnabledPermissionCount(role.key)}画面許可 / ${getRoleUsageCount(role.key)}名`}
+                                                primaryTypographyProps={{ fontWeight: 800 }}
                                             />
-                                            <IconButton edge="end" aria-label="edit" onClick={e => { e.stopPropagation(); openRoleDialog(role); }}>
-                                                <EditIcon />
-                                            </IconButton>
-                                            <IconButton edge="end" aria-label="delete" onClick={e => { e.stopPropagation(); handleDeleteRole(role.key); }} disabled={definedRoles.length <= 1}>
-                                                <DeleteIcon />
-                                            </IconButton>
-                                        </ListItem>
-                                    ))}
-                                </List>
-                            </Grid>
-                            <Grid item xs={12} md={8}>
-                                {selectedRoleKey && definedRoles.find(r => r.key === selectedRoleKey) ? (
-                                    <Box>
-                                        <Typography variant="h6" sx={{ mb: 2 }}>
-                                            「{definedRoles.find(r => r.key === selectedRoleKey)?.label}」の画面アクセス権限
-                                        </Typography>
-                                        <Grid container spacing={1}>
-                                            {SCREENS.map(screen => {
-                                                const canAccess = rolesPermissions[selectedRoleKey]?.[screen.key] || false;
-                                                return (
-                                                    <Grid item xs={12} sm={6} md={4} key={screen.key}>
-                                                        <Paper variant="outlined" sx={{ p: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                            <Typography variant="body2">{screen.label}</Typography>
-                                                            <Switch checked={canAccess} onChange={(e) => handleRolePermissionChange(screen.key, e.target.checked)} />
-                                                        </Paper>
-                                                    </Grid>
-                                                );
-                                            })}
-                                        </Grid>
-                                    </Box>
-                                ) : (
-                                    <Typography>ロールを選択してください。</Typography>
-                                )}
-                            </Grid>
-                        </Grid>
-                    </Box>
-                )}
-
-                {/* ユーザーロール割り当てタブ */}
-                {currentTab === 1 && (
-                    <Box sx={{ p: 3 }}>
-                        <Typography variant="h6" sx={{ mb: 2 }}>ユーザーへのロール割り当て</Typography>
-                        {accounts.length > 0 ? (
-                            <List>
-                                {accounts.map(acc => (
-                                    <ListItem key={acc.userId} divider>
-                                        <Grid container alignItems="center" spacing={2}>
-                                            <Grid item xs={12} sm={4}>
-                                                <ListItemText primary={`${acc.name} (${acc.userId})`} />
-                                            </Grid>
-                                            <Grid item xs={12} sm={8}>
-                                                <FormControl fullWidth size="small">
-                                                    <InputLabel>ロール</InputLabel>
-                                                    <Select
-                                                        value={userRoles[acc.userId] || (definedRoles.length > 0 ? definedRoles[0].key : '')}
-                                                        label="ロール"
-                                                        onChange={(e) => handleUserRoleChange(acc.userId, e.target.value)}
-                                                    >
-                                                        {definedRoles.map(role => (
-                                                            <MenuItem key={role.key} value={role.key}>{role.label}</MenuItem>
-                                                        ))}
-                                                    </Select>
-                                                </FormControl>
-                                            </Grid>
-                                        </Grid>
+                                        </ListItemButton>
                                     </ListItem>
                                 ))}
                             </List>
-                        ) : (
-                            <Typography>登録されているアカウントがありません。</Typography>
-                        )}
+                        </Box>
+
+                        <Box>
+                            {selectedRole ? (
+                                <>
+                                    <Box className="sectionHeaderRow">
+                                        <Box>
+                                            <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                                                {selectedRole.label}の画面アクセス権限
+                                            </Typography>
+                                            <Typography variant="body2" color="text.secondary">
+                                                有効にした画面だけサイドメニューから利用できる想定です。
+                                            </Typography>
+                                        </Box>
+                                        <Box className="pageActionBar">
+                                            <Button variant="outlined" onClick={() => handleSetAllPermissions(false)}>
+                                                すべて解除
+                                            </Button>
+                                            <Button variant="contained" onClick={() => handleSetAllPermissions(true)}>
+                                                すべて許可
+                                            </Button>
+                                        </Box>
+                                    </Box>
+
+                                    <Box className="permissionGroupStack">
+                                        {SCREEN_GROUPS.map(group => (
+                                            <Box key={group.title} className="permissionGroup">
+                                                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                                                    {group.title}
+                                                </Typography>
+                                                <Box className="permissionScreenGrid">
+                                                    {group.screens.map(screen => {
+                                                        const canAccess = Boolean(rolesPermissions[selectedRole.key]?.[screen.key]);
+                                                        return (
+                                                            <Paper key={screen.key} variant="outlined" className="permissionScreenCard">
+                                                                <Box>
+                                                                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                                                                        {screen.label}
+                                                                    </Typography>
+                                                                    <Chip
+                                                                        size="small"
+                                                                        label={canAccess ? '許可' : '未許可'}
+                                                                        color={canAccess ? 'primary' : 'default'}
+                                                                        variant={canAccess ? 'filled' : 'outlined'}
+                                                                        sx={{ mt: 0.75 }}
+                                                                    />
+                                                                </Box>
+                                                                <Switch
+                                                                    checked={canAccess}
+                                                                    onChange={(event) => handleRolePermissionChange(screen.key, event.target.checked)}
+                                                                    inputProps={{ 'aria-label': `${screen.label}のアクセス権限` }}
+                                                                />
+                                                            </Paper>
+                                                        );
+                                                    })}
+                                                </Box>
+                                            </Box>
+                                        ))}
+                                    </Box>
+                                </>
+                            ) : (
+                                <Typography color="text.secondary">ロールを選択してください。</Typography>
+                            )}
+                        </Box>
+                    </Box>
+                )}
+
+                {currentTab === 1 && (
+                    <Box>
+                        <Box className="sectionHeaderRow">
+                            <Box>
+                                <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                                    ユーザーへのロール割り当て
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                    アカウントごとに利用できる画面セットを選択します。
+                                </Typography>
+                            </Box>
+                        </Box>
+                        <Box className="accountToolbar">
+                            <TextField
+                                size="small"
+                                label="検索"
+                                value={userSearchText}
+                                onChange={event => setUserSearchText(event.target.value)}
+                                sx={{ minWidth: 280 }}
+                                slotProps={{
+                                    input: {
+                                        startAdornment: (
+                                            <InputAdornment position="start">
+                                                <SearchIcon fontSize="small" />
+                                            </InputAdornment>
+                                        ),
+                                    },
+                                }}
+                            />
+                        </Box>
+                        <Table size="small">
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell>氏名</TableCell>
+                                    <TableCell>ユーザーID</TableCell>
+                                    <TableCell>所属</TableCell>
+                                    <TableCell>状態</TableCell>
+                                    <TableCell>ロール</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {filteredAccounts.length === 0 && (
+                                    <TableRow>
+                                        <TableCell colSpan={5}>該当するユーザーはありません</TableCell>
+                                    </TableRow>
+                                )}
+                                {filteredAccounts.map(account => (
+                                    <TableRow key={account.userId}>
+                                        <TableCell>{account.name}</TableCell>
+                                        <TableCell>{account.userId}</TableCell>
+                                        <TableCell>{account.department} / {account.position}</TableCell>
+                                        <TableCell>
+                                            <Chip
+                                                size="small"
+                                                label={account.status ? '有効' : '無効'}
+                                                color={account.status ? 'primary' : 'default'}
+                                                variant={account.status ? 'filled' : 'outlined'}
+                                            />
+                                        </TableCell>
+                                        <TableCell sx={{ minWidth: 220 }}>
+                                            <FormControl fullWidth size="small">
+                                                <InputLabel>ロール</InputLabel>
+                                                <Select
+                                                    value={userRoles[account.userId] || definedRoles[0]?.key || ''}
+                                                    label="ロール"
+                                                    onChange={(event) => handleUserRoleChange(account.userId, event.target.value)}
+                                                >
+                                                    {definedRoles.map(role => (
+                                                        <MenuItem key={role.key} value={role.key}>
+                                                            {role.label}
+                                                        </MenuItem>
+                                                    ))}
+                                                </Select>
+                                            </FormControl>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
                     </Box>
                 )}
             </Paper>
 
-            {/* ロール追加/編集ダイアログ */}
             <Dialog open={roleDialogOpen} onClose={closeRoleDialog} maxWidth="xs" fullWidth>
                 <DialogTitle>{editingRole ? 'ロール編集' : 'ロール追加'}</DialogTitle>
                 <DialogContent>
@@ -297,12 +551,10 @@ function PermissionSettings() {
                         autoFocus
                         margin="dense"
                         label="ロール名"
-                        type="text"
                         fullWidth
-                        variant="standard"
                         value={roleNameInput}
-                        onChange={(e) => setRoleNameInput(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleSaveRole()}
+                        onChange={(event) => setRoleNameInput(event.target.value)}
+                        onKeyDown={(event) => event.key === 'Enter' && handleSaveRole()}
                     />
                 </DialogContent>
                 <DialogActions>
@@ -310,6 +562,7 @@ function PermissionSettings() {
                     <Button variant="contained" onClick={handleSaveRole}>保存</Button>
                 </DialogActions>
             </Dialog>
+
             <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
                 <Alert severity={snackbar.severity} sx={{ width: '100%' }}>
                     {snackbar.message}
