@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Container, TextField, Button, Typography, Box, MenuItem, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio, Dialog, DialogContent, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Snackbar, Alert, Chip } from '@mui/material';
+import { Container, TextField, Button, Typography, Box, MenuItem, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio, Dialog, DialogContent, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Snackbar, Alert, Chip, IconButton, Tooltip } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -176,7 +176,11 @@ function ApplicationForm() {
                                         <TableCell>{draft.paymentType}</TableCell>
                                         <TableCell>
                                             <Box className="tableActionGroup">
-                                                <Button size="small" variant="outlined" startIcon={<EditIcon />} onClick={() => handleSelectDraft(draft.id)}>編集</Button>
+                                                <Tooltip title="編集">
+                                                    <IconButton aria-label="下書きを編集" onClick={() => handleSelectDraft(draft.id)}>
+                                                        <EditIcon />
+                                                    </IconButton>
+                                                </Tooltip>
                                             </Box>
                                         </TableCell>
                                     </TableRow>

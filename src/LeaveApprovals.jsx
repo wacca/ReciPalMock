@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Container, Typography, Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert, TextField, Chip, FormControl, Select, MenuItem } from '@mui/material';
+import { Container, Typography, Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Snackbar, Alert, TextField, Chip, FormControl, Select, MenuItem, IconButton, Tooltip } from '@mui/material';
 import CancelIcon from '@mui/icons-material/Cancel';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import CloseIcon from '@mui/icons-material/Close';
-import VisibilityIcon from '@mui/icons-material/Visibility';
 import {
     loadLeaveApplications,
     saveLeaveApplications,
@@ -18,8 +16,6 @@ function LeaveApprovals() {
     const [data, setData] = useState([]);
     const [commentMap, setCommentMap] = useState({});
     const [selectedApprover, setSelectedApprover] = useState('user1');
-    const [open, setOpen] = useState(false);
-    const [selected, setSelected] = useState(null);
     const [snackbar, setSnackbar] = useState({ open: false, message: '' });
 
     useEffect(() => {
@@ -48,12 +44,6 @@ function LeaveApprovals() {
         setCommentMap({ ...commentMap, [id]: '' });
         setSnackbar({ open: true, message: status === '承認済' ? '休暇申請を承認しました' : '休暇申請を非承認にしました' });
     };
-    const handleOpen = (row) => {
-        setSelected(row);
-        setOpen(true);
-    };
-    const handleClose = () => setOpen(false);
-
     const approvalTargets = data.filter(row => (row.status || '申請中') === '申請中');
 
     return (
@@ -100,12 +90,19 @@ function LeaveApprovals() {
                                     <TableCell><Chip size="small" label="申請中" color="primary" /></TableCell>
                                     <TableCell>
                                         <Box className="tableActionGroup">
-                                            <Button size="small" variant="outlined" startIcon={<VisibilityIcon />} onClick={() => handleOpen(row)}>詳細</Button>
-                                            <Button size="small" color="primary" variant="contained" startIcon={<CheckCircleIcon />} onClick={() => handleStatus(row.id, '承認済')}>承認</Button>
-                                            <Button size="small" color="error" variant="contained" startIcon={<CancelIcon />} onClick={() => handleStatus(row.id, '非承認')}>非承認</Button>
+                                            <Tooltip title="承認">
+                                                <IconButton aria-label="休暇申請を承認" color="primary" onClick={() => handleStatus(row.id, '承認済')}>
+                                                    <CheckCircleIcon />
+                                                </IconButton>
+                                            </Tooltip>
+                                            <Tooltip title="非承認">
+                                                <IconButton aria-label="休暇申請を非承認" color="error" onClick={() => handleStatus(row.id, '非承認')}>
+                                                    <CancelIcon />
+                                                </IconButton>
+                                            </Tooltip>
                                         </Box>
                                         <TextField
-                                            label="非承認時の備考"
+                                            label="承認者備考"
                                             size="small"
                                             value={commentMap[row.id] || ''}
                                             onChange={e => setCommentMap({ ...commentMap, [row.id]: e.target.value })}
@@ -118,22 +115,6 @@ function LeaveApprovals() {
                     </Table>
                 </TableContainer>
             )}
-            <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
-                <DialogTitle>申請詳細</DialogTitle>
-                <DialogContent>
-                    {selected && (
-                        <Box className="detailStack">
-                            <Typography>申請種別: {selected.leaveType}</Typography>
-                            <Typography>日付: {selected.date}</Typography>
-                            <Typography>理由・備考: {selected.reason}</Typography>
-                            <Typography>状態: {selected.status || '申請中'}</Typography>
-                        </Box>
-                    )}
-                </DialogContent>
-                <DialogActions>
-                    <Button variant="contained" startIcon={<CloseIcon />} onClick={handleClose}>閉じる</Button>
-                </DialogActions>
-            </Dialog>
             <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
                 <Alert severity="success" sx={{ width: '100%' }}>
                     {snackbar.message}

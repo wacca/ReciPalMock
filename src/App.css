@@ -359,6 +359,18 @@
   border-top: 1px solid #edf1f6;
 }
 
+.rowActionBar {
+  margin-top: 12px;
+  padding-top: 12px;
+}
+
+.rowActionBar .MuiIconButton-root {
+  width: 36px;
+  height: 36px;
+  border: 1px solid #d9e0ea;
+  background: #ffffff;
+}
+
 .formActionBar .backAction {
   margin-right: auto;
 }
@@ -626,7 +638,16 @@
   max-width: 1120px;
 }
 
+.expenseEditorDialog .MuiDialog-paper {
+  width: min(1120px, calc(100% - 48px));
+  max-width: 1120px;
+}
+
 .flowEditorDialog .MuiDialogTitle-root {
+  padding: 22px 28px 12px;
+}
+
+.expenseEditorDialog .MuiDialogTitle-root {
   padding: 22px 28px 12px;
 }
 
@@ -634,7 +655,15 @@
   padding: 12px 28px 8px;
 }
 
+.expenseEditorDialog .MuiDialogContent-root {
+  padding: 12px 28px 8px;
+}
+
 .flowEditorDialog .MuiDialogActions-root {
+  padding: 18px 28px 24px;
+}
+
+.expenseEditorDialog .MuiDialogActions-root {
   padding: 18px 28px 24px;
 }
 
@@ -651,6 +680,10 @@
 }
 
 .flowStepTable .MuiTable-root {
+  min-width: 860px;
+}
+
+.expenseEditDialogTable .MuiTable-root {
   min-width: 860px;
 }
 
@@ -682,6 +715,10 @@
   }
 
   .flowEditorDialog .MuiDialog-paper {
+    width: calc(100% - 24px);
+  }
+
+  .expenseEditorDialog .MuiDialog-paper {
     width: calc(100% - 24px);
   }
 

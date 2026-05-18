@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Container, Typography, Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, MenuItem, Select, FormControl, TextField, Snackbar, Alert, Chip } from '@mui/material';
+import { Container, Typography, Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, MenuItem, Select, FormControl, TextField, Snackbar, Alert, Chip, IconButton, Tooltip } from '@mui/material';
 import CancelIcon from '@mui/icons-material/Cancel';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import {
@@ -112,19 +112,23 @@ function Approvals() {
                             </TableContainer>
                             <Box className="formActionBar">
                                 <TextField
-                                    label="非承認時の備考"
+                                    label="承認者備考"
                                     size="small"
                                     value={commentMap[group.applicationId] || ''}
                                     onChange={e => setCommentMap({ ...commentMap, [group.applicationId]: e.target.value })}
                                     sx={{ minWidth: 320 }}
                                 />
-                                <Box className="pageActionBar">
-                                    <Button variant="contained" color="primary" startIcon={<CheckCircleIcon />} onClick={() => handleGroupStatus(groupIdx, '承認済')}>
-                                        承認
-                                    </Button>
-                                    <Button variant="contained" color="error" startIcon={<CancelIcon />} onClick={() => handleGroupStatus(groupIdx, '非承認')}>
-                                        非承認
-                                    </Button>
+                                <Box className="tableActionGroup">
+                                    <Tooltip title="承認">
+                                        <IconButton aria-label="経費申請を承認" color="primary" onClick={() => handleGroupStatus(groupIdx, '承認済')}>
+                                            <CheckCircleIcon />
+                                        </IconButton>
+                                    </Tooltip>
+                                    <Tooltip title="非承認">
+                                        <IconButton aria-label="経費申請を非承認" color="error" onClick={() => handleGroupStatus(groupIdx, '非承認')}>
+                                            <CancelIcon />
+                                        </IconButton>
+                                    </Tooltip>
                                 </Box>
                             </Box>
                         </Box>

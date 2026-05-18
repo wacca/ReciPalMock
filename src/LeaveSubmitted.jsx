@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Container, Typography, Box, Button, Dialog, DialogContent, DialogTitle, DialogActions, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Snackbar, Alert, Chip } from '@mui/material';
+import { Container, Typography, Box, Button, Dialog, DialogContent, DialogTitle, DialogActions, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Snackbar, Alert, Chip, IconButton, Tooltip, TextField } from '@mui/material';
 import CancelIcon from '@mui/icons-material/Cancel';
 import CloseIcon from '@mui/icons-material/Close';
+import EditIcon from '@mui/icons-material/Edit';
 import ReplayIcon from '@mui/icons-material/Replay';
-import VisibilityIcon from '@mui/icons-material/Visibility';
+import SaveIcon from '@mui/icons-material/Save';
 import {
     loadLeaveApplications,
     saveLeaveApplications,
@@ -19,10 +20,11 @@ const statusColor = {
 
 function LeaveSubmitted() {
     const [submitted, setSubmitted] = useState([]);
-    const [open, setOpen] = useState(false);
-    const [selected, setSelected] = useState(null);
     const [snackbar, setSnackbar] = useState({ open: false, message: '' });
     const [cancelTargetId, setCancelTargetId] = useState(null);
+    const [editDialogOpen, setEditDialogOpen] = useState(false);
+    const [editTargetId, setEditTargetId] = useState(null);
+    const [editReason, setEditReason] = useState('');
 
     useEffect(() => {
         setSubmitted(loadLeaveApplications());
@@ -33,11 +35,27 @@ function LeaveSubmitted() {
         saveLeaveApplications(newList);
     };
 
-    const handleOpen = (row) => {
-        setSelected(row);
-        setOpen(true);
+    const handleEditOpen = (row) => {
+        setEditTargetId(row.id);
+        setEditReason(row.reason || '');
+        setEditDialogOpen(true);
     };
-    const handleClose = () => setOpen(false);
+
+    const handleEditClose = () => {
+        setEditDialogOpen(false);
+        setEditTargetId(null);
+        setEditReason('');
+    };
+
+    const handleEditSave = () => {
+        if (!editTargetId) return;
+        const newList = submitted.map(row => (
+            row.id === editTargetId ? { ...row, reason: editReason } : row
+        ));
+        persistSubmitted(newList);
+        handleEditClose();
+        setSnackbar({ open: true, message: '休暇申請の理由・備考を保存しました' });
+    };
 
     const handleCancel = (id) => {
         setCancelTargetId(id);
@@ -111,29 +129,47 @@ function LeaveSubmitted() {
                                     <TableCell>申請種別</TableCell>
                                     <TableCell>日付</TableCell>
                                     <TableCell>理由・備考</TableCell>
+                                    <TableCell>承認者備考</TableCell>
                                     <TableCell>状態</TableCell>
                                     <TableCell>操作</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
                                 {submitted.length === 0 && (
-                                    <TableRow><TableCell colSpan={6}>申請履歴がありません</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={7}>申請履歴がありません</TableCell></TableRow>
                                 )}
                                 {submitted.map((row, idx) => (
                                     <TableRow key={row.id || idx}>
                                         <TableCell>{row.submittedAt ? new Date(row.submittedAt).toLocaleString() : '-'}</TableCell>
                                         <TableCell>{row.leaveType}</TableCell>
                                         <TableCell>{row.date}</TableCell>
-                                        <TableCell>{row.remarks ? `${row.reason} / ${row.remarks}` : row.reason}</TableCell>
+                                        <TableCell>{row.reason || '-'}</TableCell>
+                                        <TableCell>{(row.status || '申請中') === '非承認' ? row.remarks || '-' : '-'}</TableCell>
                                         <TableCell>
                                             <Chip size="small" label={row.status || '申請中'} color={statusColor[row.status || '申請中']} variant={(row.status || '申請中') === '申請中' ? 'filled' : 'outlined'} />
                                         </TableCell>
                                         <TableCell>
                                             <Box className="tableActionGroup">
-                                                <Button size="small" variant="outlined" startIcon={<VisibilityIcon />} onClick={() => handleOpen(row)}>詳細</Button>
-                                                <Button size="small" color="error" variant="outlined" startIcon={<CancelIcon />} onClick={() => handleCancel(row.id)} disabled={(row.status || '申請中') !== '申請中'}>取消</Button>
+                                                <Tooltip title="取消">
+                                                    <span>
+                                                        <IconButton aria-label="休暇申請を取消" color="error" onClick={() => handleCancel(row.id)} disabled={(row.status || '申請中') !== '申請中'}>
+                                                            <CancelIcon />
+                                                        </IconButton>
+                                                    </span>
+                                                </Tooltip>
                                                 {(row.status || '申請中') === '非承認' && (
-                                                    <Button size="small" color="success" variant="contained" startIcon={<ReplayIcon />} onClick={() => handleResubmit(row.id)}>再申請</Button>
+                                                    <>
+                                                        <Tooltip title="編集">
+                                                            <IconButton aria-label="休暇申請の理由・備考を編集" color="primary" onClick={() => handleEditOpen(row)}>
+                                                                <EditIcon />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                        <Tooltip title="再申請">
+                                                            <IconButton aria-label="休暇申請を再申請" color="success" onClick={() => handleResubmit(row.id)}>
+                                                                <ReplayIcon />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    </>
                                                 )}
                                             </Box>
                                         </TableCell>
@@ -144,22 +180,27 @@ function LeaveSubmitted() {
                     </TableContainer>
                 </Box>
             </Box>
-            <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
-                <DialogTitle>申請詳細</DialogTitle>
+            <Dialog open={editDialogOpen} onClose={handleEditClose} maxWidth="sm" fullWidth>
+                <DialogTitle>理由・備考を編集</DialogTitle>
                 <DialogContent>
-                    {selected && (
-                        <Box className="detailStack">
-                            <Typography>申請種別: {selected.leaveType}</Typography>
-                            <Typography>日付: {selected.date}</Typography>
-                            <Typography>理由・備考: {selected.reason || '-'}</Typography>
-                            {selected.remarks && <Typography>承認者備考: {selected.remarks}</Typography>}
-                            <Typography>状態: {selected.status || '申請中'}</Typography>
-                            {selected.approvedBy && <Typography>処理者: {selected.approvedBy}</Typography>}
-                        </Box>
-                    )}
+                    <TextField
+                        autoFocus
+                        fullWidth
+                        multiline
+                        minRows={3}
+                        label="理由・備考"
+                        value={editReason}
+                        onChange={event => setEditReason(event.target.value)}
+                        sx={{ mt: 1 }}
+                    />
                 </DialogContent>
                 <DialogActions>
-                    <Button variant="contained" startIcon={<CloseIcon />} onClick={handleClose}>閉じる</Button>
+                    <Button variant="outlined" color="inherit" startIcon={<CloseIcon />} onClick={handleEditClose}>
+                        キャンセル
+                    </Button>
+                    <Button variant="contained" startIcon={<SaveIcon />} onClick={handleEditSave}>
+                        保存
+                    </Button>
                 </DialogActions>
             </Dialog>
             <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>

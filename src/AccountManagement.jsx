@@ -157,14 +157,15 @@ function AccountManagement() {
             ...(field === 'department' ? { position: '' } : {}),
         });
     };
-    const handleSave = (idx) => {
-        const validationMessage = validateAccount(editAccount, idx);
+    const handleSave = () => {
+        if (editIdx === null) return;
+        const validationMessage = validateAccount(editAccount, editIdx);
         if (validationMessage) {
             showSnackbar(validationMessage, 'warning');
             return;
         }
         const newAccounts = [...accounts];
-        newAccounts[idx] = editAccount;
+        newAccounts[editIdx] = editAccount;
         setAccounts(newAccounts);
         localStorage.setItem('accounts', JSON.stringify(newAccounts));
         setEditIdx(null);
@@ -266,55 +267,24 @@ function AccountManagement() {
                             const accountIdx = accounts.findIndex(account => account.userId === acc.userId);
                             return (
                             <TableRow key={acc.userId}>
-                                {editIdx === accountIdx ? (
-                                    <>
-                                        <TableCell><TextField size="small" value={editAccount.name} onChange={e => handleEditChange('name', e.target.value)} /></TableCell>
-                                        <TableCell><TextField size="small" value={editAccount.userId} onChange={e => handleEditChange('userId', e.target.value)} /></TableCell>
-                                        <TableCell>
-                                            <TextField select size="small" value={editAccount.department} onChange={e => handleEditChange('department', e.target.value)}>
-                                                {departments.map((dep) => <MenuItem key={dep.name} value={dep.name}>{dep.name}</MenuItem>)}
-                                            </TextField>
-                                        </TableCell>
-                                        <TableCell>
-                                            <TextField select size="small" value={editAccount.position} onChange={e => handleEditChange('position', e.target.value)} disabled={!editAccount.department}>
-                                                {getPositionsForDepartment(editAccount.department).map((pos) => <MenuItem key={pos} value={pos}>{pos}</MenuItem>)}
-                                            </TextField>
-                                        </TableCell>
-                                        <TableCell><TextField size="small" value={editAccount.email} onChange={e => handleEditChange('email', e.target.value)} /></TableCell>
-                                        <TableCell><Switch checked={editAccount.status} onChange={e => handleEditChange('status', e.target.checked)} /></TableCell>
-                                        <TableCell>
-                                            <Box className="tableActionGroup">
-                                                <Tooltip title="保存">
-                                                    <IconButton aria-label="保存" color="primary" onClick={() => handleSave(accountIdx)}><SaveIcon /></IconButton>
-                                                </Tooltip>
-                                                <Tooltip title="キャンセル">
-                                                    <IconButton aria-label="キャンセル" onClick={handleCancel}><CancelIcon /></IconButton>
-                                                </Tooltip>
-                                            </Box>
-                                        </TableCell>
-                                    </>
-                                ) : (
-                                    <>
-                                        <TableCell>{acc.name}</TableCell>
-                                        <TableCell>{acc.userId}</TableCell>
-                                        <TableCell>{acc.department}</TableCell>
-                                        <TableCell>{acc.position}</TableCell>
-                                        <TableCell>{acc.email}</TableCell>
-                                        <TableCell>
-                                            <Chip size="small" label={acc.status ? '有効' : '無効'} color={acc.status ? 'primary' : 'default'} variant={acc.status ? 'filled' : 'outlined'} />
-                                        </TableCell>
-                                        <TableCell>
-                                            <Box className="tableActionGroup">
-                                                <Tooltip title="編集">
-                                                    <IconButton aria-label={`${acc.name}を編集`} onClick={() => handleEdit(accountIdx)}><EditIcon /></IconButton>
-                                                </Tooltip>
-                                                <Tooltip title="削除">
-                                                    <IconButton aria-label={`${acc.name}を削除`} color="error" onClick={() => handleDeleteRequest(accountIdx)}><DeleteIcon /></IconButton>
-                                                </Tooltip>
-                                            </Box>
-                                        </TableCell>
-                                    </>
-                                )}
+                                <TableCell>{acc.name}</TableCell>
+                                <TableCell>{acc.userId}</TableCell>
+                                <TableCell>{acc.department}</TableCell>
+                                <TableCell>{acc.position}</TableCell>
+                                <TableCell>{acc.email}</TableCell>
+                                <TableCell>
+                                    <Chip size="small" label={acc.status ? '有効' : '無効'} color={acc.status ? 'primary' : 'default'} variant={acc.status ? 'filled' : 'outlined'} />
+                                </TableCell>
+                                <TableCell>
+                                    <Box className="tableActionGroup">
+                                        <Tooltip title="編集">
+                                            <IconButton aria-label={`${acc.name}を編集`} onClick={() => handleEdit(accountIdx)}><EditIcon /></IconButton>
+                                        </Tooltip>
+                                        <Tooltip title="削除">
+                                            <IconButton aria-label={`${acc.name}を削除`} color="error" onClick={() => handleDeleteRequest(accountIdx)}><DeleteIcon /></IconButton>
+                                        </Tooltip>
+                                    </Box>
+                                </TableCell>
                             </TableRow>
                         )})}
                     </TableBody>
@@ -343,6 +313,31 @@ function AccountManagement() {
                 <DialogActions>
                     <Button variant="outlined" color="inherit" startIcon={<CancelIcon />} onClick={handleAddClose}>キャンセル</Button>
                     <Button variant="contained" startIcon={<SaveIcon />} onClick={handleAdd}>登録</Button>
+                </DialogActions>
+            </Dialog>
+            <Dialog open={editIdx !== null} onClose={handleCancel} maxWidth="sm" fullWidth>
+                <DialogTitle>アカウント編集</DialogTitle>
+                <DialogContent>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+                        <TextField label="氏名" value={editAccount.name || ''} onChange={e => handleEditChange('name', e.target.value)} required />
+                        <TextField label="ユーザーID" value={editAccount.userId || ''} onChange={e => handleEditChange('userId', e.target.value)} required />
+                        <TextField select label="所属部署" value={editAccount.department || ''} onChange={e => handleEditChange('department', e.target.value)} required>
+                            {departments.map((dep) => <MenuItem key={dep.name} value={dep.name}>{dep.name}</MenuItem>)}
+                        </TextField>
+                        <TextField select label="役職" value={editAccount.position || ''} onChange={e => handleEditChange('position', e.target.value)} required disabled={!editAccount.department}>
+                            {getPositionsForDepartment(editAccount.department).map((pos) => <MenuItem key={pos} value={pos}>{pos}</MenuItem>)}
+                        </TextField>
+                        <TextField label="メールアドレス" type="email" value={editAccount.email || ''} onChange={e => handleEditChange('email', e.target.value)} required />
+                        <Box className="inlineActionGroup">
+                            <Typography>状態</Typography>
+                            <Switch checked={Boolean(editAccount.status)} onChange={e => handleEditChange('status', e.target.checked)} />
+                            <Chip size="small" label={editAccount.status ? '有効' : '無効'} color={editAccount.status ? 'primary' : 'default'} variant={editAccount.status ? 'filled' : 'outlined'} />
+                        </Box>
+                    </Box>
+                </DialogContent>
+                <DialogActions>
+                    <Button variant="outlined" color="inherit" startIcon={<CancelIcon />} onClick={handleCancel}>キャンセル</Button>
+                    <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSave}>保存</Button>
                 </DialogActions>
             </Dialog>
             <Snackbar open={snackbarOpen} autoHideDuration={3000} onClose={() => setSnackbarOpen(false)}>

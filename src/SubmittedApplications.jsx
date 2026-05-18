@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Container, Typography, Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, TextField, Snackbar, Alert, Chip, MenuItem } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { Container, Typography, Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, TextField, Snackbar, Alert, Chip, MenuItem, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import CancelIcon from '@mui/icons-material/Cancel';
 import EditIcon from '@mui/icons-material/Edit';
 import ReplayIcon from '@mui/icons-material/Replay';
@@ -67,6 +66,7 @@ function SubmittedApplications() {
     };
 
     const handleEditGroupSave = () => {
+        if (editGroupIndexAll === null) return;
         const newData = [...data];
         newData[editGroupIndexAll] = {
             ...newData[editGroupIndexAll],
@@ -123,7 +123,7 @@ function SubmittedApplications() {
                             </Box>
                             {status === '非承認' && group.remarks && (
                                 <Alert severity="warning" sx={{ mb: 2 }}>
-                                    備考: {group.remarks}
+                                    承認者備考: {group.remarks}
                                 </Alert>
                             )}
                             <TableContainer component={Paper}>
@@ -140,73 +140,90 @@ function SubmittedApplications() {
                                     <TableBody>
                                         {group.details.map((row, rowIdx) => (
                                             <TableRow key={`${group.applicationId}_${rowIdx}`}>
-                                                <TableCell>
-                                                    {editGroupIndexAll === groupIdx ? (
-                                                        <TextField type="date" size="small" value={editGroupRows[rowIdx]?.date || ''} onChange={e => handleEditGroupRowChange(rowIdx, 'date', e.target.value)} InputLabelProps={{ shrink: true }} />
-                                                    ) : (
-                                                        row.date
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {editGroupIndexAll === groupIdx ? (
-                                                        <TextField size="small" value={editGroupRows[rowIdx]?.description || ''} onChange={e => handleEditGroupRowChange(rowIdx, 'description', e.target.value)} />
-                                                    ) : (
-                                                        row.description
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {editGroupIndexAll === groupIdx ? (
-                                                        <TextField fullWidth size="small" value={editGroupRows[rowIdx]?.destination || ''} onChange={e => handleEditGroupRowChange(rowIdx, 'destination', e.target.value)} />
-                                                    ) : (
-                                                        row.destination
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {editGroupIndexAll === groupIdx ? (
-                                                        <TextField select size="small" value={editGroupRows[rowIdx]?.category || ''} onChange={e => handleEditGroupRowChange(rowIdx, 'category', e.target.value)}>
-                                                            {EXPENSE_CATEGORIES.map(category => (
-                                                                <MenuItem key={category} value={category}>{category}</MenuItem>
-                                                            ))}
-                                                        </TextField>
-                                                    ) : (
-                                                        row.category
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {editGroupIndexAll === groupIdx ? (
-                                                        <TextField type="number" size="small" value={editGroupRows[rowIdx]?.amount || ''} onChange={e => handleEditGroupRowChange(rowIdx, 'amount', e.target.value)} />
-                                                    ) : (
-                                                        formatYen(row.amount)
-                                                    )}
-                                                </TableCell>
+                                                <TableCell>{row.date}</TableCell>
+                                                <TableCell>{row.description}</TableCell>
+                                                <TableCell>{row.destination}</TableCell>
+                                                <TableCell>{row.category}</TableCell>
+                                                <TableCell>{formatYen(row.amount)}</TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>
                                 </Table>
                             </TableContainer>
-                            <Box className="formActionBar">
-                                <Button variant="outlined" color="primary" startIcon={<EditIcon />} onClick={() => handleEditGroup(groupIdx)} disabled={!isEditable || editGroupIndexAll === groupIdx}>
-                                    変更
-                                </Button>
-                                <Button variant="outlined" color="error" startIcon={<CancelIcon />} onClick={() => handleCancelGroup(groupIdx)} disabled={status !== '申請中'}>
-                                    取消
-                                </Button>
+                            <Box className="formActionBar rowActionBar">
+                                <Tooltip title="変更">
+                                    <span>
+                                        <IconButton aria-label="経費申請を変更" color="primary" onClick={() => handleEditGroup(groupIdx)} disabled={!isEditable}>
+                                            <EditIcon />
+                                        </IconButton>
+                                    </span>
+                                </Tooltip>
+                                <Tooltip title="取消">
+                                    <span>
+                                        <IconButton aria-label="経費申請を取消" color="error" onClick={() => handleCancelGroup(groupIdx)} disabled={status !== '申請中'}>
+                                            <CancelIcon />
+                                        </IconButton>
+                                    </span>
+                                </Tooltip>
                                 {status === '非承認' && (
-                                    <Button variant="contained" color="success" startIcon={<ReplayIcon />} onClick={() => handleResubmitGroup(groupIdx)}>
-                                        再申請
-                                    </Button>
+                                    <Tooltip title="再申請">
+                                        <IconButton aria-label="経費申請を再申請" color="success" onClick={() => handleResubmitGroup(groupIdx)}>
+                                            <ReplayIcon />
+                                        </IconButton>
+                                    </Tooltip>
                                 )}
                             </Box>
-                            {editGroupIndexAll === groupIdx && (
-                                <Box className="formActionBar">
-                                    <Button className="backAction" variant="outlined" startIcon={<ArrowBackIcon />} onClick={handleEditGroupCancel}>キャンセル</Button>
-                                    <Button variant="contained" color="primary" startIcon={<SaveIcon />} onClick={handleEditGroupSave}>保存</Button>
-                                </Box>
-                            )}
                         </Box>
                     );
                 })}
             </Box>
+            <Dialog open={editGroupIndexAll !== null} onClose={handleEditGroupCancel} maxWidth="lg" fullWidth className="expenseEditorDialog">
+                <DialogTitle>経費申請を変更</DialogTitle>
+                <DialogContent>
+                    <TableContainer className="expenseEditDialogTable">
+                        <Table size="small">
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell sx={{ width: 150 }}>日付</TableCell>
+                                    <TableCell sx={{ width: 220 }}>内容</TableCell>
+                                    <TableCell>用途・行き先</TableCell>
+                                    <TableCell sx={{ width: 180 }}>費目</TableCell>
+                                    <TableCell sx={{ width: 140 }}>金額</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {editGroupRows.map((row, rowIdx) => (
+                                    <TableRow key={`edit_${rowIdx}`}>
+                                        <TableCell>
+                                            <TextField type="date" size="small" value={row.date || ''} onChange={e => handleEditGroupRowChange(rowIdx, 'date', e.target.value)} InputLabelProps={{ shrink: true }} />
+                                        </TableCell>
+                                        <TableCell>
+                                            <TextField size="small" value={row.description || ''} onChange={e => handleEditGroupRowChange(rowIdx, 'description', e.target.value)} />
+                                        </TableCell>
+                                        <TableCell>
+                                            <TextField fullWidth size="small" value={row.destination || ''} onChange={e => handleEditGroupRowChange(rowIdx, 'destination', e.target.value)} />
+                                        </TableCell>
+                                        <TableCell>
+                                            <TextField select size="small" value={row.category || ''} onChange={e => handleEditGroupRowChange(rowIdx, 'category', e.target.value)}>
+                                                {EXPENSE_CATEGORIES.map(category => (
+                                                    <MenuItem key={category} value={category}>{category}</MenuItem>
+                                                ))}
+                                            </TextField>
+                                        </TableCell>
+                                        <TableCell>
+                                            <TextField type="number" size="small" value={row.amount || ''} onChange={e => handleEditGroupRowChange(rowIdx, 'amount', e.target.value)} />
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                </DialogContent>
+                <DialogActions>
+                    <Button variant="outlined" color="inherit" startIcon={<CancelIcon />} onClick={handleEditGroupCancel}>キャンセル</Button>
+                    <Button variant="contained" color="primary" startIcon={<SaveIcon />} onClick={handleEditGroupSave}>保存</Button>
+                </DialogActions>
+            </Dialog>
             <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
                 <Alert severity="success" sx={{ width: '100%' }}>
                     {snackbar.message}

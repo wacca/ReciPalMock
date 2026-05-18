@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Container, Typography, Box, TextField, Button, MenuItem, FormControl, InputLabel, Select, Snackbar, Alert, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Chip } from '@mui/material';
+import { Container, Typography, Box, TextField, Button, MenuItem, FormControl, InputLabel, Select, Snackbar, Alert, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Chip, IconButton, Tooltip } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -166,8 +166,16 @@ function LeaveApplication() {
                                             <TableCell>{summary}</TableCell>
                                             <TableCell>
                                                 <Box className="tableActionGroup">
-                                                    <Button size="small" variant="outlined" startIcon={<EditIcon />} onClick={() => handleEdit(draft.id)}>編集</Button>
-                                                    <Button size="small" color="error" variant="outlined" startIcon={<DeleteIcon />} onClick={() => handleDelete(draft.id)}>削除</Button>
+                                                    <Tooltip title="編集">
+                                                        <IconButton aria-label="下書きを編集" onClick={() => handleEdit(draft.id)}>
+                                                            <EditIcon />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip title="削除">
+                                                        <IconButton aria-label="下書きを削除" color="error" onClick={() => handleDelete(draft.id)}>
+                                                            <DeleteIcon />
+                                                        </IconButton>
+                                                    </Tooltip>
                                                 </Box>
                                             </TableCell>
                                         </TableRow>

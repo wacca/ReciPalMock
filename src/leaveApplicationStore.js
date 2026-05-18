@@ -40,6 +40,38 @@ const SAMPLE_APPLICATIONS = [
     },
 ];
 
+const SAMPLE_DRAFTS = [
+    {
+        id: 'leave_draft_20240604',
+        status: '下書き',
+        updated: '2024-06-04T09:30:00.000Z',
+        details: [
+            {
+                leaveType: '有給休暇',
+                date: '2024-06-14',
+                reason: '私用のため',
+            },
+        ],
+    },
+    {
+        id: 'leave_draft_20240605',
+        status: '下書き',
+        updated: '2024-06-05T15:10:00.000Z',
+        details: [
+            {
+                leaveType: '遅刻',
+                date: '2024-06-18',
+                reason: '通院後に出社予定',
+            },
+            {
+                leaveType: '早退',
+                date: '2024-06-21',
+                reason: '家庭の事情',
+            },
+        ],
+    },
+];
+
 export const emptyLeaveDraft = () => ({
     id: 'new',
     leaveType: '有給休暇',
@@ -105,10 +137,14 @@ export const saveLeaveApplications = (applications) => {
 export const loadLeaveDrafts = () => {
     try {
         const stored = JSON.parse(localStorage.getItem(DRAFTS_KEY) || '[]');
-        return Array.isArray(stored) ? stored.map(normalizeLeaveDraft) : [];
+        if (Array.isArray(stored) && stored.length > 0) {
+            return stored.map(normalizeLeaveDraft);
+        }
     } catch {
-        return [];
+        // モックなので壊れたローカルデータは初期データで復旧する
     }
+    localStorage.setItem(DRAFTS_KEY, JSON.stringify(SAMPLE_DRAFTS));
+    return SAMPLE_DRAFTS.map(normalizeLeaveDraft);
 };
 
 export const saveLeaveDrafts = (drafts) => {
