@@ -14,6 +14,21 @@
   color: #00796b !important;
 }
 
+.brandBlock,
+.userMenuBlock {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.brandBlock {
+  min-width: 212px;
+}
+
+.userMenuBlock {
+  gap: 8px;
+}
+
 .topBarTitle {
   min-width: 0;
 }
@@ -244,6 +259,7 @@
   border-radius: 8px;
   background: #ffffff;
   padding: 24px;
+  overflow-x: auto;
 }
 
 .pageViewport > .MuiContainer-root > .MuiBox-root > .MuiTypography-h6:first-child,
@@ -268,6 +284,7 @@
   border-collapse: separate;
   border-spacing: 0;
   background: #ffffff;
+  min-width: 720px;
 }
 
 .pageViewport .MuiTableContainer-root .MuiTable-root {
@@ -352,6 +369,22 @@
   white-space: nowrap;
 }
 
+.tableActionGroup .MuiButton-root {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.tableActionGroup .MuiButton-sizeSmall {
+  padding-inline: 10px;
+}
+
+.tableActionGroup .MuiButton-startIcon,
+.expenseRowAction .MuiButton-startIcon,
+.leaveRowAction .MuiButton-startIcon {
+  margin-left: -2px;
+  margin-right: 4px;
+}
+
 .tableActionGroup .MuiIconButton-root {
   width: 34px;
   height: 34px;
@@ -408,11 +441,43 @@
 
 .expenseDetailRow {
   display: grid;
-  grid-template-columns: 40px minmax(130px, 0.8fr) minmax(160px, 1fr) minmax(220px, 1.4fr) minmax(160px, 1fr) minmax(120px, 0.7fr) minmax(180px, 1fr) 86px;
+  grid-template-columns: 40px minmax(130px, 0.8fr) minmax(160px, 1fr) minmax(220px, 1.4fr) minmax(160px, 1fr) minmax(120px, 0.7fr) minmax(180px, 1fr) 104px;
   gap: 10px;
   align-items: flex-start;
   padding: 12px 0;
   border-top: 1px solid #edf1f6;
+}
+
+.leaveDetailRow {
+  display: grid;
+  grid-template-columns: 40px minmax(160px, 0.9fr) minmax(160px, 0.8fr) minmax(260px, 1.4fr) 104px;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 0;
+  border-top: 1px solid #edf1f6;
+}
+
+.pageViewport form .leaveDetailRow .MuiTextField-root,
+.pageViewport form .leaveDetailRow .MuiFormControl-root {
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+.leaveDetailIndex {
+  padding-top: 22px;
+  color: #667085;
+}
+
+.leaveRowAction {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding-top: 16px;
+}
+
+.leaveRowAction .MuiButton-root {
+  width: 100%;
 }
 
 .expenseDetailIndex {
@@ -710,6 +775,19 @@
 }
 
 @media (max-width: 760px) {
+  .brandBlock {
+    min-width: auto;
+  }
+
+  .brandBlock .MuiTypography-h6 {
+    display: none;
+  }
+
+  .topBarTitle .MuiTypography-caption,
+  .userMenuBlock .MuiTypography-body2 {
+    display: none;
+  }
+
   .pageViewport {
     padding: 16px;
   }
@@ -717,12 +795,14 @@
   .pageHeaderRow,
   .sectionHeaderRow,
   .formActionBar,
-  .expenseDetailRow {
+  .expenseDetailRow,
+  .leaveDetailRow {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .expenseDetailRow {
+  .expenseDetailRow,
+  .leaveDetailRow {
     display: flex;
     gap: 4px;
   }

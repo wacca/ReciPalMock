@@ -16,17 +16,25 @@ import {
     ListItemIcon,
     ListItemText,
     Divider,
+    useMediaQuery,
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import { Navigate, Route, Routes, useNavigate, useLocation } from 'react-router-dom';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
-import AssignmentIcon from '@mui/icons-material/Assignment';
-import DoneIcon from '@mui/icons-material/Done';
-import ApprovalIcon from '@mui/icons-material/ThumbUp';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import EventAvailableIcon from '@mui/icons-material/EventAvailable';
+import EventNoteIcon from '@mui/icons-material/EventNote';
+import FactCheckIcon from '@mui/icons-material/FactCheck';
+import HowToRegIcon from '@mui/icons-material/HowToReg';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
-import { Settings, ListAlt } from '@mui/icons-material';
+import MenuIcon from '@mui/icons-material/Menu';
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
+import PunchClockIcon from '@mui/icons-material/PunchClock';
+import RequestQuoteIcon from '@mui/icons-material/RequestQuote';
+import TuneIcon from '@mui/icons-material/Tune';
 
 import Login from './Login';
 
@@ -58,18 +66,18 @@ const menuGroups = [
     {
         title: '申請',
         items: [
-            { label: '経費申請', path: '/application', icon: <AssignmentIcon />, subtitle: '経費の作成' },
-            { label: '経費申請済', path: '/submitted', icon: <DoneIcon />, subtitle: '経費の履歴' },
-            { label: '経費承認', path: '/approvals', icon: <ApprovalIcon />, subtitle: '経費の承認' },
+            { label: '経費申請', path: '/application', icon: <RequestQuoteIcon />, subtitle: '経費の作成' },
+            { label: '経費申請済', path: '/submitted', icon: <AssignmentTurnedInIcon />, subtitle: '経費の履歴' },
+            { label: '経費承認', path: '/approvals', icon: <FactCheckIcon />, subtitle: '経費の承認' },
             { label: '休暇申請', path: '/leave-application', icon: <EventAvailableIcon />, subtitle: '休暇の作成' },
-            { label: '休暇申請済', path: '/leave-submitted', icon: <DoneIcon />, subtitle: '休暇の履歴' },
-            { label: '休暇承認', path: '/leave-approvals', icon: <ApprovalIcon />, subtitle: '休暇の承認' },
+            { label: '休暇申請済', path: '/leave-submitted', icon: <EventNoteIcon />, subtitle: '休暇の履歴' },
+            { label: '休暇承認', path: '/leave-approvals', icon: <HowToRegIcon />, subtitle: '休暇の承認' },
         ],
     },
     {
         title: '勤怠',
         items: [
-            { label: '勤怠入力', path: '/attendance-input', icon: <AccessTimeIcon />, subtitle: '月次タイムシート' },
+            { label: '勤怠入力', path: '/attendance-input', icon: <PunchClockIcon />, subtitle: '月次タイムシート' },
         ],
     },
     {
@@ -78,14 +86,14 @@ const menuGroups = [
             {
                 label: '申請フロー設定',
                 path: '/flow-settings-menu',
-                icon: <Settings />,
+                icon: <AccountTreeIcon />,
                 subtitle: '経費/休暇の承認経路',
                 matchPaths: ['/flow-settings-menu', '/approval-flow-settings', '/leave-approval-flow-settings'],
             },
-            { label: 'アラート設定', path: '/reminder-settings', icon: <ListAlt />, subtitle: '通知条件' },
+            { label: 'アラート設定', path: '/reminder-settings', icon: <NotificationsActiveIcon />, subtitle: '通知条件' },
             { label: 'アカウント管理', path: '/account-management', icon: <ManageAccountsIcon />, subtitle: '利用者管理' },
-            { label: 'マスタ管理', path: '/master-settings', icon: <Settings />, subtitle: '部署/役職' },
-            { label: '権限設定', path: '/permission-settings', icon: <AccountCircleIcon />, subtitle: 'ロール管理' },
+            { label: 'マスタ管理', path: '/master-settings', icon: <TuneIcon />, subtitle: '部署/役職' },
+            { label: '権限設定', path: '/permission-settings', icon: <AdminPanelSettingsIcon />, subtitle: 'ロール管理' },
         ],
     },
 ];
@@ -112,8 +120,11 @@ function App() {
     const [username, setUsername] = useState('');
     const [userId, setUserId] = useState('');
     const [anchorEl, setAnchorEl] = useState(null);
+    const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
+    const theme = useTheme();
+    const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
 
     const handleLogin = (username, userId) => {
         setUsername(username);
@@ -137,6 +148,47 @@ function App() {
 
     const activeItem = allMenuItems.find(item => matchesPath(item, location.pathname)) || allMenuItems[0];
 
+    const handleNavigate = (path) => {
+        navigate(path);
+        setMobileDrawerOpen(false);
+    };
+
+    const drawerContent = (
+        <>
+            <Toolbar />
+            <Box className="drawerContent">
+                {menuGroups.map((group, groupIndex) => (
+                    <Box key={group.title} className="navGroup">
+                        {groupIndex > 0 && <Divider sx={{ my: 1.25 }} />}
+                        <Typography className="navGroupLabel" variant="caption">
+                            {group.title}
+                        </Typography>
+                        <List disablePadding>
+                            {group.items.map(item => {
+                                const isActive = matchesPath(item, location.pathname);
+                                return (
+                                    <ListItem
+                                        key={item.path}
+                                        disablePadding
+                                        className={isActive ? 'active' : ''}
+                                    >
+                                        <ListItemButton
+                                            selected={isActive}
+                                            onClick={() => handleNavigate(item.path)}
+                                        >
+                                            <ListItemIcon>{item.icon}</ListItemIcon>
+                                            <ListItemText primary={item.label} />
+                                        </ListItemButton>
+                                    </ListItem>
+                                );
+                            })}
+                        </List>
+                    </Box>
+                ))}
+            </Box>
+        </>
+    );
+
     if (!isLoggedIn) {
         return <Login onLogin={handleLogin} />;
     }
@@ -145,7 +197,18 @@ function App() {
         <>
             <AppBar position="fixed" elevation={0} className="appBar">
                 <Toolbar sx={{ minHeight: 64 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', minWidth: drawerWidth - 24 }}>
+                    {!isDesktop && (
+                        <IconButton
+                            color="inherit"
+                            edge="start"
+                            onClick={() => setMobileDrawerOpen(true)}
+                            aria-label="メニューを開く"
+                            sx={{ mr: 1 }}
+                        >
+                            <MenuIcon />
+                        </IconButton>
+                    )}
+                    <Box className="brandBlock">
                         <RecrovaLogo />
                         <Typography variant="h6" noWrap component="div" sx={{ ml: 1, fontWeight: 'bold', letterSpacing: 1 }}>
                             Recrova
@@ -160,7 +223,7 @@ function App() {
                         </Typography>
                     </Box>
                     <Box sx={{ flexGrow: 1 }} />
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box className="userMenuBlock">
                         <Typography variant="body2" noWrap sx={{ maxWidth: { xs: 160, sm: 320 } }}>
                             {username} ({userId})
                         </Typography>
@@ -181,46 +244,20 @@ function App() {
             </AppBar>
             <Box className="appShell">
                 <Drawer
-                    variant="permanent"
+                    variant={isDesktop ? 'permanent' : 'temporary'}
+                    open={isDesktop || mobileDrawerOpen}
+                    onClose={() => setMobileDrawerOpen(false)}
                     className="drawer"
+                    ModalProps={{ keepMounted: true }}
                     sx={{
                         width: drawerWidth,
                         flexShrink: 0,
-                        zIndex: (theme) => theme.zIndex.appBar - 1,
+                        display: { xs: 'block' },
+                        zIndex: (theme) => isDesktop ? theme.zIndex.appBar - 1 : theme.zIndex.drawer + 2,
                         [`& .MuiDrawer-paper`]: { width: drawerWidth, boxSizing: 'border-box' },
                     }}
                 >
-                    <Toolbar />
-                    <Box className="drawerContent">
-                        {menuGroups.map((group, groupIndex) => (
-                            <Box key={group.title} className="navGroup">
-                                {groupIndex > 0 && <Divider sx={{ my: 1.25 }} />}
-                                <Typography className="navGroupLabel" variant="caption">
-                                    {group.title}
-                                </Typography>
-                                <List disablePadding>
-                                    {group.items.map(item => {
-                                        const isActive = matchesPath(item, location.pathname);
-                                        return (
-                                            <ListItem
-                                                key={item.path}
-                                                disablePadding
-                                                className={isActive ? 'active' : ''}
-                                            >
-                                                <ListItemButton
-                                                    selected={isActive}
-                                                    onClick={() => navigate(item.path)}
-                                                >
-                                                    <ListItemIcon>{item.icon}</ListItemIcon>
-                                                    <ListItemText primary={item.label} />
-                                                </ListItemButton>
-                                            </ListItem>
-                                        );
-                                    })}
-                                </List>
-                            </Box>
-                        ))}
-                    </Box>
+                    {drawerContent}
                 </Drawer>
                 <Box component="main" className="pageViewport">
                     <Toolbar />

@@ -341,8 +341,8 @@ function AccountManagement() {
                     </Box>
                 </DialogContent>
                 <DialogActions>
-                    <Button variant="outlined" color="inherit" onClick={handleAddClose}>キャンセル</Button>
-                    <Button variant="contained" onClick={handleAdd}>登録</Button>
+                    <Button variant="outlined" color="inherit" startIcon={<CancelIcon />} onClick={handleAddClose}>キャンセル</Button>
+                    <Button variant="contained" startIcon={<SaveIcon />} onClick={handleAdd}>登録</Button>
                 </DialogActions>
             </Dialog>
             <Snackbar open={snackbarOpen} autoHideDuration={3000} onClose={() => setSnackbarOpen(false)}>

@@ -1,9 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Container, Typography, Box, Button, Dialog, DialogContent, DialogTitle, DialogActions, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Snackbar, Alert, Chip } from '@mui/material';
+import CancelIcon from '@mui/icons-material/Cancel';
+import CloseIcon from '@mui/icons-material/Close';
+import ReplayIcon from '@mui/icons-material/Replay';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import {
     loadLeaveApplications,
     saveLeaveApplications,
 } from './leaveApplicationStore';
+import AdminConfirmDialog from './components/AdminConfirmDialog';
 
 const statusColor = {
     申請中: 'primary',
@@ -17,6 +22,7 @@ function LeaveSubmitted() {
     const [open, setOpen] = useState(false);
     const [selected, setSelected] = useState(null);
     const [snackbar, setSnackbar] = useState({ open: false, message: '' });
+    const [cancelTargetId, setCancelTargetId] = useState(null);
 
     useEffect(() => {
         setSubmitted(loadLeaveApplications());
@@ -34,11 +40,16 @@ function LeaveSubmitted() {
     const handleClose = () => setOpen(false);
 
     const handleCancel = (id) => {
-        if (!window.confirm('この休暇申請を取り消しますか？')) return;
+        setCancelTargetId(id);
+    };
+
+    const handleCancelConfirm = () => {
+        if (!cancelTargetId) return;
         const newList = submitted.map(row => (
-            row.id === id ? { ...row, status: '取消', remarks: '' } : row
+            row.id === cancelTargetId ? { ...row, status: '取消', remarks: '' } : row
         ));
         persistSubmitted(newList);
+        setCancelTargetId(null);
         setSnackbar({ open: true, message: '休暇申請を取り消しました' });
     };
 
@@ -60,7 +71,7 @@ function LeaveSubmitted() {
             <Box sx={{ my: 4 }}>
                 <Box className="pageHeaderRow">
                     <Typography variant="h6" component="div">
-                        勤怠（休暇）申請済み一覧
+                        休暇申請済一覧
                     </Typography>
                 </Box>
                 <Box className="applicationGroup">
@@ -119,10 +130,10 @@ function LeaveSubmitted() {
                                         </TableCell>
                                         <TableCell>
                                             <Box className="tableActionGroup">
-                                                <Button size="small" variant="outlined" onClick={() => handleOpen(row)}>詳細</Button>
-                                                <Button size="small" color="error" variant="outlined" onClick={() => handleCancel(row.id)} disabled={(row.status || '申請中') !== '申請中'}>取消</Button>
+                                                <Button size="small" variant="outlined" startIcon={<VisibilityIcon />} onClick={() => handleOpen(row)}>詳細</Button>
+                                                <Button size="small" color="error" variant="outlined" startIcon={<CancelIcon />} onClick={() => handleCancel(row.id)} disabled={(row.status || '申請中') !== '申請中'}>取消</Button>
                                                 {(row.status || '申請中') === '非承認' && (
-                                                    <Button size="small" color="success" variant="contained" onClick={() => handleResubmit(row.id)}>再申請</Button>
+                                                    <Button size="small" color="success" variant="contained" startIcon={<ReplayIcon />} onClick={() => handleResubmit(row.id)}>再申請</Button>
                                                 )}
                                             </Box>
                                         </TableCell>
@@ -148,7 +159,7 @@ function LeaveSubmitted() {
                     )}
                 </DialogContent>
                 <DialogActions>
-                    <Button variant="contained" onClick={handleClose}>閉じる</Button>
+                    <Button variant="contained" startIcon={<CloseIcon />} onClick={handleClose}>閉じる</Button>
                 </DialogActions>
             </Dialog>
             <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
@@ -156,6 +167,15 @@ function LeaveSubmitted() {
                     {snackbar.message}
                 </Alert>
             </Snackbar>
+            <AdminConfirmDialog
+                open={Boolean(cancelTargetId)}
+                title="休暇申請を取り消しますか？"
+                message="選択した休暇申請を取消状態にします。"
+                confirmLabel="取消"
+                confirmColor="warning"
+                onCancel={() => setCancelTargetId(null)}
+                onConfirm={handleCancelConfirm}
+            />
         </Container>
     );
 }

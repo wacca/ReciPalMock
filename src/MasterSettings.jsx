@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Container, Typography, Box, Button, Paper, Table, TableHead, TableRow, TableCell, TableBody, Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl, InputLabel, Select, MenuItem, Snackbar, Alert, Chip, IconButton, Tooltip } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import CancelIcon from '@mui/icons-material/Cancel';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import SaveIcon from '@mui/icons-material/Save';
 import AdminConfirmDialog from './components/AdminConfirmDialog';
 
 const SAMPLE_DEPARTMENTS = [
@@ -369,8 +371,8 @@ function MasterSettings() {
                     />
                 </DialogContent>
                 <DialogActions>
-                    <Button variant="outlined" color="inherit" onClick={handleDeptDialogClose}>キャンセル</Button>
-                    <Button variant="contained" onClick={handleDeptSave}>保存</Button>
+                    <Button variant="outlined" color="inherit" startIcon={<CancelIcon />} onClick={handleDeptDialogClose}>キャンセル</Button>
+                    <Button variant="contained" startIcon={<SaveIcon />} onClick={handleDeptSave}>保存</Button>
                 </DialogActions>
             </Dialog>
             {/* 役職追加・編集ダイアログ */}
@@ -386,8 +388,8 @@ function MasterSettings() {
                     />
                 </DialogContent>
                 <DialogActions>
-                    <Button variant="outlined" color="inherit" onClick={handlePosDialogClose}>キャンセル</Button>
-                    <Button variant="contained" onClick={handlePosSave}>保存</Button>
+                    <Button variant="outlined" color="inherit" startIcon={<CancelIcon />} onClick={handlePosDialogClose}>キャンセル</Button>
+                    <Button variant="contained" startIcon={<SaveIcon />} onClick={handlePosSave}>保存</Button>
                 </DialogActions>
             </Dialog>
             <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>

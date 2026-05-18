@@ -47,6 +47,31 @@ export const emptyLeaveDraft = () => ({
     reason: '',
 });
 
+export const emptyLeaveRow = () => ({
+    leaveType: '有給休暇',
+    date: '',
+    reason: '',
+});
+
+export const normalizeLeaveRow = (row = {}) => ({
+    leaveType: row.leaveType || '有給休暇',
+    date: row.date || '',
+    reason: row.reason || '',
+});
+
+export const normalizeLeaveDraft = (draft = {}) => {
+    const details = Array.isArray(draft.details)
+        ? draft.details.map(normalizeLeaveRow)
+        : [normalizeLeaveRow(draft)];
+
+    return {
+        id: draft.id || 'new',
+        status: draft.status || '下書き',
+        updated: draft.updated || '',
+        details: details.length > 0 ? details : [emptyLeaveRow()],
+    };
+};
+
 export const normalizeLeaveApplication = (application) => ({
     id: application.id || `leave_${Date.now()}`,
     leaveType: application.leaveType || '有給休暇',
@@ -80,7 +105,7 @@ export const saveLeaveApplications = (applications) => {
 export const loadLeaveDrafts = () => {
     try {
         const stored = JSON.parse(localStorage.getItem(DRAFTS_KEY) || '[]');
-        return Array.isArray(stored) ? stored : [];
+        return Array.isArray(stored) ? stored.map(normalizeLeaveDraft) : [];
     } catch {
         return [];
     }
@@ -99,3 +124,16 @@ export const buildLeaveApplication = ({ editId, leaveType, date, reason }) => ({
     submittedAt: new Date().toISOString(),
     remarks: '',
 });
+
+export const buildLeaveApplications = ({ editId, rows }) => {
+    const submittedAt = new Date().toISOString();
+    const baseId = editId === 'new' ? `leave_${Date.now()}` : editId;
+
+    return rows.map((row, index) => ({
+        id: rows.length === 1 ? baseId : `${baseId}_${index + 1}`,
+        ...normalizeLeaveRow(row),
+        status: '申請中',
+        submittedAt,
+        remarks: '',
+    }));
+};

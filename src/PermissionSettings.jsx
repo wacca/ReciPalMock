@@ -34,8 +34,12 @@ import {
     Typography,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import CancelIcon from '@mui/icons-material/Cancel';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import HighlightOffIcon from '@mui/icons-material/HighlightOff';
+import SaveIcon from '@mui/icons-material/Save';
 import SearchIcon from '@mui/icons-material/Search';
 import AdminConfirmDialog from './components/AdminConfirmDialog';
 
@@ -422,10 +426,10 @@ function PermissionSettings() {
                                             </Typography>
                                         </Box>
                                         <Box className="pageActionBar">
-                                            <Button variant="outlined" onClick={() => handleSetAllPermissions(false)}>
+                                            <Button variant="outlined" startIcon={<HighlightOffIcon />} onClick={() => handleSetAllPermissions(false)}>
                                                 すべて解除
                                             </Button>
-                                            <Button variant="contained" onClick={() => handleSetAllPermissions(true)}>
+                                            <Button variant="contained" startIcon={<CheckCircleIcon />} onClick={() => handleSetAllPermissions(true)}>
                                                 すべて許可
                                             </Button>
                                         </Box>
@@ -571,8 +575,8 @@ function PermissionSettings() {
                     />
                 </DialogContent>
                 <DialogActions>
-                    <Button variant="outlined" color="inherit" onClick={closeRoleDialog}>キャンセル</Button>
-                    <Button variant="contained" onClick={handleSaveRole}>保存</Button>
+                    <Button variant="outlined" color="inherit" startIcon={<CancelIcon />} onClick={closeRoleDialog}>キャンセル</Button>
+                    <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSaveRole}>保存</Button>
                 </DialogActions>
             </Dialog>
 

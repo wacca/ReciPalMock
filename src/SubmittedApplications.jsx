@@ -1,5 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Container, Typography, Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, TextField, Snackbar, Alert, Chip, MenuItem } from '@mui/material';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import CancelIcon from '@mui/icons-material/Cancel';
+import EditIcon from '@mui/icons-material/Edit';
+import ReplayIcon from '@mui/icons-material/Replay';
+import SaveIcon from '@mui/icons-material/Save';
 import {
     EXPENSE_CATEGORIES,
     formatYen,
@@ -8,6 +13,7 @@ import {
     loadExpenseApplications,
     saveExpenseApplications,
 } from './expenseApplicationStore';
+import AdminConfirmDialog from './components/AdminConfirmDialog';
 
 const statusColor = {
     申請中: 'primary',
@@ -22,6 +28,7 @@ function SubmittedApplications() {
     const [editGroupIndexAll, setEditGroupIndexAll] = useState(null);
     const [editGroupRows, setEditGroupRows] = useState([]);
     const [snackbar, setSnackbar] = useState({ open: false, message: '' });
+    const [cancelTargetIndex, setCancelTargetIndex] = useState(null);
 
     useEffect(() => {
         setData(loadExpenseApplications());
@@ -33,13 +40,18 @@ function SubmittedApplications() {
     };
 
     const handleCancelGroup = (groupIdx) => {
-        if (!window.confirm('この申請を取り消しますか？')) return;
+        setCancelTargetIndex(groupIdx);
+    };
+
+    const handleCancelGroupConfirm = () => {
+        if (cancelTargetIndex === null) return;
         const newData = [...data];
-        newData[groupIdx] = {
-            ...newData[groupIdx],
-            details: newData[groupIdx].details.map(row => ({ ...row, status: '取消' })),
+        newData[cancelTargetIndex] = {
+            ...newData[cancelTargetIndex],
+            details: newData[cancelTargetIndex].details.map(row => ({ ...row, status: '取消' })),
         };
         persistData(newData);
+        setCancelTargetIndex(null);
         setSnackbar({ open: true, message: '申請を取り消しました' });
     };
 
@@ -87,7 +99,7 @@ function SubmittedApplications() {
             <Box sx={{ my: 4 }}>
                 <Box className="pageHeaderRow">
                     <Typography variant="h6" component="div">
-                        申請済
+                        経費申請済一覧
                     </Typography>
                 </Box>
                 {data.length === 0 && (
@@ -173,22 +185,22 @@ function SubmittedApplications() {
                                 </Table>
                             </TableContainer>
                             <Box className="formActionBar">
-                                <Button variant="outlined" color="primary" onClick={() => handleEditGroup(groupIdx)} disabled={!isEditable || editGroupIndexAll === groupIdx}>
+                                <Button variant="outlined" color="primary" startIcon={<EditIcon />} onClick={() => handleEditGroup(groupIdx)} disabled={!isEditable || editGroupIndexAll === groupIdx}>
                                     変更
                                 </Button>
-                                <Button variant="outlined" color="error" onClick={() => handleCancelGroup(groupIdx)} disabled={status !== '申請中'}>
+                                <Button variant="outlined" color="error" startIcon={<CancelIcon />} onClick={() => handleCancelGroup(groupIdx)} disabled={status !== '申請中'}>
                                     取消
                                 </Button>
                                 {status === '非承認' && (
-                                    <Button variant="contained" color="success" onClick={() => handleResubmitGroup(groupIdx)}>
+                                    <Button variant="contained" color="success" startIcon={<ReplayIcon />} onClick={() => handleResubmitGroup(groupIdx)}>
                                         再申請
                                     </Button>
                                 )}
                             </Box>
                             {editGroupIndexAll === groupIdx && (
                                 <Box className="formActionBar">
-                                    <Button className="backAction" variant="outlined" onClick={handleEditGroupCancel}>キャンセル</Button>
-                                    <Button variant="contained" color="primary" onClick={handleEditGroupSave}>保存</Button>
+                                    <Button className="backAction" variant="outlined" startIcon={<ArrowBackIcon />} onClick={handleEditGroupCancel}>キャンセル</Button>
+                                    <Button variant="contained" color="primary" startIcon={<SaveIcon />} onClick={handleEditGroupSave}>保存</Button>
                                 </Box>
                             )}
                         </Box>
@@ -200,6 +212,15 @@ function SubmittedApplications() {
                     {snackbar.message}
                 </Alert>
             </Snackbar>
+            <AdminConfirmDialog
+                open={cancelTargetIndex !== null}
+                title="経費申請を取り消しますか？"
+                message={cancelTargetIndex !== null ? `申請ID: ${data[cancelTargetIndex]?.applicationId || '-'} を取消状態にします。` : ''}
+                confirmLabel="取消"
+                confirmColor="warning"
+                onCancel={() => setCancelTargetIndex(null)}
+                onConfirm={handleCancelGroupConfirm}
+            />
         </Container>
     );
 }

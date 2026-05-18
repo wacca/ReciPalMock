@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Container, Typography, Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert, TextField, Chip, FormControl, Select, MenuItem } from '@mui/material';
+import CancelIcon from '@mui/icons-material/Cancel';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CloseIcon from '@mui/icons-material/Close';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import {
     loadLeaveApplications,
     saveLeaveApplications,
@@ -42,7 +46,7 @@ function LeaveApprovals() {
         ));
         persistData(newData);
         setCommentMap({ ...commentMap, [id]: '' });
-        setSnackbar({ open: true, message: status === '承認済' ? '勤怠（休暇）申請を承認しました' : '勤怠（休暇）申請を非承認にしました' });
+        setSnackbar({ open: true, message: status === '承認済' ? '休暇申請を承認しました' : '休暇申請を非承認にしました' });
     };
     const handleOpen = (row) => {
         setSelected(row);
@@ -57,7 +61,7 @@ function LeaveApprovals() {
             <Box className="pageHeaderRow">
                 <Box>
                     <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                        勤怠（休暇）承認
+                        休暇承認
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                         申請中の休暇申請のみを表示します。承認結果は申請済み一覧に反映されます。
@@ -96,9 +100,9 @@ function LeaveApprovals() {
                                     <TableCell><Chip size="small" label="申請中" color="primary" /></TableCell>
                                     <TableCell>
                                         <Box className="tableActionGroup">
-                                            <Button size="small" variant="outlined" onClick={() => handleOpen(row)}>詳細</Button>
-                                            <Button size="small" color="primary" variant="contained" onClick={() => handleStatus(row.id, '承認済')}>承認</Button>
-                                            <Button size="small" color="error" variant="contained" onClick={() => handleStatus(row.id, '非承認')}>非承認</Button>
+                                            <Button size="small" variant="outlined" startIcon={<VisibilityIcon />} onClick={() => handleOpen(row)}>詳細</Button>
+                                            <Button size="small" color="primary" variant="contained" startIcon={<CheckCircleIcon />} onClick={() => handleStatus(row.id, '承認済')}>承認</Button>
+                                            <Button size="small" color="error" variant="contained" startIcon={<CancelIcon />} onClick={() => handleStatus(row.id, '非承認')}>非承認</Button>
                                         </Box>
                                         <TextField
                                             label="非承認時の備考"
@@ -127,7 +131,7 @@ function LeaveApprovals() {
                     )}
                 </DialogContent>
                 <DialogActions>
-                    <Button variant="contained" onClick={handleClose}>閉じる</Button>
+                    <Button variant="contained" startIcon={<CloseIcon />} onClick={handleClose}>閉じる</Button>
                 </DialogActions>
             </Dialog>
             <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>

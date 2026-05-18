@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Container, Typography, Box, Button, TextField, Paper, Table, TableHead, TableRow, TableCell, TableBody, TableContainer, IconButton, Select, MenuItem, FormControl, InputLabel, Snackbar, Alert, Autocomplete, Dialog, DialogTitle, DialogContent, DialogActions, Chip, Tooltip } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import CancelIcon from '@mui/icons-material/Cancel';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import SaveIcon from '@mui/icons-material/Save';
 import AdminConfirmDialog from './components/AdminConfirmDialog';
 import {
     APPROVAL_ROLES,
@@ -359,12 +361,12 @@ function ApprovalFlowSettings() {
                         </Table>
                     </TableContainer>
                     <Box className="inlineActionGroup" sx={{ mt: 2 }}>
-                        <Button variant="outlined" onClick={handleAddStepAdd}>承認者追加</Button>
+                        <Button variant="outlined" startIcon={<AddIcon />} onClick={handleAddStepAdd}>承認者追加</Button>
                     </Box>
                 </DialogContent>
                 <DialogActions>
-                    <Button variant="outlined" color="inherit" onClick={handleAddClose}>キャンセル</Button>
-                    <Button variant="contained" onClick={handleAddSave}>登録</Button>
+                    <Button variant="outlined" color="inherit" startIcon={<CancelIcon />} onClick={handleAddClose}>キャンセル</Button>
+                    <Button variant="contained" startIcon={<SaveIcon />} onClick={handleAddSave}>登録</Button>
                 </DialogActions>
             </Dialog>
             <Dialog open={editDialogOpen} onClose={handleEditClose} maxWidth="lg" fullWidth className="flowEditorDialog">
@@ -460,12 +462,12 @@ function ApprovalFlowSettings() {
                         </Table>
                     </TableContainer>
                     <Box className="inlineActionGroup" sx={{ mt: 2 }}>
-                        <Button variant="outlined" onClick={handleEditStepAdd}>承認者追加</Button>
+                        <Button variant="outlined" startIcon={<AddIcon />} onClick={handleEditStepAdd}>承認者追加</Button>
                     </Box>
                 </DialogContent>
                 <DialogActions>
-                    <Button variant="outlined" color="inherit" onClick={handleEditClose}>キャンセル</Button>
-                    <Button variant="contained" onClick={handleEditSave}>保存</Button>
+                    <Button variant="outlined" color="inherit" startIcon={<CancelIcon />} onClick={handleEditClose}>キャンセル</Button>
+                    <Button variant="contained" startIcon={<SaveIcon />} onClick={handleEditSave}>保存</Button>
                 </DialogActions>
             </Dialog>
             <Snackbar open={open} autoHideDuration={3000} onClose={() => setOpen(false)}>

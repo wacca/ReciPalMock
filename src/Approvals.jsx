@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Container, Typography, Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, MenuItem, Select, FormControl, TextField, Snackbar, Alert, Chip } from '@mui/material';
+import CancelIcon from '@mui/icons-material/Cancel';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import {
     formatYen,
     getExpenseApplicationStatus,
@@ -117,10 +119,10 @@ function Approvals() {
                                     sx={{ minWidth: 320 }}
                                 />
                                 <Box className="pageActionBar">
-                                    <Button variant="contained" color="primary" onClick={() => handleGroupStatus(groupIdx, '承認済')}>
+                                    <Button variant="contained" color="primary" startIcon={<CheckCircleIcon />} onClick={() => handleGroupStatus(groupIdx, '承認済')}>
                                         承認
                                     </Button>
-                                    <Button variant="contained" color="error" onClick={() => handleGroupStatus(groupIdx, '非承認')}>
+                                    <Button variant="contained" color="error" startIcon={<CancelIcon />} onClick={() => handleGroupStatus(groupIdx, '非承認')}>
                                         非承認
                                     </Button>
                                 </Box>

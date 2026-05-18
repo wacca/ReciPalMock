@@ -22,6 +22,7 @@ import {
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import AdminConfirmDialog from './components/AdminConfirmDialog';
 
 const SOURCE_YEAR = 2025;
 const SOURCE_MONTH = 2;
@@ -195,6 +196,7 @@ function AttendanceInput({ username = '', userId = '' }) {
     });
     const [snackbarOpen, setSnackbarOpen] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState('勤怠入力を保存しました');
+    const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
 
     const monthKey = monthKeyOf(year, month);
     const storageKey = `attendanceTimesheet:${monthKey}`;
@@ -308,9 +310,15 @@ function AttendanceInput({ username = '', userId = '' }) {
     };
 
     const handleClear = () => {
-        if (!window.confirm(`${year}年${month}月の勤怠入力をクリアしますか？`)) return;
+        setClearConfirmOpen(true);
+    };
+
+    const handleClearConfirm = () => {
         setEntries({});
         localStorage.setItem(storageKey, JSON.stringify({ employee, entries: {} }));
+        setClearConfirmOpen(false);
+        setSnackbarMessage('勤怠入力をクリアしました');
+        setSnackbarOpen(true);
     };
 
     return (
@@ -600,6 +608,15 @@ function AttendanceInput({ username = '', userId = '' }) {
                     {snackbarMessage}
                 </Alert>
             </Snackbar>
+            <AdminConfirmDialog
+                open={clearConfirmOpen}
+                title="勤怠入力をクリアしますか？"
+                message={`${year}年${month}月の入力内容をクリアします。`}
+                confirmLabel="クリア"
+                confirmColor="warning"
+                onCancel={() => setClearConfirmOpen(false)}
+                onConfirm={handleClearConfirm}
+            />
         </Container>
     );
 }

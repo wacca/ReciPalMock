@@ -1,5 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Container, TextField, Button, Typography, Box, MenuItem, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio, Dialog, DialogContent, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Snackbar, Alert, Chip } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import SaveIcon from '@mui/icons-material/Save';
+import SendIcon from '@mui/icons-material/Send';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
 import {
     EXPENSE_CATEGORIES,
     buildExpenseApplication,
@@ -10,6 +17,12 @@ import {
     normalizeExpenseRow,
     saveExpenseApplications,
 } from './expenseApplicationStore';
+import AdminConfirmDialog from './components/AdminConfirmDialog';
+
+const hasExpenseRowInput = (row = {}) => (
+    ['date', 'description', 'destination', 'category', 'amount', 'receiptName', 'receiptPreview']
+        .some(field => String(row[field] ?? '').trim() !== '')
+);
 
 function ApplicationForm() {
     const [formDataList, setFormDataList] = useState([emptyExpenseRow()]);
@@ -20,6 +33,7 @@ function ApplicationForm() {
     const [selectedDraftId, setSelectedDraftId] = useState('new');
     const [mode, setMode] = useState('list'); // 'list' or 'edit'
     const [snackbar, setSnackbar] = useState({ open: false, message: '' });
+    const [deleteTargetIndex, setDeleteTargetIndex] = useState(null);
 
     useEffect(() => {
         const savedDrafts = JSON.parse(localStorage.getItem('expenseDrafts') || '[]');
@@ -37,11 +51,24 @@ function ApplicationForm() {
         setFormDataList([...formDataList, emptyExpenseRow()]);
     };
 
-    const handleDeleteFields = (index) => {
-        if (!window.confirm('この明細行を削除しますか？')) return;
+    const deleteFieldsAt = (index) => {
         const newFormDataList = formDataList.filter((_, i) => i !== index);
         setFormDataList(newFormDataList.length > 0 ? newFormDataList : [emptyExpenseRow()]);
         setSnackbar({ open: true, message: '明細行を削除しました' });
+    };
+
+    const handleDeleteFields = (index) => {
+        if (hasExpenseRowInput(formDataList[index])) {
+            setDeleteTargetIndex(index);
+            return;
+        }
+        deleteFieldsAt(index);
+    };
+
+    const handleDeleteFieldsConfirm = () => {
+        if (deleteTargetIndex === null) return;
+        deleteFieldsAt(deleteTargetIndex);
+        setDeleteTargetIndex(null);
     };
 
     const handleReceiptUpload = (index, e) => {
@@ -123,9 +150,9 @@ function ApplicationForm() {
             {mode === 'list' && (
                 <Box>
                     <Box className="pageHeaderRow">
-                        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>経費精算 下書き一覧</Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>経費申請 下書き一覧</Typography>
                         <Box className="pageActionBar">
-                            <Button variant="contained" color="primary" onClick={handleNew}>新規作成</Button>
+                            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleNew}>新規作成</Button>
                         </Box>
                     </Box>
                     <TableContainer>
@@ -149,7 +176,7 @@ function ApplicationForm() {
                                         <TableCell>{draft.paymentType}</TableCell>
                                         <TableCell>
                                             <Box className="tableActionGroup">
-                                                <Button size="small" variant="outlined" onClick={() => handleSelectDraft(draft.id)}>編集</Button>
+                                                <Button size="small" variant="outlined" startIcon={<EditIcon />} onClick={() => handleSelectDraft(draft.id)}>編集</Button>
                                             </Box>
                                         </TableCell>
                                     </TableRow>
@@ -163,7 +190,7 @@ function ApplicationForm() {
                 <Box>
                     <Box sx={{ my: 4 }}>
                         <Typography variant="h6" component="h1" gutterBottom>
-                            経費精算申請
+                            経費申請
                         </Typography>
                         <Box className="expenseSummaryStrip">
                             <Box>
@@ -260,6 +287,7 @@ function ApplicationForm() {
                                         <Button
                                             variant="outlined"
                                             component="label"
+                                            startIcon={<UploadFileIcon />}
                                         >
                                             領収書アップロード
                                             <input
@@ -283,17 +311,17 @@ function ApplicationForm() {
                                         )}
                                     </Box>
                                     <Box className="expenseRowAction">
-                                        <Button variant="outlined" color="error" onClick={() => handleDeleteFields(index)}>
+                                        <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={() => handleDeleteFields(index)}>
                                             削除
                                         </Button>
                                     </Box>
                                 </Box>
                             ))}
                             <Box className="formActionBar">
-                                <Button className="backAction" variant="outlined" onClick={() => setMode('list')}>一覧に戻る</Button>
-                                <Button variant="outlined" color="secondary" onClick={handleAddFields}>行追加</Button>
-                                <Button variant="outlined" color="primary" onClick={handleSaveDraft}>下書き保存</Button>
-                                <Button variant="contained" color="primary" type="submit">送信</Button>
+                                <Button className="backAction" variant="outlined" startIcon={<ArrowBackIcon />} onClick={() => setMode('list')}>一覧に戻る</Button>
+                                <Button variant="outlined" color="secondary" startIcon={<AddIcon />} onClick={handleAddFields}>行追加</Button>
+                                <Button variant="outlined" color="primary" startIcon={<SaveIcon />} onClick={handleSaveDraft}>下書き保存</Button>
+                                <Button variant="contained" color="primary" startIcon={<SendIcon />} type="submit">送信</Button>
                             </Box>
                         </form>
                     </Box>
@@ -315,6 +343,14 @@ function ApplicationForm() {
                     {snackbar.message}
                 </Alert>
             </Snackbar>
+            <AdminConfirmDialog
+                open={deleteTargetIndex !== null}
+                title="明細行を削除しますか？"
+                message={`#${deleteTargetIndex + 1} の明細行を削除します。`}
+                confirmLabel="削除"
+                onCancel={() => setDeleteTargetIndex(null)}
+                onConfirm={handleDeleteFieldsConfirm}
+            />
         </Container>
     );
 }
