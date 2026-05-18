@@ -1,1 +1,0 @@
-import{W as e,bt as t}from"./index-B-WlDOS4.js";var n=e((0,t().jsx)(`path`,{d:`M2.01 21 23 12 2.01 3 2 10l15 2-15 2z`}),`Send`);export{n as t};
