@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Container, Typography, Box, Button, Dialog, DialogContent, DialogTitle, DialogActions, TableContainer, Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
+import { Container, Typography, Box, Button, Dialog, DialogContent, DialogTitle, DialogActions, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Snackbar, Alert } from '@mui/material';
 
 function LeaveSubmitted() {
     const [submitted, setSubmitted] = useState([]);
     const [open, setOpen] = useState(false);
     const [selected, setSelected] = useState(null);
+    const [snackbar, setSnackbar] = useState({ open: false, message: '' });
 
     useEffect(() => {
         const data = JSON.parse(localStorage.getItem('leaveApplications') || '[]');
@@ -19,16 +20,20 @@ function LeaveSubmitted() {
 
     // 申請済みの削除
     const handleDelete = (id) => {
+        if (!window.confirm('この申請履歴を削除しますか？')) return;
         const newList = submitted.filter(d => d.id !== id);
         setSubmitted(newList);
         localStorage.setItem('leaveApplications', JSON.stringify(newList));
+        setSnackbar({ open: true, message: '申請履歴を削除しました' });
     };
 
     return (
         <Container maxWidth="md" sx={{ py: 4 }}>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
-                勤怠（休暇）申請済み一覧
-            </Typography>
+            <Box className="pageHeaderRow">
+                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                    勤怠（休暇）申請済み一覧
+                </Typography>
+            </Box>
             <TableContainer>
                 <Table size="small">
                     <TableHead>
@@ -53,8 +58,10 @@ function LeaveSubmitted() {
                                 <TableCell>{row.reason}</TableCell>
                                 <TableCell>{row.status || '申請中'}</TableCell>
                                 <TableCell>
-                                    <Button size="small" variant="outlined" onClick={() => handleOpen(row)}>詳細</Button>
-                                    <Button size="small" color="error" variant="outlined" sx={{ ml: 1 }} onClick={() => handleDelete(row.id)}>削除</Button>
+                                    <Box className="tableActionGroup">
+                                        <Button size="small" variant="outlined" onClick={() => handleOpen(row)}>詳細</Button>
+                                        <Button size="small" color="error" variant="outlined" onClick={() => handleDelete(row.id)}>削除</Button>
+                                    </Box>
                                 </TableCell>
                             </TableRow>
                         ))}
@@ -74,9 +81,14 @@ function LeaveSubmitted() {
                     )}
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={handleClose}>閉じる</Button>
+                    <Button variant="contained" onClick={handleClose}>閉じる</Button>
                 </DialogActions>
             </Dialog>
+            <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+                <Alert severity="success" sx={{ width: '100%' }}>
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
         </Container>
     );
 }

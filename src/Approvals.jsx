@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Container, Typography, Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, MenuItem, Select, FormControl, TextField } from '@mui/material';
+import { Container, Typography, Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, MenuItem, Select, FormControl, TextField, Snackbar, Alert } from '@mui/material';
 
 function Approvals() {
     // 申請単位のデータ構造に変更
     const [data, setData] = useState([]);
     const [commentMap, setCommentMap] = useState({}); // 申請単位のコメント管理
+    const [snackbar, setSnackbar] = useState({ open: false, message: '' });
 
     // データをサーバから取得する関数（モック）
     const fetchData = async () => {
@@ -45,14 +46,17 @@ function Approvals() {
         // ここでコメント(commentMap[group.applicationId])も利用可能
         // 例: サーバー送信など
         setCommentMap({ ...commentMap, [data[groupIdx].applicationId]: '' }); // コメント欄リセット
+        setSnackbar({ open: true, message: newStatus === '承認済' ? '申請を承認しました' : '申請を非承認にしました' });
     };
 
     return (
         <Container maxWidth="lg" sx={{ textAlign: 'left' }}>
             <Box sx={{ my: 4 }}>
-                <Typography variant="h6" component="div" gutterBottom>
-                    承認
-                </Typography>
+                <Box className="pageHeaderRow">
+                    <Typography variant="h6" component="div">
+                        承認
+                    </Typography>
+                </Box>
                 <FormControl autoWidth={true} sx={{ mb: 2 }}>
                     <Select variant="outlined" value="user1">
                         <MenuItem value="user1">由引 安人(ubiast@univa.tech)</MenuItem>
@@ -88,7 +92,7 @@ function Approvals() {
                                 </TableBody>
                             </Table>
                         </TableContainer>
-                        <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Box className="formActionBar">
                             <TextField
                                 label="備考"
                                 size="small"
@@ -96,22 +100,29 @@ function Approvals() {
                                 onChange={e => setCommentMap({ ...commentMap, [group.applicationId]: e.target.value })}
                                 sx={{ minWidth: 300 }}
                             />
-                            <Button variant="contained" color="primary"
-                                onClick={() => handleGroupStatus(groupIdx, '承認済')}
-                                disabled={group.details.every(row => row.status === '承認済')}
-                            >
-                                承認
-                            </Button>
-                            <Button variant="contained" color="error"
-                                onClick={() => handleGroupStatus(groupIdx, '非承認')}
-                                disabled={group.details.every(row => row.status === '非承認')}
-                            >
-                                非承認
-                            </Button>
+                            <Box className="pageActionBar">
+                                <Button variant="contained" color="primary"
+                                    onClick={() => handleGroupStatus(groupIdx, '承認済')}
+                                    disabled={group.details.every(row => row.status === '承認済')}
+                                >
+                                    承認
+                                </Button>
+                                <Button variant="contained" color="error"
+                                    onClick={() => handleGroupStatus(groupIdx, '非承認')}
+                                    disabled={group.details.every(row => row.status === '非承認')}
+                                >
+                                    非承認
+                                </Button>
+                            </Box>
                         </Box>
                     </Box>
                 ))}
             </Box>
+            <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+                <Alert severity="success" sx={{ width: '100%' }}>
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
         </Container>
     );
 }

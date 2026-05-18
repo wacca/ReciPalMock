@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-    Container, Typography, Paper, Grid, List, ListItem, ListItemText, Switch, Box, Tabs, Tab, Button, TextField, Select, MenuItem, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel
+    Container, Typography, Paper, Grid, List, ListItem, ListItemText, Switch, Box, Tabs, Tab, Button, TextField, Select, MenuItem, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, Snackbar, Alert
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -38,6 +38,7 @@ function PermissionSettings() {
     const [roleDialogOpen, setRoleDialogOpen] = useState(false);
     const [editingRole, setEditingRole] = useState(null); // { key: string, label: string } or null for new
     const [roleNameInput, setRoleNameInput] = useState('');
+    const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
     // User role assignment state
     const [userRoles, setUserRoles] = useState({}); // { userId: roleKey }
@@ -101,7 +102,7 @@ function PermissionSettings() {
             newDefinedRoles = definedRoles.map(r => r.key === editingRole.key ? { ...r, label: roleNameInput } : r);
         } else {
             if (definedRoles.find(r => r.key === newRoleKey)) {
-                alert('同じキーのロールが既に存在します。');
+                setSnackbar({ open: true, message: '同じキーのロールが既に存在します', severity: 'warning' });
                 return;
             }
             newDefinedRoles = [...definedRoles, { key: newRoleKey, label: roleNameInput }];
@@ -112,11 +113,12 @@ function PermissionSettings() {
              setSelectedRoleKey(newRoleKey); // 新規作成時は新しいロールを選択状態にする
         }
         closeRoleDialog();
+        setSnackbar({ open: true, message: editingRole ? 'ロールを保存しました' : 'ロールを追加しました', severity: 'success' });
     };
 
     const handleDeleteRole = (roleKeyToDelete) => {
         if (definedRoles.length <= 1) {
-            alert('最低1つのロールが必要です。');
+            setSnackbar({ open: true, message: '最低1つのロールが必要です', severity: 'warning' });
             return;
         }
         if (window.confirm(`ロール「${definedRoles.find(r=>r.key === roleKeyToDelete)?.label}」を削除しますか？このロールが割り当てられているユーザーはデフォルトロール（最初のロール）になります。`)) {
@@ -142,6 +144,7 @@ function PermissionSettings() {
             if (selectedRoleKey === roleKeyToDelete) {
                 setSelectedRoleKey(defaultRoleKey);
             }
+            setSnackbar({ open: true, message: 'ロールを削除しました', severity: 'success' });
         }
     };
 
@@ -165,10 +168,12 @@ function PermissionSettings() {
 
 
     return (
-        <Container maxWidth="lg" sx={{ py: 4 }}>
-            <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 3 }}>
-                権限設定
-            </Typography>
+            <Container maxWidth="lg" sx={{ py: 4 }}>
+            <Box className="pageHeaderRow">
+                <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+                    権限設定
+                </Typography>
+            </Box>
             <Paper>
                 <Tabs value={currentTab} onChange={handleTabChange} centered>
                     <Tab label="ロール設定" />
@@ -180,8 +185,12 @@ function PermissionSettings() {
                     <Box sx={{ p: 3 }}>
                         <Grid container spacing={3}>
                             <Grid item xs={12} md={4}>
-                                <Typography variant="h6" sx={{ mb: 1 }}>ロール一覧</Typography>
-                                <Button startIcon={<AddIcon />} onClick={() => openRoleDialog()} sx={{ mb: 1 }}>ロール追加</Button>
+                                <Box className="sectionHeaderRow">
+                                    <Typography variant="h6">ロール一覧</Typography>
+                                    <Box className="pageActionBar">
+                                        <Button variant="outlined" startIcon={<AddIcon />} onClick={() => openRoleDialog()}>ロール追加</Button>
+                                    </Box>
+                                </Box>
                                 <List component="nav" className="permission-role-list">
                                     {definedRoles.map(role => (
                                         <ListItem
@@ -293,14 +302,19 @@ function PermissionSettings() {
                         variant="standard"
                         value={roleNameInput}
                         onChange={(e) => setRoleNameInput(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && handleSaveRole()}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSaveRole()}
                     />
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={closeRoleDialog}>キャンセル</Button>
-                    <Button onClick={handleSaveRole}>保存</Button>
+                    <Button variant="outlined" onClick={closeRoleDialog}>キャンセル</Button>
+                    <Button variant="contained" onClick={handleSaveRole}>保存</Button>
                 </DialogActions>
             </Dialog>
+            <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+                <Alert severity={snackbar.severity} sx={{ width: '100%' }}>
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
         </Container>
     );
 }

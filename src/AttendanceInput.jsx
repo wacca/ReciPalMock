@@ -314,7 +314,7 @@ function AttendanceInput({ username = '', userId = '' }) {
     };
 
     return (
-        <Container maxWidth={false} sx={{ py: 4 }}>
+        <Container maxWidth={false} sx={{ py: 0 }}>
             <Stack spacing={3}>
                 <Paper sx={{ p: 3 }}>
                     <Stack spacing={2.5}>
@@ -388,7 +388,7 @@ function AttendanceInput({ username = '', userId = '' }) {
                                 gridTemplateColumns: {
                                     xs: '1fr',
                                     sm: 'repeat(2, minmax(180px, 1fr))',
-                                    lg: '160px 140px 140px 200px auto',
+                                    lg: '140px 160px 140px 140px 200px auto',
                                 },
                                 gap: 2,
                                 alignItems: 'center',
@@ -398,6 +398,14 @@ function AttendanceInput({ username = '', userId = '' }) {
                                 backgroundColor: '#fbfdff',
                             }}
                         >
+                            <Box sx={{ gridColumn: { xs: '1', sm: '1 / -1', lg: 'auto' } }}>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
+                                    一括入力
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                    未入力日だけに反映
+                                </Typography>
+                            </Box>
                             <FormControl size="small" fullWidth>
                                 <InputLabel>デフォルト区分</InputLabel>
                                 <Select

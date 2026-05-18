@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Container, TextField, Button, Typography, Box, Grid2 as Grid, MenuItem, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio, Dialog, DialogContent, TableContainer, Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
+import { Container, TextField, Button, Typography, Box, Grid2 as Grid, MenuItem, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio, Dialog, DialogContent, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Snackbar, Alert } from '@mui/material';
 
 function ApplicationForm() {
     const [formDataList, setFormDataList] = useState([{ date: '', description: '', destination: '', category: '', amount: '', receipt: null, receiptName: '', receiptPreview: '' }]);
@@ -9,6 +9,7 @@ function ApplicationForm() {
     const [drafts, setDrafts] = useState([]);
     const [selectedDraftId, setSelectedDraftId] = useState('new');
     const [mode, setMode] = useState('list'); // 'list' or 'edit'
+    const [snackbar, setSnackbar] = useState({ open: false, message: '' });
 
     useEffect(() => {
         const savedDrafts = JSON.parse(localStorage.getItem('expenseDrafts') || '[]');
@@ -27,8 +28,10 @@ function ApplicationForm() {
     };
 
     const handleDeleteFields = (index) => {
+        if (!window.confirm('この明細行を削除しますか？')) return;
         const newFormDataList = formDataList.filter((_, i) => i !== index);
-        setFormDataList(newFormDataList);
+        setFormDataList(newFormDataList.length > 0 ? newFormDataList : [{ date: '', description: '', destination: '', category: '', amount: '', receipt: null, receiptName: '', receiptPreview: '' }]);
+        setSnackbar({ open: true, message: '明細行を削除しました' });
     };
 
     const handleReceiptUpload = (index, e) => {
@@ -64,12 +67,21 @@ function ApplicationForm() {
         setDrafts(newDrafts);
         localStorage.setItem('expenseDrafts', JSON.stringify(newDrafts));
         setSelectedDraftId(id);
-        alert('下書きを保存しました');
+        setSnackbar({ open: true, message: '下書きを保存しました' });
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        console.log('Form Data Submitted:', formDataList, 'Payment Type:', paymentType);
+        const newApplication = {
+            applicationId: `A${Date.now()}`,
+            applicationDate: new Date().toISOString().slice(0, 10),
+            paymentType,
+            details: formDataList.map(row => ({ ...row, status: '未承認' })),
+        };
+        const applications = JSON.parse(localStorage.getItem('expenseApplications') || '[]');
+        localStorage.setItem('expenseApplications', JSON.stringify([...applications, newApplication]));
+        setSnackbar({ open: true, message: '経費申請を送信しました' });
+        setMode('list');
     };
 
     const handleSelectDraft = (draftId) => {
@@ -93,8 +105,12 @@ function ApplicationForm() {
         <Container maxWidth="md" sx={{ py: 4 }}>
             {mode === 'list' && (
                 <Box>
-                    <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>経費精算 下書き一覧</Typography>
-                    <Button variant="contained" color="primary" sx={{ mb: 2 }} onClick={handleNew}>新規作成</Button>
+                    <Box className="pageHeaderRow">
+                        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>経費精算 下書き一覧</Typography>
+                        <Box className="pageActionBar">
+                            <Button variant="contained" color="primary" onClick={handleNew}>新規作成</Button>
+                        </Box>
+                    </Box>
                     <TableContainer>
                         <Table size="small">
                             <TableHead>
@@ -115,7 +131,9 @@ function ApplicationForm() {
                                         <TableCell>{draft.formDataList?.[0]?.description || '-'}</TableCell>
                                         <TableCell>{draft.paymentType}</TableCell>
                                         <TableCell>
-                                            <Button size="small" variant="outlined" onClick={() => handleSelectDraft(draft.id)}>編集</Button>
+                                            <Box className="tableActionGroup">
+                                                <Button size="small" variant="outlined" onClick={() => handleSelectDraft(draft.id)}>編集</Button>
+                                            </Box>
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -126,7 +144,6 @@ function ApplicationForm() {
             )}
             {mode === 'edit' && (
                 <Box>
-                    <Button variant="text" sx={{ mb: 2 }} onClick={() => setMode('list')}>← 一覧に戻る</Button>
                     <Box sx={{ my: 4 }}>
                         <Typography variant="h6" component="h1" gutterBottom>
                             経費精算申請
@@ -220,13 +237,7 @@ function ApplicationForm() {
                                         />
                                     </Grid>
                                     <Grid item xs={2}>
-                                        <Button
-                                            variant="outlined"
-                                            color="secondary"
-                                            onClick={() => handleDeleteFields(index)}
-                                            fullWidth
-                                            sx={{ mt: 2 }}
-                                        >
+                                        <Button variant="outlined" color="error" onClick={() => handleDeleteFields(index)} sx={{ mt: 2 }}>
                                             削除
                                         </Button>
                                     </Grid>
@@ -259,15 +270,12 @@ function ApplicationForm() {
                                     </Grid>
                                 </Grid>
                             ))}
-                            <Button variant="outlined" color="secondary" onClick={handleAddFields} fullWidth sx={{ mt: 2 }}>
-                                行追加
-                            </Button>
-                            <Button variant="contained" color="primary" type="submit" fullWidth sx={{ mt: 2 }}>
-                                送信
-                            </Button>
-                            <Button variant="outlined" color="primary" onClick={handleSaveDraft} fullWidth sx={{ mt: 2 }}>
-                                下書き保存
-                            </Button>
+                            <Box className="formActionBar">
+                                <Button className="backAction" variant="outlined" onClick={() => setMode('list')}>一覧に戻る</Button>
+                                <Button variant="outlined" color="secondary" onClick={handleAddFields}>行追加</Button>
+                                <Button variant="outlined" color="primary" onClick={handleSaveDraft}>下書き保存</Button>
+                                <Button variant="contained" color="primary" type="submit">送信</Button>
+                            </Box>
                         </form>
                     </Box>
                 </Box>
@@ -283,6 +291,11 @@ function ApplicationForm() {
                     )}
                 </DialogContent>
             </Dialog>
+            <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+                <Alert severity="success" sx={{ width: '100%' }}>
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
         </Container>
     );
 }

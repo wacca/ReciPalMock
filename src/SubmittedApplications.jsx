@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Container, Typography, Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, TextField } from '@mui/material';
+import { Container, Typography, Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, TextField, Snackbar, Alert } from '@mui/material';
 
 function SubmittedApplications() {
     // 申請単位のデータ構造に変更
     const [data, setData] = useState([]);
     const [editGroupIndexAll, setEditGroupIndexAll] = useState(null);
     const [editGroupRows, setEditGroupRows] = useState([]);
+    const [snackbar, setSnackbar] = useState({ open: false, message: '' });
 
     // データをサーバから取得する関数（モック）
     const fetchData = async () => {
@@ -40,9 +41,11 @@ function SubmittedApplications() {
     }, []);
 
     const handleCancelGroup = (groupIdx) => {
+        if (!window.confirm('この申請を取り消しますか？')) return;
         const newData = [...data];
         newData[groupIdx].details = newData[groupIdx].details.map(row => ({ ...row, status: '取消' }));
         setData(newData);
+        setSnackbar({ open: true, message: '申請を取り消しました' });
     };
 
     const handleEditGroup = (groupIdx) => {
@@ -62,6 +65,7 @@ function SubmittedApplications() {
         setData(newData);
         setEditGroupIndexAll(null);
         setEditGroupRows([]);
+        setSnackbar({ open: true, message: '申請内容を保存しました' });
     };
 
     const handleEditGroupCancel = () => {
@@ -69,12 +73,21 @@ function SubmittedApplications() {
         setEditGroupRows([]);
     };
 
+    const handleResubmitGroup = (groupIdx) => {
+        const newData = [...data];
+        newData[groupIdx].details = newData[groupIdx].details.map(row => ({ ...row, status: '未承認' }));
+        setData(newData);
+        setSnackbar({ open: true, message: '再申請しました' });
+    };
+
     return (
         <Container maxWidth="lg" sx={{ textAlign: 'left' }}>
             <Box sx={{ my: 4 }}>
-                <Typography variant="h6" component="div" gutterBottom>
-                    申請済
-                </Typography>
+                <Box className="pageHeaderRow">
+                    <Typography variant="h6" component="div">
+                        申請済
+                    </Typography>
+                </Box>
                 {data.map((group, groupIdx) => (
                     <Box key={group.applicationId} sx={{ mb: 4 }}>
                         <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
@@ -141,7 +154,7 @@ function SubmittedApplications() {
                                 <Typography variant="body2" sx={{ ml: 2, color: '#555' }}>備考: {group.remarks}</Typography>
                             )}
                         </Box>
-                        <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
+                        <Box className="formActionBar">
                             <Button variant="outlined" color="primary" onClick={() => handleEditGroup(groupIdx)}>
                                 変更
                             </Button>
@@ -149,20 +162,25 @@ function SubmittedApplications() {
                                 取消
                             </Button>
                             {group.details.every(row => row.status === '非承認') && (
-                                <Button variant="contained" color="success" onClick={() => {/* 再申請処理をここに実装 */}}>
+                                <Button variant="contained" color="success" onClick={() => handleResubmitGroup(groupIdx)}>
                                     再申請
                                 </Button>
                             )}
                         </Box>
                         {editGroupIndexAll === groupIdx && (
-                            <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
+                            <Box className="formActionBar">
+                                <Button className="backAction" variant="outlined" onClick={handleEditGroupCancel}>キャンセル</Button>
                                 <Button variant="contained" color="primary" onClick={handleEditGroupSave}>保存</Button>
-                                <Button variant="outlined" onClick={handleEditGroupCancel}>キャンセル</Button>
                             </Box>
                         )}
                     </Box>
                 ))}
             </Box>
+            <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+                <Alert severity="success" sx={{ width: '100%' }}>
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
         </Container>
     );
 }

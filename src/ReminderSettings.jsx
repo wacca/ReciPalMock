@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Container, Typography, Box, Button, TextField, Paper, Snackbar, Alert } from '@mui/material';
+import { Container, Typography, Box, Button, TextField, Paper, Snackbar, Alert, Switch, FormControlLabel } from '@mui/material';
 
 function ReminderSettings() {
     const [alertConfigs, setAlertConfigs] = useState({
@@ -25,10 +25,20 @@ function ReminderSettings() {
     };
 
     return (
-        <Container maxWidth="sm" sx={{ py: 4 }}>
-            <Paper sx={{ p: 3, mb: 4 }}>
-                <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
-                    アラート設定
+        <Container>
+            <Paper>
+                <Box className="pageHeaderRow">
+                    <Typography variant="h6">
+                        アラート設定
+                    </Typography>
+                    <Box className="pageActionBar">
+                        <Button variant="contained" color="primary" onClick={handleSave}>
+                            保存
+                        </Button>
+                    </Box>
+                </Box>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                    申請忘れや承認遅延の通知タイミングを調整します。
                 </Typography>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                     {[
@@ -37,16 +47,17 @@ function ReminderSettings() {
                         { key: 'approvalDelay', label: '承認遅延アラート' },
                         { key: 'monthlySummary', label: '月次未申請サマリーアラート' }
                     ].map(alert => (
-                        <Paper key={alert.key} sx={{ p: 2, mb: 1 }} variant="outlined">
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                <label>
-                                    <input
-                                        type="checkbox"
-                                        checked={alertConfigs[alert.key].enabled}
-                                        onChange={e => handleAlertChange(alert.key, 'enabled', e.target.checked)}
-                                    />
-                                    {alert.label}
-                                </label>
+                        <Paper key={alert.key} className="alertSettingCard" variant="outlined">
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                                <FormControlLabel
+                                    control={
+                                        <Switch
+                                            checked={alertConfigs[alert.key].enabled}
+                                            onChange={e => handleAlertChange(alert.key, 'enabled', e.target.checked)}
+                                        />
+                                    }
+                                    label={alert.label}
+                                />
                                 <TextField
                                     label="毎月何日から"
                                     type="number"
@@ -70,9 +81,6 @@ function ReminderSettings() {
                             </Box>
                         </Paper>
                     ))}
-                    <Button variant="contained" color="primary" onClick={handleSave}>
-                        保存
-                    </Button>
                 </Box>
             </Paper>
             <Snackbar open={open} autoHideDuration={3000} onClose={() => setOpen(false)}>

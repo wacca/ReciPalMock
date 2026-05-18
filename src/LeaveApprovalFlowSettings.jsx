@@ -28,6 +28,7 @@ function LeaveApprovalFlowSettings() {
     const [departments, setDepartments] = useState([]);
     const [flows, setFlows] = useState([]);
     const [open, setOpen] = useState(false);
+    const [snackbarMessage, setSnackbarMessage] = useState('');
     const [editIdx, setEditIdx] = useState(null);
     const [addDialogOpen, setAddDialogOpen] = useState(false);
     const [addType, setAddType] = useState('user');
@@ -94,12 +95,16 @@ function LeaveApprovalFlowSettings() {
         setFlows(newFlows);
         localStorage.setItem('leaveApprovalFlows', JSON.stringify(newFlows));
         setAddDialogOpen(false);
+        setSnackbarMessage('有給承認フローを登録しました');
         setOpen(true);
     };
     const handleDelete = (idx) => {
+        if (!window.confirm('この有給承認フローを削除しますか？')) return;
         const newFlows = flows.filter((_, i) => i !== idx);
         setFlows(newFlows);
         localStorage.setItem('leaveApprovalFlows', JSON.stringify(newFlows));
+        setSnackbarMessage('有給承認フローを削除しました');
+        setOpen(true);
     };
     const handleEditOpen = (idx) => {
         setEditIdx(idx);
@@ -141,17 +146,20 @@ function LeaveApprovalFlowSettings() {
         setFlows(newFlows);
         localStorage.setItem('leaveApprovalFlows', JSON.stringify(newFlows));
         setEditDialogOpen(false);
+        setSnackbarMessage('有給承認フローを保存しました');
         setOpen(true);
     };
 
     return (
         <Container maxWidth="md" sx={{ py: 4 }}>
             <Paper sx={{ p: 3, mb: 4 }}>
-                <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
-                    有給承認フロー設定
-                </Typography>
-                <Box sx={{ mb: 2, textAlign: 'right' }}>
-                    <Button variant="contained" color="primary" onClick={handleAddOpen}>新規追加</Button>
+                <Box className="pageHeaderRow">
+                    <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                        有給承認フロー設定
+                    </Typography>
+                    <Box className="pageActionBar">
+                        <Button variant="contained" color="primary" onClick={handleAddOpen}>新規追加</Button>
+                    </Box>
                 </Box>
                 <Table size="small">
                     <TableHead>
@@ -171,8 +179,10 @@ function LeaveApprovalFlowSettings() {
                                     {flow.steps.map(s => `${s.role}:${s.name}(${s.email})`).join(' → ')}
                                 </TableCell>
                                 <TableCell>
-                                    <IconButton onClick={() => handleEditOpen(idx)}><EditIcon /></IconButton>
-                                    <IconButton onClick={() => handleDelete(idx)}><DeleteIcon /></IconButton>
+                                    <Box className="tableActionGroup">
+                                        <IconButton onClick={() => handleEditOpen(idx)}><EditIcon /></IconButton>
+                                        <IconButton onClick={() => handleDelete(idx)}><DeleteIcon /></IconButton>
+                                    </Box>
                                 </TableCell>
                             </TableRow>
                         ))}
@@ -266,12 +276,12 @@ function LeaveApprovalFlowSettings() {
                             ))}
                         </TableBody>
                     </Table>
-                    <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
+                    <Box className="inlineActionGroup" sx={{ mt: 2 }}>
                         <Button variant="outlined" onClick={handleAddStepAdd}>承認者追加</Button>
                     </Box>
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={handleAddClose}>キャンセル</Button>
+                    <Button variant="outlined" onClick={handleAddClose}>キャンセル</Button>
                     <Button variant="contained" onClick={handleAddSave}>登録</Button>
                 </DialogActions>
             </Dialog>
@@ -362,18 +372,18 @@ function LeaveApprovalFlowSettings() {
                             ))}
                         </TableBody>
                     </Table>
-                    <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
+                    <Box className="inlineActionGroup" sx={{ mt: 2 }}>
                         <Button variant="outlined" onClick={handleEditStepAdd}>承認者追加</Button>
                     </Box>
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={handleEditClose}>キャンセル</Button>
+                    <Button variant="outlined" onClick={handleEditClose}>キャンセル</Button>
                     <Button variant="contained" onClick={handleEditSave}>保存</Button>
                 </DialogActions>
             </Dialog>
             <Snackbar open={open} autoHideDuration={2000} onClose={() => setOpen(false)}>
                 <Alert severity="success" sx={{ width: '100%' }}>
-                    有給承認フローを保存しました
+                    {snackbarMessage}
                 </Alert>
             </Snackbar>
         </Container>

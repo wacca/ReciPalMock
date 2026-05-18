@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Container, Typography, Box, TextField, Button, MenuItem, FormControl, InputLabel, Select, Dialog, DialogTitle, DialogContent, DialogActions, TableContainer, Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
+import { Container, Typography, Box, TextField, Button, MenuItem, FormControl, InputLabel, Select, Snackbar, Alert, TableContainer, Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
 
 const LEAVE_TYPES = [
     '有給休暇',
@@ -17,7 +17,7 @@ function LeaveApplication() {
     const [leaveType, setLeaveType] = useState('有給休暇');
     const [date, setDate] = useState('');
     const [reason, setReason] = useState('');
-    const [open, setOpen] = useState(false);
+    const [snackbar, setSnackbar] = useState({ open: false, message: '' });
 
     useEffect(() => {
         // サンプルデータがなければ初期投入
@@ -74,9 +74,11 @@ function LeaveApplication() {
     };
 
     const handleDelete = (id) => {
+        if (!window.confirm('この下書きを削除しますか？')) return;
         const newList = leaveList.filter(d => d.id !== id);
         setLeaveList(newList);
         localStorage.setItem('leaveDrafts', JSON.stringify(newList));
+        setSnackbar({ open: true, message: '下書きを削除しました' });
     };
 
     const handleSaveDraft = () => {
@@ -92,6 +94,7 @@ function LeaveApplication() {
         localStorage.setItem('leaveDrafts', JSON.stringify(newList));
         setEditId(id);
         setMode('list');
+        setSnackbar({ open: true, message: '下書きを保存しました' });
     };
 
     const handleSubmit = (e) => {
@@ -111,11 +114,10 @@ function LeaveApplication() {
         const newList = leaveList.filter(d => d.id !== newApp.id);
         setLeaveList(newList);
         localStorage.setItem('leaveDrafts', JSON.stringify(newList));
-        setOpen(true);
+        setSnackbar({ open: true, message: '勤怠（休暇）申請を送信しました' });
         resetForm();
         setMode('list');
     };
-    const handleClose = () => setOpen(false);
     const handleNew = () => {
         resetForm();
         setMode('edit');
@@ -125,8 +127,12 @@ function LeaveApplication() {
         <Container maxWidth="sm" sx={{ py: 4 }}>
             {mode === 'list' && (
                 <Box>
-                    <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>勤怠（休暇）下書き一覧</Typography>
-                    <Button variant="contained" color="primary" sx={{ mb: 2 }} onClick={handleNew}>新規作成</Button>
+                    <Box className="pageHeaderRow">
+                        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>勤怠（休暇）下書き一覧</Typography>
+                        <Box className="pageActionBar">
+                            <Button variant="contained" color="primary" onClick={handleNew}>新規作成</Button>
+                        </Box>
+                    </Box>
                     <TableContainer>
                         <Table size="small">
                             <TableHead>
@@ -147,8 +153,10 @@ function LeaveApplication() {
                                         <TableCell>{draft.leaveType}</TableCell>
                                         <TableCell>{draft.date}</TableCell>
                                         <TableCell>
-                                            <Button size="small" variant="outlined" onClick={() => handleEdit(draft.id)}>編集</Button>
-                                            <Button size="small" color="error" variant="outlined" sx={{ ml: 1 }} onClick={() => handleDelete(draft.id)}>削除</Button>
+                                            <Box className="tableActionGroup">
+                                                <Button size="small" variant="outlined" onClick={() => handleEdit(draft.id)}>編集</Button>
+                                                <Button size="small" color="error" variant="outlined" onClick={() => handleDelete(draft.id)}>削除</Button>
+                                            </Box>
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -159,7 +167,6 @@ function LeaveApplication() {
             )}
             {mode === 'edit' && (
                 <Box>
-                    <Button variant="text" sx={{ mb: 2 }} onClick={() => setMode('list')}>← 一覧に戻る</Button>
                     <Box sx={{ my: 4 }}>
                         <Typography variant="h6" component="h1" gutterBottom>
                             勤怠（休暇）申請
@@ -197,25 +204,20 @@ function LeaveApplication() {
                                 fullWidth
                                 sx={{ mb: 2 }}
                             />
-                            <Button type="submit" variant="contained" color="primary" fullWidth sx={{ mb: 2 }}>
-                                申請
-                            </Button>
-                            <Button variant="outlined" color="primary" onClick={handleSaveDraft} fullWidth>
-                                下書き保存
-                            </Button>
+                            <Box className="formActionBar">
+                                <Button className="backAction" variant="outlined" onClick={() => setMode('list')}>一覧に戻る</Button>
+                                <Button variant="outlined" color="primary" onClick={handleSaveDraft}>下書き保存</Button>
+                                <Button type="submit" variant="contained" color="primary">申請</Button>
+                            </Box>
                         </form>
                     </Box>
                 </Box>
             )}
-            <Dialog open={open} onClose={handleClose}>
-                <DialogTitle>申請完了</DialogTitle>
-                <DialogContent>
-                    <Typography>申請を受け付けました。</Typography>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={handleClose}>閉じる</Button>
-                </DialogActions>
-            </Dialog>
+            <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+                <Alert severity="success" sx={{ width: '100%' }}>
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
         </Container>
     );
 }

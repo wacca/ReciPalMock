@@ -10,6 +10,7 @@ function AccountManagement() {
     const [editIdx, setEditIdx] = useState(null);
     const [editAccount, setEditAccount] = useState({});
     const [snackbarOpen, setSnackbarOpen] = useState(false);
+    const [snackbarMessage, setSnackbarMessage] = useState('');
     const [departments, setDepartments] = useState([]);
     const [positions, setPositions] = useState([]);
     const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -50,13 +51,17 @@ function AccountManagement() {
         setAccounts(newAccounts);
         localStorage.setItem('accounts', JSON.stringify(newAccounts));
         setAddDialogOpen(false);
+        setSnackbarMessage('アカウントを追加しました');
         setSnackbarOpen(true);
     };
 
     const handleDelete = (idx) => {
+        if (!window.confirm('このアカウントを削除しますか？')) return;
         const newAccounts = accounts.filter((_, i) => i !== idx);
         setAccounts(newAccounts);
         localStorage.setItem('accounts', JSON.stringify(newAccounts));
+        setSnackbarMessage('アカウントを削除しました');
+        setSnackbarOpen(true);
     };
 
     const handleEdit = (idx) => {
@@ -73,6 +78,8 @@ function AccountManagement() {
         localStorage.setItem('accounts', JSON.stringify(newAccounts));
         setEditIdx(null);
         setEditAccount({});
+        setSnackbarMessage('アカウントを保存しました');
+        setSnackbarOpen(true);
     };
     const handleCancel = () => {
         setEditIdx(null);
@@ -82,11 +89,13 @@ function AccountManagement() {
     return (
         <Container maxWidth="md" sx={{ py: 4 }}>
             <Paper sx={{ p: 3, mb: 4 }}>
-                <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
-                    アカウント管理
-                </Typography>
-                <Box sx={{ mb: 2, textAlign: 'right' }}>
-                    <Button variant="contained" color="primary" onClick={handleAddOpen}>新規登録</Button>
+                <Box className="pageHeaderRow">
+                    <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                        アカウント管理
+                    </Typography>
+                    <Box className="pageActionBar">
+                        <Button variant="contained" color="primary" onClick={handleAddOpen}>新規登録</Button>
+                    </Box>
                 </Box>
                 <Table size="small">
                     <TableHead>
@@ -120,8 +129,10 @@ function AccountManagement() {
                                         <TableCell><TextField size="small" value={editAccount.email} onChange={e => handleEditChange('email', e.target.value)} /></TableCell>
                                         <TableCell><Switch checked={editAccount.status} onChange={e => handleEditChange('status', e.target.checked)} /></TableCell>
                                         <TableCell>
-                                            <IconButton onClick={() => handleSave(idx)}><SaveIcon /></IconButton>
-                                            <IconButton onClick={handleCancel}><CancelIcon /></IconButton>
+                                            <Box className="tableActionGroup">
+                                                <IconButton onClick={() => handleSave(idx)}><SaveIcon /></IconButton>
+                                                <IconButton onClick={handleCancel}><CancelIcon /></IconButton>
+                                            </Box>
                                         </TableCell>
                                     </>
                                 ) : (
@@ -133,8 +144,10 @@ function AccountManagement() {
                                         <TableCell>{acc.email}</TableCell>
                                         <TableCell>{acc.status ? '有効' : '無効'}</TableCell>
                                         <TableCell>
-                                            <IconButton onClick={() => handleEdit(idx)}><EditIcon /></IconButton>
-                                            <IconButton onClick={() => handleDelete(idx)}><DeleteIcon /></IconButton>
+                                            <Box className="tableActionGroup">
+                                                <IconButton onClick={() => handleEdit(idx)}><EditIcon /></IconButton>
+                                                <IconButton onClick={() => handleDelete(idx)}><DeleteIcon /></IconButton>
+                                            </Box>
                                         </TableCell>
                                     </>
                                 )}
@@ -163,13 +176,13 @@ function AccountManagement() {
                     </Box>
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={handleAddClose}>キャンセル</Button>
+                    <Button variant="outlined" onClick={handleAddClose}>キャンセル</Button>
                     <Button variant="contained" onClick={handleAdd}>登録</Button>
                 </DialogActions>
             </Dialog>
             <Snackbar open={snackbarOpen} autoHideDuration={3000} onClose={() => setSnackbarOpen(false)}>
                 <Alert severity="success" sx={{ width: '100%' }}>
-                    アカウントを追加しました
+                    {snackbarMessage}
                 </Alert>
             </Snackbar>
         </Container>

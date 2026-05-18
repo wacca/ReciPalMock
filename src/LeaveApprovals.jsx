@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Container, Typography, Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Container, Typography, Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert } from '@mui/material';
 
 function LeaveApprovals() {
     const [data, setData] = useState([]);
     const [commentMap, setCommentMap] = useState({});
     const [open, setOpen] = useState(false);
     const [selected, setSelected] = useState(null);
+    const [snackbar, setSnackbar] = useState({ open: false, message: '' });
 
     useEffect(() => {
         // モックデータ取得
@@ -19,6 +20,7 @@ function LeaveApprovals() {
         setData(newData);
         localStorage.setItem('leaveApplications', JSON.stringify(newData));
         setCommentMap({ ...commentMap, [newData[idx].id]: '' });
+        setSnackbar({ open: true, message: status === '承認済' ? '勤怠（休暇）申請を承認しました' : '勤怠（休暇）申請を非承認にしました' });
     };
     const handleOpen = (row) => {
         setSelected(row);
@@ -28,9 +30,11 @@ function LeaveApprovals() {
 
     return (
         <Container maxWidth="md" sx={{ py: 4 }}>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
-                勤怠（休暇）承認
-            </Typography>
+            <Box className="pageHeaderRow">
+                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                    勤怠（休暇）承認
+                </Typography>
+            </Box>
             <TableContainer component={Paper}>
                 <Table size="small">
                     <TableHead>
@@ -55,9 +59,11 @@ function LeaveApprovals() {
                                 <TableCell>{row.reason}</TableCell>
                                 <TableCell>{row.status || '申請中'}</TableCell>
                                 <TableCell>
-                                    <Button size="small" variant="outlined" onClick={() => handleOpen(row)}>詳細</Button>
-                                    <Button size="small" color="primary" variant="contained" sx={{ ml: 1 }} onClick={() => handleStatus(idx, '承認済')}>承認</Button>
-                                    <Button size="small" color="error" variant="contained" sx={{ ml: 1 }} onClick={() => handleStatus(idx, '非承認')}>非承認</Button>
+                                    <Box className="tableActionGroup">
+                                        <Button size="small" variant="outlined" onClick={() => handleOpen(row)}>詳細</Button>
+                                        <Button size="small" color="primary" variant="contained" onClick={() => handleStatus(idx, '承認済')}>承認</Button>
+                                        <Button size="small" color="error" variant="contained" onClick={() => handleStatus(idx, '非承認')}>非承認</Button>
+                                    </Box>
                                 </TableCell>
                             </TableRow>
                         ))}
@@ -77,9 +83,14 @@ function LeaveApprovals() {
                     )}
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={handleClose}>閉じる</Button>
+                    <Button variant="contained" onClick={handleClose}>閉じる</Button>
                 </DialogActions>
             </Dialog>
+            <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+                <Alert severity="success" sx={{ width: '100%' }}>
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
         </Container>
     );
 }

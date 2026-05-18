@@ -23,10 +23,14 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import DoneIcon from '@mui/icons-material/Done';
 import ApprovalIcon from '@mui/icons-material/ThumbUp';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import EventAvailableIcon from '@mui/icons-material/EventAvailable';
+import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import { Settings, ListAlt } from '@mui/icons-material';
 
 import Login from './Login';
 
+const Dashboard = lazy(() => import('./Dashboard'));
 const ApplicationForm = lazy(() => import('./ApplicationForm'));
 const SubmittedApplications = lazy(() => import('./SubmittedApplications'));
 const Approvals = lazy(() => import('./Approvals'));
@@ -43,6 +47,55 @@ const FlowSettingsMenu = lazy(() => import('./FlowSettingsMenu'));
 const PermissionSettings = lazy(() => import('./PermissionSettings'));
 
 const drawerWidth = 236;
+
+const menuGroups = [
+    {
+        title: 'ホーム',
+        items: [
+            { label: 'ダッシュボード', path: '/dashboard', icon: <DashboardIcon />, subtitle: '業務の入口' },
+        ],
+    },
+    {
+        title: '申請',
+        items: [
+            { label: '経費申請', path: '/application', icon: <AssignmentIcon />, subtitle: '経費の作成' },
+            { label: '経費申請済', path: '/submitted', icon: <DoneIcon />, subtitle: '経費の履歴' },
+            { label: '経費承認', path: '/approvals', icon: <ApprovalIcon />, subtitle: '経費の承認' },
+            { label: '休暇申請', path: '/leave-application', icon: <EventAvailableIcon />, subtitle: '休暇の作成' },
+            { label: '休暇申請済', path: '/leave-submitted', icon: <DoneIcon />, subtitle: '休暇の履歴' },
+            { label: '休暇承認', path: '/leave-approvals', icon: <ApprovalIcon />, subtitle: '休暇の承認' },
+        ],
+    },
+    {
+        title: '勤怠',
+        items: [
+            { label: '勤怠入力', path: '/attendance-input', icon: <AccessTimeIcon />, subtitle: '月次タイムシート' },
+        ],
+    },
+    {
+        title: '管理',
+        items: [
+            {
+                label: '申請フロー設定',
+                path: '/flow-settings-menu',
+                icon: <Settings />,
+                subtitle: '経費/休暇の承認経路',
+                matchPaths: ['/flow-settings-menu', '/approval-flow-settings', '/leave-approval-flow-settings'],
+            },
+            { label: 'アラート設定', path: '/reminder-settings', icon: <ListAlt />, subtitle: '通知条件' },
+            { label: 'アカウント管理', path: '/account-management', icon: <ManageAccountsIcon />, subtitle: '利用者管理' },
+            { label: 'マスタ管理', path: '/master-settings', icon: <Settings />, subtitle: '部署/役職' },
+            { label: '権限設定', path: '/permission-settings', icon: <AccountCircleIcon />, subtitle: 'ロール管理' },
+        ],
+    },
+];
+
+const allMenuItems = menuGroups.flatMap(group => group.items);
+
+const matchesPath = (item, pathname) => {
+    const matchPaths = item.matchPaths || [item.path];
+    return matchPaths.some(path => pathname === path || pathname.startsWith(`${path}/`));
+};
 
 // RecrovaロゴSVG
 const RecrovaLogo = () => (
@@ -66,6 +119,7 @@ function App() {
         setUsername(username);
         setUserId(userId);
         setIsLoggedIn(true);
+        navigate('/dashboard', { replace: true });
     };
 
     const handleMenuOpen = (event) => {
@@ -81,27 +135,7 @@ function App() {
         handleMenuClose();
     };
 
-    const menuItems = [
-        { label: '経費申請', path: '/application', icon: <AssignmentIcon /> },
-        { label: '経費申請済', path: '/submitted', icon: <DoneIcon /> },
-        { label: '経費承認', path: '/approvals', icon: <ApprovalIcon /> },
-        { divider: true },
-        { label: '休暇申請', path: '/leave-application', icon: <AssignmentIcon /> },
-        { label: '休暇申請済', path: '/leave-submitted', icon: <DoneIcon /> },
-        { label: '休暇承認', path: '/leave-approvals', icon: <ApprovalIcon /> },
-        { label: '勤怠入力', path: '/attendance-input', icon: <AccessTimeIcon /> },
-        { divider: true },
-        {
-            label: '申請フロー設定',
-            path: '/flow-settings-menu',
-            icon: <Settings />,
-            matchPaths: ['/flow-settings-menu', '/approval-flow-settings', '/leave-approval-flow-settings'],
-        },
-        { label: 'アラート設定', path: '/reminder-settings', icon: <ListAlt /> },
-        { label: 'アカウント管理', path: '/account-management', icon: <AccountCircleIcon /> },
-        { label: 'マスタ管理', path: '/master-settings', icon: <Settings /> },
-        { label: '権限設定', path: '/permission-settings', icon: <Settings /> },
-    ];
+    const activeItem = allMenuItems.find(item => matchesPath(item, location.pathname)) || allMenuItems[0];
 
     if (!isLoggedIn) {
         return <Login onLogin={handleLogin} />;
@@ -117,9 +151,14 @@ function App() {
                             Recrova
                         </Typography>
                     </Box>
-                    <Typography variant="body2" sx={{ color: 'rgba(255,255,255,.78)' }}>
-                        申請・承認モック
-                    </Typography>
+                    <Box className="topBarTitle">
+                        <Typography variant="subtitle1">
+                            {activeItem.label}
+                        </Typography>
+                        <Typography variant="caption">
+                            {activeItem.subtitle}
+                        </Typography>
+                    </Box>
                     <Box sx={{ flexGrow: 1 }} />
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Typography variant="body2" noWrap sx={{ maxWidth: { xs: 160, sm: 320 } }}>
@@ -140,7 +179,7 @@ function App() {
                     </Box>
                 </Toolbar>
             </AppBar>
-            <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+            <Box className="appShell">
                 <Drawer
                     variant="permanent"
                     className="drawer"
@@ -152,42 +191,49 @@ function App() {
                     }}
                 >
                     <Toolbar />
-                    <List sx={{ px: 1.5, py: 2 }}>
-                        {menuItems.map((item, idx) => {
-                            if (item.divider) {
-                                return <Divider key={`divider-${idx}`} sx={{ my: 1 }} />;
-                            }
-                            const matchPaths = item.matchPaths || [item.path];
-                            const isActive = matchPaths.some(path => location.pathname === path || location.pathname.startsWith(`${path}/`));
-                            return (
-                                <ListItem
-                                    key={item.path}
-                                    disablePadding
-                                    className={isActive ? 'active' : ''}
-                                >
-                                    <ListItemButton
-                                        selected={isActive}
-                                        onClick={() => navigate(item.path)}
-                                    >
-                                        <ListItemIcon>{item.icon}</ListItemIcon>
-                                        <ListItemText primary={item.label} />
-                                    </ListItemButton>
-                                </ListItem>
-                            );
-                        })}
-                    </List>
+                    <Box className="drawerContent">
+                        {menuGroups.map((group, groupIndex) => (
+                            <Box key={group.title} className="navGroup">
+                                {groupIndex > 0 && <Divider sx={{ my: 1.25 }} />}
+                                <Typography className="navGroupLabel" variant="caption">
+                                    {group.title}
+                                </Typography>
+                                <List disablePadding>
+                                    {group.items.map(item => {
+                                        const isActive = matchesPath(item, location.pathname);
+                                        return (
+                                            <ListItem
+                                                key={item.path}
+                                                disablePadding
+                                                className={isActive ? 'active' : ''}
+                                            >
+                                                <ListItemButton
+                                                    selected={isActive}
+                                                    onClick={() => navigate(item.path)}
+                                                >
+                                                    <ListItemIcon>{item.icon}</ListItemIcon>
+                                                    <ListItemText primary={item.label} />
+                                                </ListItemButton>
+                                            </ListItem>
+                                        );
+                                    })}
+                                </List>
+                            </Box>
+                        ))}
+                    </Box>
                 </Drawer>
-                <Box component="main" sx={{ flexGrow: 1, p: { xs: 2, md: 3 }, minWidth: 0 }}>
+                <Box component="main" className="pageViewport">
                     <Toolbar />
                     <Suspense
                         fallback={
-                            <Box sx={{ py: 4, color: 'text.secondary' }}>
+                            <Box className="contentLoading">
                                 読み込み中...
                             </Box>
                         }
                     >
                         <Routes>
-                            <Route path="/" element={<Navigate to="/application" replace />} />
+                            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                            <Route path="/dashboard" element={<Dashboard username={username} />} />
                             <Route path="/application" element={<ApplicationForm />} />
                             <Route path="/submitted" element={<SubmittedApplications />} />
                             <Route path="/approvals" element={<Approvals />} />
@@ -202,7 +248,7 @@ function App() {
                             <Route path="/leave-approvals" element={<LeaveApprovals />} />
                             <Route path="/attendance-input" element={<AttendanceInput username={username} userId={userId} />} />
                             <Route path="/permission-settings" element={<PermissionSettings />} />
-                            <Route path="*" element={<Navigate to="/application" replace />} />
+                            <Route path="*" element={<Navigate to="/dashboard" replace />} />
                         </Routes>
                     </Suspense>
                 </Box>

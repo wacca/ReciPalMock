@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Container, Typography, Box, Button, Paper, Table, TableHead, TableRow, TableCell, TableBody, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
+import { Container, Typography, Box, Button, Paper, Table, TableHead, TableRow, TableCell, TableBody, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl, InputLabel, Select, MenuItem, Snackbar, Alert } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -19,6 +19,7 @@ function MasterSettings() {
     const [posDialogOpen, setPosDialogOpen] = useState(false);
     const [posName, setPosName] = useState('');
     const [posEditIdx, setPosEditIdx] = useState(null);
+    const [snackbar, setSnackbar] = useState({ open: false, message: '' });
 
     useEffect(() => {
         let dep = null;
@@ -68,12 +69,15 @@ function MasterSettings() {
         setDeptDialogOpen(false);
         setDeptName('');
         setDeptEditIdx(null);
+        setSnackbar({ open: true, message: deptEditIdx !== null ? '部署を保存しました' : '部署を追加しました' });
     };
     const handleDeptDelete = (idx) => {
+        if (!window.confirm('この部署を削除しますか？')) return;
         let newDeps = departments.filter((_, i) => i !== idx);
         setDepartments(newDeps);
         localStorage.setItem('departments', JSON.stringify(newDeps));
         if (selectedDeptIdx === idx) setSelectedDeptIdx(0);
+        setSnackbar({ open: true, message: '部署を削除しました' });
     };
 
     // 役職追加・編集
@@ -100,21 +104,26 @@ function MasterSettings() {
         setPosDialogOpen(false);
         setPosName('');
         setPosEditIdx(null);
+        setSnackbar({ open: true, message: posEditIdx !== null ? '役職を保存しました' : '役職を追加しました' });
     };
     const handlePosDelete = (idx) => {
+        if (!window.confirm('この役職を削除しますか？')) return;
         let newDeps = [...departments];
         newDeps[selectedDeptIdx].positions = newDeps[selectedDeptIdx].positions.filter((_, i) => i !== idx);
         setDepartments(newDeps);
         localStorage.setItem('departments', JSON.stringify(newDeps));
+        setSnackbar({ open: true, message: '役職を削除しました' });
     };
 
     return (
         <Container maxWidth="sm" sx={{ py: 4 }}>
             <Paper sx={{ p: 3, mb: 4 }}>
-                <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
-                    所属部署・役職マスタ
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                <Box className="pageHeaderRow">
+                    <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                        所属部署・役職マスタ
+                    </Typography>
+                </Box>
+                <Box className="inlineActionGroup" sx={{ mb: 2 }}>
                     <FormControl size="small" sx={{ minWidth: 200 }}>
                         <InputLabel>部署を選択</InputLabel>
                         <Select
@@ -131,7 +140,12 @@ function MasterSettings() {
                     <IconButton color="primary" onClick={() => handleDeptDialogOpen(selectedDeptIdx)}><EditIcon /></IconButton>
                     <IconButton color="error" onClick={() => handleDeptDelete(selectedDeptIdx)} disabled={departments.length <= 1}><DeleteIcon /></IconButton>
                 </Box>
-                <Typography variant="subtitle1" sx={{ mb: 1 }}>役職一覧</Typography>
+                <Box className="sectionHeaderRow">
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>役職一覧</Typography>
+                    <Box className="pageActionBar">
+                        <Button variant="outlined" startIcon={<AddIcon />} onClick={() => handlePosDialogOpen()}>役職追加</Button>
+                    </Box>
+                </Box>
                 <Table size="small">
                     <TableHead>
                         <TableRow>
@@ -147,8 +161,10 @@ function MasterSettings() {
                                     <TableCell>{departments[selectedDeptIdx].name}</TableCell>
                                     <TableCell>{pos.name}</TableCell>
                                     <TableCell>
-                                        <IconButton size="small" onClick={() => handlePosDialogOpen(idx)}><EditIcon fontSize="small" /></IconButton>
-                                        <IconButton size="small" onClick={() => handlePosDelete(idx)}><DeleteIcon fontSize="small" /></IconButton>
+                                        <Box className="tableActionGroup">
+                                            <IconButton size="small" onClick={() => handlePosDialogOpen(idx)}><EditIcon fontSize="small" /></IconButton>
+                                            <IconButton size="small" onClick={() => handlePosDelete(idx)}><DeleteIcon fontSize="small" /></IconButton>
+                                        </Box>
                                     </TableCell>
                                 </TableRow>
                             ))
@@ -157,9 +173,6 @@ function MasterSettings() {
                         )}
                     </TableBody>
                 </Table>
-                <Box sx={{ mt: 2 }}>
-                    <IconButton color="primary" onClick={() => handlePosDialogOpen()}><AddIcon /></IconButton>
-                </Box>
             </Paper>
             {/* 部署追加・編集ダイアログ */}
             <Dialog open={deptDialogOpen} onClose={handleDeptDialogClose} maxWidth="xs" fullWidth>
@@ -174,7 +187,7 @@ function MasterSettings() {
                     />
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={handleDeptDialogClose}>キャンセル</Button>
+                    <Button variant="outlined" onClick={handleDeptDialogClose}>キャンセル</Button>
                     <Button variant="contained" onClick={handleDeptSave}>保存</Button>
                 </DialogActions>
             </Dialog>
@@ -191,10 +204,15 @@ function MasterSettings() {
                     />
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={handlePosDialogClose}>キャンセル</Button>
+                    <Button variant="outlined" onClick={handlePosDialogClose}>キャンセル</Button>
                     <Button variant="contained" onClick={handlePosSave}>保存</Button>
                 </DialogActions>
             </Dialog>
+            <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+                <Alert severity="success" sx={{ width: '100%' }}>
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
         </Container>
     );
 }
