@@ -4,16 +4,11 @@ import { Container, Typography, Box, Table, TableBody, TableCell, TableContainer
 function SubmittedApplications() {
     // 申請単位のデータ構造に変更
     const [data, setData] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [editGroupIndex, setEditGroupIndex] = useState(null);
-    const [editRowIndex, setEditRowIndex] = useState(null);
-    const [editRow, setEditRow] = useState({});
     const [editGroupIndexAll, setEditGroupIndexAll] = useState(null);
     const [editGroupRows, setEditGroupRows] = useState([]);
 
     // データをサーバから取得する関数（モック）
     const fetchData = async () => {
-        setLoading(true);
         try {
             // 申請単位でグループ化したモックデータ
             const response = [
@@ -37,39 +32,12 @@ function SubmittedApplications() {
             setData(response);
         } catch (error) {
             console.error('データの取得に失敗しました:', error);
-        } finally {
-            setLoading(false);
         }
     };
 
     useEffect(() => {
         fetchData();
     }, []);
-
-    const handleEdit = (groupIdx, rowIdx) => {
-        setEditGroupIndex(groupIdx);
-        setEditRowIndex(rowIdx);
-        setEditRow({ ...data[groupIdx].details[rowIdx] });
-    };
-
-    const handleResubmit = () => {
-        const newData = [...data];
-        newData[editGroupIndex].details[editRowIndex] = { ...editRow, status: '未承認' };
-        setData(newData);
-        setEditGroupIndex(null);
-        setEditRowIndex(null);
-    };
-
-    const handleCancel = () => {
-        setEditGroupIndex(null);
-        setEditRowIndex(null);
-    };
-
-    const handleDelete = (groupIdx, rowIdx) => {
-        const newData = [...data];
-        newData[groupIdx].details = newData[groupIdx].details.filter((_, i) => i !== rowIdx);
-        setData(newData);
-    };
 
     const handleCancelGroup = (groupIdx) => {
         const newData = [...data];
@@ -110,7 +78,7 @@ function SubmittedApplications() {
                 {data.map((group, groupIdx) => (
                     <Box key={group.applicationId} sx={{ mb: 4 }}>
                         <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-                            申請ID: {group.applicationId}　申請日: {group.applicationDate}
+                            申請ID: {group.applicationId} 申請日: {group.applicationDate}
                             <span
                                 style={{
                                     marginLeft: 16,

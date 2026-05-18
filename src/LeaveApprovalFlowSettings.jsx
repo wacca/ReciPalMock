@@ -29,7 +29,6 @@ function LeaveApprovalFlowSettings() {
     const [flows, setFlows] = useState([]);
     const [open, setOpen] = useState(false);
     const [editIdx, setEditIdx] = useState(null);
-    const [editFlow, setEditFlow] = useState(null);
     const [addDialogOpen, setAddDialogOpen] = useState(false);
     const [addType, setAddType] = useState('user');
     const [addTarget, setAddTarget] = useState(null);
@@ -169,7 +168,7 @@ function LeaveApprovalFlowSettings() {
                                 <TableCell>{flow.type === 'user' ? '個人' : '部署'}</TableCell>
                                 <TableCell>{flow.target}</TableCell>
                                 <TableCell>
-                                    {flow.steps.map((s, i) => `${s.role}:${s.name}(${s.email})`).join(' → ')}
+                                    {flow.steps.map(s => `${s.role}:${s.name}(${s.email})`).join(' → ')}
                                 </TableCell>
                                 <TableCell>
                                     <IconButton onClick={() => handleEditOpen(idx)}><EditIcon /></IconButton>
@@ -372,6 +371,11 @@ function LeaveApprovalFlowSettings() {
                     <Button variant="contained" onClick={handleEditSave}>保存</Button>
                 </DialogActions>
             </Dialog>
+            <Snackbar open={open} autoHideDuration={2000} onClose={() => setOpen(false)}>
+                <Alert severity="success" sx={{ width: '100%' }}>
+                    有給承認フローを保存しました
+                </Alert>
+            </Snackbar>
         </Container>
     );
 }

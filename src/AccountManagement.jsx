@@ -9,7 +9,6 @@ function AccountManagement() {
     const [accounts, setAccounts] = useState([]);
     const [editIdx, setEditIdx] = useState(null);
     const [editAccount, setEditAccount] = useState({});
-    const [open, setOpen] = useState(false);
     const [snackbarOpen, setSnackbarOpen] = useState(false);
     const [departments, setDepartments] = useState([]);
     const [positions, setPositions] = useState([]);

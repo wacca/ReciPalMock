@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Container, TextField, Button, Typography, Box, Grid2 as Grid, MenuItem, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio, Dialog, DialogContent, Select, TableContainer, Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
+import { Container, TextField, Button, Typography, Box, Grid2 as Grid, MenuItem, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio, Dialog, DialogContent, TableContainer, Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
 
-function ApplicationForm({ username }) {
+function ApplicationForm() {
     const [formDataList, setFormDataList] = useState([{ date: '', description: '', destination: '', category: '', amount: '', receipt: null, receiptName: '', receiptPreview: '' }]);
     const [paymentType, setPaymentType] = useState('個人立替払用');
     const [openDialog, setOpenDialog] = useState(false);

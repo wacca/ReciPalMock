@@ -24,7 +24,7 @@ function MasterSettings() {
         let dep = null;
         try {
             dep = JSON.parse(localStorage.getItem('departments') || 'null');
-        } catch (e) {
+        } catch {
             dep = null;
         }
         if (!dep || !Array.isArray(dep) || dep.length === 0) {

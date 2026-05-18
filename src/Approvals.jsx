@@ -4,12 +4,10 @@ import { Container, Typography, Box, Table, TableBody, TableCell, TableContainer
 function Approvals() {
     // 申請単位のデータ構造に変更
     const [data, setData] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [commentMap, setCommentMap] = useState({}); // 申請単位のコメント管理
 
     // データをサーバから取得する関数（モック）
     const fetchData = async () => {
-        setLoading(true);
         try {
             // 申請単位でグループ化したモックデータ
             const response = [
@@ -32,21 +30,12 @@ function Approvals() {
             setData(response);
         } catch (error) {
             console.error('データの取得に失敗しました:', error);
-        } finally {
-            setLoading(false);
         }
     };
 
     useEffect(() => {
         fetchData();
     }, []);
-
-    // ステータスを変更する関数
-    const handleChangeStatus = (groupIdx, rowIdx, newStatus) => {
-        const newData = [...data];
-        newData[groupIdx].details[rowIdx] = { ...newData[groupIdx].details[rowIdx], status: newStatus };
-        setData(newData);
-    };
 
     // 申請単位で承認・非承認
     const handleGroupStatus = (groupIdx, newStatus) => {
@@ -73,7 +62,7 @@ function Approvals() {
                 {data.map((group, groupIdx) => (
                     <Box key={group.applicationId} sx={{ mb: 4 }}>
                         <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-                            申請ID: {group.applicationId}　申請日: {group.applicationDate}
+                            申請ID: {group.applicationId} 申請日: {group.applicationDate}
                         </Typography>
                         <TableContainer component={Paper}>
                             <Table>

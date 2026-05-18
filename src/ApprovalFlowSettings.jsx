@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Container, Typography, Box, Button, TextField, Paper, Table, TableHead, TableRow, TableCell, TableBody, IconButton, Select, MenuItem, FormControl, InputLabel, Snackbar, Alert, Tabs, Tab, Autocomplete, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Container, Typography, Box, Button, TextField, Paper, Table, TableHead, TableRow, TableCell, TableBody, IconButton, Select, MenuItem, FormControl, InputLabel, Snackbar, Alert, Autocomplete, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 
@@ -33,13 +33,11 @@ const SAMPLE_FLOWS = [
 ];
 
 function ApprovalFlowSettings() {
-    const [tab, setTab] = useState(0); // 0: 個人単位, 1: 部署単位
     const [accounts, setAccounts] = useState([]);
     const [departments, setDepartments] = useState([]);
     const [flows, setFlows] = useState([]);
     const [open, setOpen] = useState(false);
     const [editIdx, setEditIdx] = useState(null);
-    const [editFlow, setEditFlow] = useState(null);
     const [addDialogOpen, setAddDialogOpen] = useState(false);
     const [addType, setAddType] = useState('user');
     const [addTarget, setAddTarget] = useState(null);
@@ -185,7 +183,7 @@ function ApprovalFlowSettings() {
                                 <TableCell>{flow.type === 'user' ? '個人' : '部署'}</TableCell>
                                 <TableCell>{flow.target}</TableCell>
                                 <TableCell>
-                                    {flow.steps.map((s, i) => `${s.role}:${s.name}(${s.email})`).join(' → ')}
+                                    {flow.steps.map(s => `${s.role}:${s.name}(${s.email})`).join(' → ')}
                                 </TableCell>
                                 <TableCell>
                                     <IconButton onClick={() => handleEditOpen(idx)}><EditIcon /></IconButton>

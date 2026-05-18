@@ -1,95 +1,65 @@
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  min-height: 100vh;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.appBar {
+  background: linear-gradient(90deg, #00796b 0%, #1565c0 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.userAvatar {
+  background-color: rgba(255, 255, 255, 0.18) !important;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+.drawer .MuiDrawer-paper {
+  border-right: 1px solid #e4e8ee;
+  background: #f8fafc;
 }
 
-.card {
-  padding: 2em;
+.drawer .MuiListItemButton-root {
+  min-height: 44px;
+  border-radius: 8px;
+  color: #344054;
+  gap: 4px;
 }
 
-.read-the-docs {
-  color: #888;
+.drawer .MuiListItemButton-root:hover {
+  background-color: #eef6f4;
 }
 
-.drawer .MuiListItem-root {
-  padding: 16px;
+.drawer .MuiListItemButton-root.Mui-selected {
+  background-color: #dff5f0;
+  color: #00796b;
+  font-weight: 700;
 }
 
-.drawer .MuiListItem-root:hover {
-  background-color: #34495e;
+.drawer .MuiListItemButton-root.Mui-selected:hover {
+  background-color: #d3eee8;
 }
 
 .drawer .MuiListItemIcon-root {
-  color: #ecf0f1;
+  min-width: 36px;
+  color: inherit;
 }
 
 .drawer .MuiListItemText-primary {
-  font-size: 1rem;
+  font-size: 0.94rem;
   white-space: nowrap;
 }
 
-.drawer .MuiListItemIcon-root {
-  color: #bdc3c7; /* 未選択時のアイコンの色を変更 */
-}
-
-.drawer .MuiListItem-root:hover .MuiListItemIcon-root {
-  color: #ecf0f1; /* ホバー時のアイコンの色を変更 */
-}
-
-.drawer .MuiListItem-root.active {
-  background-color: #1abc9c;
-  color: #ffffff;
-}
-
-.drawer .MuiListItem-root.active .MuiListItemIcon-root {
-  color: #ffffff;
-}
-
 .permission-role-list .MuiListItem-root.Mui-selected {
-  background-color: #1abc9c !important; /* drawerのアクティブな色と同じ */
+  background-color: #1abc9c !important;
 }
 
-/* 選択されたListItem内の主要テキストの色を白に指定 */
 .permission-role-list .MuiListItem-root.Mui-selected .MuiListItemText-primary {
   color: #ffffff !important;
-  cursor: default; /* ← 追加: テキスト部分で矢印カーソルを維持 */
+  cursor: default;
 }
 
 .permission-role-list .MuiListItem-root.Mui-selected:hover {
-  background-color: #16a085 !important; /* 少し濃い色 */
+  background-color: #16a085 !important;
 }
 
-/* ホバー時もテキスト色が白のまま維持されるようにする場合 (任意) */
 .permission-role-list .MuiListItem-root.Mui-selected:hover .MuiListItemText-primary {
   color: #ffffff !important;
 }

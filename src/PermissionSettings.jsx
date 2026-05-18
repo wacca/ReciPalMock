@@ -13,6 +13,7 @@ const SCREENS = [
     { key: 'leave-application', label: '休暇申請' },
     { key: 'leave-submitted', label: '休暇申請済' },
     { key: 'leave-approvals', label: '休暇承認' },
+    { key: 'attendance-input', label: '勤怠入力' },
     { key: 'flow-settings-menu', label: '申請フロー設定' },
     { key: 'reminder-settings', label: 'アラート設定' },
     { key: 'account-management', label: 'アカウント管理' },
@@ -47,8 +48,12 @@ function PermissionSettings() {
 
         const savedDefinedRoles = JSON.parse(localStorage.getItem('definedRoles') || JSON.stringify(INITIAL_ROLES));
         setDefinedRoles(savedDefinedRoles);
-        if (savedDefinedRoles.length > 0 && !savedDefinedRoles.find(r => r.key === selectedRoleKey)) {
-            setSelectedRoleKey(savedDefinedRoles[0].key);
+        if (savedDefinedRoles.length > 0) {
+            setSelectedRoleKey(currentRoleKey =>
+                savedDefinedRoles.find(r => r.key === currentRoleKey)
+                    ? currentRoleKey
+                    : savedDefinedRoles[0].key
+            );
         }
 
         const savedRolesPermissions = JSON.parse(localStorage.getItem('rolesPermissions') || '{}');
