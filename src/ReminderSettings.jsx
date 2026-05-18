@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Container, Typography, Box, Button, TextField, Paper, Snackbar, Alert, Switch, FormControlLabel, Chip } from '@mui/material';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import SaveIcon from '@mui/icons-material/Save';
+import AdminConfirmDialog from './components/AdminConfirmDialog';
 
 const STORAGE_KEY = 'reminderSettings';
 
@@ -50,6 +53,7 @@ const normalizeConfigs = (configs) => (
 function ReminderSettings() {
     const [alertConfigs, setAlertConfigs] = useState(createDefaultConfigs);
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+    const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
 
     useEffect(() => {
         try {
@@ -81,10 +85,10 @@ function ReminderSettings() {
     };
 
     const handleReset = () => {
-        if (!window.confirm('アラート設定を初期値に戻しますか？')) return;
         const defaults = createDefaultConfigs();
         setAlertConfigs(defaults);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(defaults));
+        setResetConfirmOpen(false);
         setSnackbar({ open: true, message: 'アラート設定を初期値に戻しました', severity: 'success' });
     };
 
@@ -113,10 +117,10 @@ function ReminderSettings() {
                         </Typography>
                     </Box>
                     <Box className="pageActionBar">
-                        <Button variant="outlined" color="inherit" onClick={handleReset}>
+                        <Button variant="outlined" color="inherit" startIcon={<RestartAltIcon />} onClick={() => setResetConfirmOpen(true)}>
                             初期値に戻す
                         </Button>
-                        <Button variant="contained" color="primary" onClick={handleSave}>
+                        <Button variant="contained" color="primary" startIcon={<SaveIcon />} onClick={handleSave}>
                             保存
                         </Button>
                     </Box>
@@ -192,6 +196,15 @@ function ReminderSettings() {
                     {snackbar.message}
                 </Alert>
             </Snackbar>
+            <AdminConfirmDialog
+                open={resetConfirmOpen}
+                title="初期値に戻しますか？"
+                message="現在のアラート設定を標準設定で上書きします。"
+                confirmLabel="初期値に戻す"
+                confirmColor="warning"
+                onCancel={() => setResetConfirmOpen(false)}
+                onConfirm={handleReset}
+            />
         </Container>
     );
 }

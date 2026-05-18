@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Container, Typography, Box, Button, TextField, Paper, Table, TableHead, TableRow, TableCell, TableBody, IconButton, Select, MenuItem, FormControl, InputLabel, Snackbar, Alert, Autocomplete, Dialog, DialogTitle, DialogContent, DialogActions, Chip } from '@mui/material';
+import { Container, Typography, Box, Button, TextField, Paper, Table, TableHead, TableRow, TableCell, TableBody, TableContainer, IconButton, Select, MenuItem, FormControl, InputLabel, Snackbar, Alert, Autocomplete, Dialog, DialogTitle, DialogContent, DialogActions, Chip, Tooltip } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import AdminConfirmDialog from './components/AdminConfirmDialog';
 import {
     APPROVAL_ROLES,
     applyApplicantStep,
@@ -42,6 +44,7 @@ function LeaveApprovalFlowSettings() {
     const [editType, setEditType] = useState('user');
     const [editTarget, setEditTarget] = useState(null);
     const [editSteps, setEditSteps] = useState(createDefaultSteps());
+    const [deleteTarget, setDeleteTarget] = useState(null);
 
     useEffect(() => {
         setAccounts(loadFlowAccounts());
@@ -112,11 +115,16 @@ function LeaveApprovalFlowSettings() {
         setAddDialogOpen(false);
         showSnackbar('休暇承認フローを登録しました');
     };
-    const handleDelete = (idx) => {
-        if (!window.confirm('この休暇承認フローを削除しますか？')) return;
-        const newFlows = flows.filter((_, i) => i !== idx);
+    const handleDeleteRequest = (idx) => {
+        setDeleteTarget({ idx, flow: flows[idx] });
+    };
+
+    const handleDeleteConfirm = () => {
+        if (!deleteTarget) return;
+        const newFlows = flows.filter((_, i) => i !== deleteTarget.idx);
         setFlows(newFlows);
         localStorage.setItem('leaveApprovalFlows', JSON.stringify(newFlows));
+        setDeleteTarget(null);
         showSnackbar('休暇承認フローを削除しました');
     };
     const handleEditOpen = (idx) => {
@@ -195,7 +203,7 @@ function LeaveApprovalFlowSettings() {
                         </Typography>
                     </Box>
                     <Box className="pageActionBar">
-                        <Button variant="contained" color="primary" onClick={handleAddOpen}>新規追加</Button>
+                        <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleAddOpen}>新規追加</Button>
                     </Box>
                 </Box>
                 <Box className="expenseSummaryStrip">
@@ -233,8 +241,12 @@ function LeaveApprovalFlowSettings() {
                                 </TableCell>
                                 <TableCell>
                                     <Box className="tableActionGroup">
-                                        <IconButton onClick={() => handleEditOpen(idx)}><EditIcon /></IconButton>
-                                        <IconButton onClick={() => handleDelete(idx)}><DeleteIcon /></IconButton>
+                                        <Tooltip title="編集">
+                                            <IconButton aria-label={`${flow.target}の休暇承認フローを編集`} onClick={() => handleEditOpen(idx)}><EditIcon /></IconButton>
+                                        </Tooltip>
+                                        <Tooltip title="削除">
+                                            <IconButton aria-label={`${flow.target}の休暇承認フローを削除`} color="error" onClick={() => handleDeleteRequest(idx)}><DeleteIcon /></IconButton>
+                                        </Tooltip>
                                     </Box>
                                 </TableCell>
                             </TableRow>
@@ -243,11 +255,11 @@ function LeaveApprovalFlowSettings() {
                 </Table>
             </Paper>
             {/* 新規追加ダイアログ */}
-            <Dialog open={addDialogOpen} onClose={handleAddClose} maxWidth="sm" fullWidth>
+            <Dialog open={addDialogOpen} onClose={handleAddClose} maxWidth="lg" fullWidth className="flowEditorDialog">
                 <DialogTitle>休暇承認フロー新規追加</DialogTitle>
                 <DialogContent>
-                    <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-                        <FormControl sx={{ minWidth: 120 }}>
+                    <Box className="flowEditorControls">
+                        <FormControl fullWidth>
                             <InputLabel>種別</InputLabel>
                             <Select value={addType} label="種別" onChange={e => handleAddTypeChange(e.target.value)}>
                                 <MenuItem value="user">個人</MenuItem>
@@ -260,10 +272,10 @@ function LeaveApprovalFlowSettings() {
                                 getOptionLabel={opt => opt.name ? `${opt.name}（${opt.userId}）` : ''}
                                 value={addTarget}
                                 onChange={(_, v) => handleAddTargetChange(v)}
-                                renderInput={(params) => <TextField {...params} label="ユーザー選択" sx={{ width: 250 }} />}
+                                renderInput={(params) => <TextField {...params} label="ユーザー選択" />}
                             />
                         ) : (
-                            <FormControl sx={{ minWidth: 200 }}>
+                            <FormControl fullWidth>
                                 <InputLabel>部署選択</InputLabel>
                                 <Select value={addTarget || ''} label="部署選択" onChange={e => handleAddTargetChange(e.target.value)}>
                                     {departments.map(dep => (
@@ -273,81 +285,83 @@ function LeaveApprovalFlowSettings() {
                             </FormControl>
                         )}
                     </Box>
-                    <Table size="small">
-                        <TableHead>
-                            <TableRow>
-                                <TableCell sx={{ width: 140 }}>役割</TableCell>
-                                <TableCell sx={{ width: 180 }}>氏名</TableCell>
-                                <TableCell sx={{ width: 220 }}>メールアドレス</TableCell>
-                                <TableCell sx={{ width: 60 }}></TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {addSteps.map((step, idx) => (
-                                <TableRow key={idx}>
-                                    <TableCell>
-                                        <FormControl size="small" fullWidth>
-                                            <InputLabel>役割</InputLabel>
-                                            <Select
-                                                value={step.role}
-                                                label="役割"
-                                                onChange={e => handleAddStepRole(idx, e.target.value)}
-                                                disabled={idx === 0}
-                                            >
-                                                {APPROVAL_ROLES.map(role => (
-                                                    <MenuItem key={role.value} value={role.value}>{role.label}</MenuItem>
-                                                ))}
-                                            </Select>
-                                        </FormControl>
-                                    </TableCell>
-                                    <TableCell>
-                                        {idx === 0 ? (
-                                            <TextField size="small" value={step.name} placeholder="申請者" fullWidth disabled />
-                                        ) : (
-                                            <Autocomplete
-                                                options={accounts}
-                                                getOptionLabel={opt => opt.name ? `${opt.name}（${opt.userId || opt.email}）` : ''}
-                                                value={accounts.find(account => account.name === step.name) || null}
-                                                onChange={(_, account) => handleAddStepAccount(idx, account)}
-                                                renderInput={(params) => <TextField {...params} size="small" placeholder="承認者を選択" />}
-                                            />
-                                        )}
-                                    </TableCell>
-                                    <TableCell>
-                                        <TextField
-                                            size="small"
-                                            value={step.email}
-                                            placeholder="メールアドレス"
-                                            fullWidth
-                                            disabled
-                                        />
-                                    </TableCell>
-                                    <TableCell>
-                                        {idx > 1 && (
-                                            <IconButton onClick={() => handleAddStepDelete(idx)} size="small">
-                                                <DeleteIcon fontSize="small" />
-                                            </IconButton>
-                                        )}
-                                    </TableCell>
+                    <TableContainer className="flowStepTable">
+                        <Table size="small">
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell>役割</TableCell>
+                                    <TableCell>氏名</TableCell>
+                                    <TableCell>メールアドレス</TableCell>
+                                    <TableCell>操作</TableCell>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                            </TableHead>
+                            <TableBody>
+                                {addSteps.map((step, idx) => (
+                                    <TableRow key={idx}>
+                                        <TableCell>
+                                            <FormControl size="small" fullWidth>
+                                                <InputLabel>役割</InputLabel>
+                                                <Select
+                                                    value={step.role}
+                                                    label="役割"
+                                                    onChange={e => handleAddStepRole(idx, e.target.value)}
+                                                    disabled={idx === 0}
+                                                >
+                                                    {APPROVAL_ROLES.map(role => (
+                                                        <MenuItem key={role.value} value={role.value}>{role.label}</MenuItem>
+                                                    ))}
+                                                </Select>
+                                            </FormControl>
+                                        </TableCell>
+                                        <TableCell>
+                                            {idx === 0 ? (
+                                                <TextField size="small" value={step.name} placeholder="申請者" fullWidth disabled />
+                                            ) : (
+                                                <Autocomplete
+                                                    options={accounts}
+                                                    getOptionLabel={opt => opt.name ? `${opt.name}（${opt.userId || opt.email}）` : ''}
+                                                    value={accounts.find(account => account.name === step.name) || null}
+                                                    onChange={(_, account) => handleAddStepAccount(idx, account)}
+                                                    renderInput={(params) => <TextField {...params} size="small" placeholder="承認者を選択" />}
+                                                />
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            <TextField
+                                                size="small"
+                                                value={step.email}
+                                                placeholder="メールアドレス"
+                                                fullWidth
+                                                disabled
+                                            />
+                                        </TableCell>
+                                        <TableCell>
+                                            {idx > 1 && (
+                                                <IconButton aria-label="承認者を削除" color="error" onClick={() => handleAddStepDelete(idx)} size="small">
+                                                    <DeleteIcon fontSize="small" />
+                                                </IconButton>
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
                     <Box className="inlineActionGroup" sx={{ mt: 2 }}>
                         <Button variant="outlined" onClick={handleAddStepAdd}>承認者追加</Button>
                     </Box>
                 </DialogContent>
                 <DialogActions>
-                    <Button variant="outlined" onClick={handleAddClose}>キャンセル</Button>
+                    <Button variant="outlined" color="inherit" onClick={handleAddClose}>キャンセル</Button>
                     <Button variant="contained" onClick={handleAddSave}>登録</Button>
                 </DialogActions>
             </Dialog>
             {/* 編集ダイアログ */}
-            <Dialog open={editDialogOpen} onClose={handleEditClose} maxWidth="sm" fullWidth>
+            <Dialog open={editDialogOpen} onClose={handleEditClose} maxWidth="lg" fullWidth className="flowEditorDialog">
                 <DialogTitle>休暇承認フロー編集</DialogTitle>
                 <DialogContent>
-                    <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-                        <FormControl sx={{ minWidth: 120 }}>
+                    <Box className="flowEditorControls">
+                        <FormControl fullWidth>
                             <InputLabel>種別</InputLabel>
                             <Select value={editType} label="種別" onChange={e => handleEditTypeChange(e.target.value)}>
                                 <MenuItem value="user">個人</MenuItem>
@@ -360,10 +374,10 @@ function LeaveApprovalFlowSettings() {
                                 getOptionLabel={opt => opt.name ? `${opt.name}（${opt.userId}）` : ''}
                                 value={editTarget}
                                 onChange={(_, v) => handleEditTargetChange(v)}
-                                renderInput={(params) => <TextField {...params} label="ユーザー選択" sx={{ width: 250 }} />}
+                                renderInput={(params) => <TextField {...params} label="ユーザー選択" />}
                             />
                         ) : (
-                            <FormControl sx={{ minWidth: 200 }}>
+                            <FormControl fullWidth>
                                 <InputLabel>部署選択</InputLabel>
                                 <Select value={editTarget || ''} label="部署選択" onChange={e => handleEditTargetChange(e.target.value)}>
                                     {departments.map(dep => (
@@ -373,80 +387,90 @@ function LeaveApprovalFlowSettings() {
                             </FormControl>
                         )}
                     </Box>
-                    <Table size="small">
-                        <TableHead>
-                            <TableRow>
-                                <TableCell sx={{ width: 140 }}>役割</TableCell>
-                                <TableCell sx={{ width: 180 }}>氏名</TableCell>
-                                <TableCell sx={{ width: 220 }}>メールアドレス</TableCell>
-                                <TableCell sx={{ width: 60 }}></TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {editSteps.map((step, idx) => (
-                                <TableRow key={idx}>
-                                    <TableCell>
-                                        <FormControl size="small" fullWidth>
-                                            <InputLabel>役割</InputLabel>
-                                            <Select
-                                                value={step.role}
-                                                label="役割"
-                                                onChange={e => handleEditStepRole(idx, e.target.value)}
-                                                disabled={idx === 0}
-                                            >
-                                                {APPROVAL_ROLES.map(role => (
-                                                    <MenuItem key={role.value} value={role.value}>{role.label}</MenuItem>
-                                                ))}
-                                            </Select>
-                                        </FormControl>
-                                    </TableCell>
-                                    <TableCell>
-                                        {idx === 0 ? (
-                                            <TextField size="small" value={step.name} placeholder="申請者" fullWidth disabled />
-                                        ) : (
-                                            <Autocomplete
-                                                options={accounts}
-                                                getOptionLabel={opt => opt.name ? `${opt.name}（${opt.userId || opt.email}）` : ''}
-                                                value={accounts.find(account => account.name === step.name) || null}
-                                                onChange={(_, account) => handleEditStepAccount(idx, account)}
-                                                renderInput={(params) => <TextField {...params} size="small" placeholder="承認者を選択" />}
-                                            />
-                                        )}
-                                    </TableCell>
-                                    <TableCell>
-                                        <TextField
-                                            size="small"
-                                            value={step.email}
-                                            placeholder="メールアドレス"
-                                            fullWidth
-                                            disabled
-                                        />
-                                    </TableCell>
-                                    <TableCell>
-                                        {idx > 1 && (
-                                            <IconButton onClick={() => handleEditStepDelete(idx)} size="small">
-                                                <DeleteIcon fontSize="small" />
-                                            </IconButton>
-                                        )}
-                                    </TableCell>
+                    <TableContainer className="flowStepTable">
+                        <Table size="small">
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell>役割</TableCell>
+                                    <TableCell>氏名</TableCell>
+                                    <TableCell>メールアドレス</TableCell>
+                                    <TableCell>操作</TableCell>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                            </TableHead>
+                            <TableBody>
+                                {editSteps.map((step, idx) => (
+                                    <TableRow key={idx}>
+                                        <TableCell>
+                                            <FormControl size="small" fullWidth>
+                                                <InputLabel>役割</InputLabel>
+                                                <Select
+                                                    value={step.role}
+                                                    label="役割"
+                                                    onChange={e => handleEditStepRole(idx, e.target.value)}
+                                                    disabled={idx === 0}
+                                                >
+                                                    {APPROVAL_ROLES.map(role => (
+                                                        <MenuItem key={role.value} value={role.value}>{role.label}</MenuItem>
+                                                    ))}
+                                                </Select>
+                                            </FormControl>
+                                        </TableCell>
+                                        <TableCell>
+                                            {idx === 0 ? (
+                                                <TextField size="small" value={step.name} placeholder="申請者" fullWidth disabled />
+                                            ) : (
+                                                <Autocomplete
+                                                    options={accounts}
+                                                    getOptionLabel={opt => opt.name ? `${opt.name}（${opt.userId || opt.email}）` : ''}
+                                                    value={accounts.find(account => account.name === step.name) || null}
+                                                    onChange={(_, account) => handleEditStepAccount(idx, account)}
+                                                    renderInput={(params) => <TextField {...params} size="small" placeholder="承認者を選択" />}
+                                                />
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            <TextField
+                                                size="small"
+                                                value={step.email}
+                                                placeholder="メールアドレス"
+                                                fullWidth
+                                                disabled
+                                            />
+                                        </TableCell>
+                                        <TableCell>
+                                            {idx > 1 && (
+                                                <IconButton aria-label="承認者を削除" color="error" onClick={() => handleEditStepDelete(idx)} size="small">
+                                                    <DeleteIcon fontSize="small" />
+                                                </IconButton>
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
                     <Box className="inlineActionGroup" sx={{ mt: 2 }}>
                         <Button variant="outlined" onClick={handleEditStepAdd}>承認者追加</Button>
                     </Box>
                 </DialogContent>
                 <DialogActions>
-                    <Button variant="outlined" onClick={handleEditClose}>キャンセル</Button>
+                    <Button variant="outlined" color="inherit" onClick={handleEditClose}>キャンセル</Button>
                     <Button variant="contained" onClick={handleEditSave}>保存</Button>
                 </DialogActions>
             </Dialog>
-            <Snackbar open={open} autoHideDuration={2000} onClose={() => setOpen(false)}>
+            <Snackbar open={open} autoHideDuration={3000} onClose={() => setOpen(false)}>
                 <Alert severity={snackbarSeverity} sx={{ width: '100%' }}>
                     {snackbarMessage}
                 </Alert>
             </Snackbar>
+            <AdminConfirmDialog
+                open={Boolean(deleteTarget)}
+                title="休暇承認フローを削除しますか？"
+                message={`${deleteTarget?.flow?.target || ''} の休暇承認フローを削除します。`}
+                confirmLabel="削除"
+                onCancel={() => setDeleteTarget(null)}
+                onConfirm={handleDeleteConfirm}
+            />
         </Container>
     );
 }

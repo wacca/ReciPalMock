@@ -30,12 +30,14 @@ import {
     TableRow,
     Tabs,
     TextField,
+    Tooltip,
     Typography,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import SearchIcon from '@mui/icons-material/Search';
+import AdminConfirmDialog from './components/AdminConfirmDialog';
 
 const SCREEN_GROUPS = [
     {
@@ -133,6 +135,7 @@ function PermissionSettings() {
     const [roleNameInput, setRoleNameInput] = useState('');
     const [userSearchText, setUserSearchText] = useState('');
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+    const [deleteTarget, setDeleteTarget] = useState(null);
 
     useEffect(() => {
         const loadedAccounts = loadAccounts();
@@ -277,7 +280,7 @@ function PermissionSettings() {
         showSnackbar('ロールを追加しました');
     };
 
-    const handleDeleteRole = (roleKeyToDelete) => {
+    const handleDeleteRoleRequest = (roleKeyToDelete) => {
         if (definedRoles.length <= 1) {
             showSnackbar('最低1つのロールが必要です', 'warning');
             return;
@@ -285,10 +288,12 @@ function PermissionSettings() {
 
         const targetRole = definedRoles.find(role => role.key === roleKeyToDelete);
         const affectedUserCount = getRoleUsageCount(roleKeyToDelete);
-        if (!window.confirm(`ロール「${targetRole?.label || ''}」を削除しますか？${affectedUserCount}名の割り当ては先頭のロールへ変更されます。`)) {
-            return;
-        }
+        setDeleteTarget({ roleKey: roleKeyToDelete, role: targetRole, affectedUserCount });
+    };
 
+    const handleDeleteRoleConfirm = () => {
+        if (!deleteTarget) return;
+        const roleKeyToDelete = deleteTarget.roleKey;
         const nextRoles = definedRoles.filter(role => role.key !== roleKeyToDelete);
         const defaultRoleKey = nextRoles[0]?.key || '';
         const nextPermissions = { ...rolesPermissions };
@@ -306,6 +311,7 @@ function PermissionSettings() {
         if (selectedRoleKey === roleKeyToDelete) {
             setSelectedRoleKey(defaultRoleKey);
         }
+        setDeleteTarget(null);
         showSnackbar('ロールを削除しました');
     };
 
@@ -367,16 +373,23 @@ function PermissionSettings() {
                                         disablePadding
                                         secondaryAction={
                                             <Box className="tableActionGroup">
-                                                <IconButton aria-label={`${role.label}を編集`} onClick={() => openRoleDialog(role)}>
-                                                    <EditIcon />
-                                                </IconButton>
-                                                <IconButton
-                                                    aria-label={`${role.label}を削除`}
-                                                    onClick={() => handleDeleteRole(role.key)}
-                                                    disabled={definedRoles.length <= 1}
-                                                >
-                                                    <DeleteIcon />
-                                                </IconButton>
+                                                <Tooltip title="編集">
+                                                    <IconButton aria-label={`${role.label}を編集`} onClick={() => openRoleDialog(role)}>
+                                                        <EditIcon />
+                                                    </IconButton>
+                                                </Tooltip>
+                                                <Tooltip title="削除">
+                                                    <span>
+                                                        <IconButton
+                                                            aria-label={`${role.label}を削除`}
+                                                            color="error"
+                                                            onClick={() => handleDeleteRoleRequest(role.key)}
+                                                            disabled={definedRoles.length <= 1}
+                                                        >
+                                                            <DeleteIcon />
+                                                        </IconButton>
+                                                    </span>
+                                                </Tooltip>
                                             </Box>
                                         }
                                     >
@@ -558,7 +571,7 @@ function PermissionSettings() {
                     />
                 </DialogContent>
                 <DialogActions>
-                    <Button variant="outlined" onClick={closeRoleDialog}>キャンセル</Button>
+                    <Button variant="outlined" color="inherit" onClick={closeRoleDialog}>キャンセル</Button>
                     <Button variant="contained" onClick={handleSaveRole}>保存</Button>
                 </DialogActions>
             </Dialog>
@@ -568,6 +581,14 @@ function PermissionSettings() {
                     {snackbar.message}
                 </Alert>
             </Snackbar>
+            <AdminConfirmDialog
+                open={Boolean(deleteTarget)}
+                title="ロールを削除しますか？"
+                message={`ロール「${deleteTarget?.role?.label || ''}」を削除します。${deleteTarget?.affectedUserCount || 0}名の割り当ては先頭のロールへ変更されます。`}
+                confirmLabel="削除"
+                onCancel={() => setDeleteTarget(null)}
+                onConfirm={handleDeleteRoleConfirm}
+            />
         </Container>
     );
 }

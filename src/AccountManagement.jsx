@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Container, Typography, Box, Button, TextField, Paper, Snackbar, Alert, MenuItem, Table, TableHead, TableRow, TableCell, TableBody, IconButton, Switch, Dialog, DialogTitle, DialogContent, DialogActions, Chip, InputAdornment } from '@mui/material';
+import { Container, Typography, Box, Button, TextField, Paper, Snackbar, Alert, MenuItem, Table, TableHead, TableRow, TableCell, TableBody, IconButton, Switch, Dialog, DialogTitle, DialogContent, DialogActions, Chip, InputAdornment, Tooltip } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
 import SearchIcon from '@mui/icons-material/Search';
+import AdminConfirmDialog from './components/AdminConfirmDialog';
 
 const SAMPLE_DEPARTMENTS = [
     { name: '営業部', positions: [{ name: '部長' }, { name: '課長' }, { name: '一般社員' }] },
@@ -68,6 +70,7 @@ function AccountManagement() {
     const [addForm, setAddForm] = useState(emptyAccount);
     const [searchText, setSearchText] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
+    const [deleteTarget, setDeleteTarget] = useState(null);
 
     useEffect(() => {
         setDepartments(loadDepartments());
@@ -130,11 +133,16 @@ function AccountManagement() {
         showSnackbar('アカウントを追加しました');
     };
 
-    const handleDelete = (idx) => {
-        if (!window.confirm('このアカウントを削除しますか？')) return;
-        const newAccounts = accounts.filter((_, i) => i !== idx);
+    const handleDeleteRequest = (idx) => {
+        setDeleteTarget({ idx, account: accounts[idx] });
+    };
+
+    const handleDeleteConfirm = () => {
+        if (!deleteTarget) return;
+        const newAccounts = accounts.filter((_, i) => i !== deleteTarget.idx);
         setAccounts(newAccounts);
         localStorage.setItem('accounts', JSON.stringify(newAccounts));
+        setDeleteTarget(null);
         showSnackbar('アカウントを削除しました');
     };
 
@@ -191,7 +199,7 @@ function AccountManagement() {
                         </Typography>
                     </Box>
                     <Box className="pageActionBar">
-                        <Button variant="contained" color="primary" onClick={handleAddOpen}>新規登録</Button>
+                        <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleAddOpen}>新規追加</Button>
                     </Box>
                 </Box>
                 <Box className="expenseSummaryStrip">
@@ -276,8 +284,12 @@ function AccountManagement() {
                                         <TableCell><Switch checked={editAccount.status} onChange={e => handleEditChange('status', e.target.checked)} /></TableCell>
                                         <TableCell>
                                             <Box className="tableActionGroup">
-                                                <IconButton onClick={() => handleSave(accountIdx)}><SaveIcon /></IconButton>
-                                                <IconButton onClick={handleCancel}><CancelIcon /></IconButton>
+                                                <Tooltip title="保存">
+                                                    <IconButton aria-label="保存" color="primary" onClick={() => handleSave(accountIdx)}><SaveIcon /></IconButton>
+                                                </Tooltip>
+                                                <Tooltip title="キャンセル">
+                                                    <IconButton aria-label="キャンセル" onClick={handleCancel}><CancelIcon /></IconButton>
+                                                </Tooltip>
                                             </Box>
                                         </TableCell>
                                     </>
@@ -293,8 +305,12 @@ function AccountManagement() {
                                         </TableCell>
                                         <TableCell>
                                             <Box className="tableActionGroup">
-                                                <IconButton onClick={() => handleEdit(accountIdx)}><EditIcon /></IconButton>
-                                                <IconButton onClick={() => handleDelete(accountIdx)}><DeleteIcon /></IconButton>
+                                                <Tooltip title="編集">
+                                                    <IconButton aria-label={`${acc.name}を編集`} onClick={() => handleEdit(accountIdx)}><EditIcon /></IconButton>
+                                                </Tooltip>
+                                                <Tooltip title="削除">
+                                                    <IconButton aria-label={`${acc.name}を削除`} color="error" onClick={() => handleDeleteRequest(accountIdx)}><DeleteIcon /></IconButton>
+                                                </Tooltip>
                                             </Box>
                                         </TableCell>
                                     </>
@@ -325,7 +341,7 @@ function AccountManagement() {
                     </Box>
                 </DialogContent>
                 <DialogActions>
-                    <Button variant="outlined" onClick={handleAddClose}>キャンセル</Button>
+                    <Button variant="outlined" color="inherit" onClick={handleAddClose}>キャンセル</Button>
                     <Button variant="contained" onClick={handleAdd}>登録</Button>
                 </DialogActions>
             </Dialog>
@@ -334,6 +350,14 @@ function AccountManagement() {
                     {snackbarMessage}
                 </Alert>
             </Snackbar>
+            <AdminConfirmDialog
+                open={Boolean(deleteTarget)}
+                title="アカウントを削除しますか？"
+                message={`${deleteTarget?.account?.name || ''} をアカウント一覧から削除します。`}
+                confirmLabel="削除"
+                onCancel={() => setDeleteTarget(null)}
+                onConfirm={handleDeleteConfirm}
+            />
         </Container>
     );
 }

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Container, Typography, Box, Button, Paper, Table, TableHead, TableRow, TableCell, TableBody, Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl, InputLabel, Select, MenuItem, Snackbar, Alert, Chip } from '@mui/material';
+import { Container, Typography, Box, Button, Paper, Table, TableHead, TableRow, TableCell, TableBody, Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl, InputLabel, Select, MenuItem, Snackbar, Alert, Chip, IconButton, Tooltip } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import AdminConfirmDialog from './components/AdminConfirmDialog';
 
 const SAMPLE_DEPARTMENTS = [
     { name: '営業部', positions: [{ name: '部長' }, { name: '課長' }, { name: '一般社員' }] },
@@ -44,6 +45,7 @@ function MasterSettings() {
     const [posName, setPosName] = useState('');
     const [posEditIdx, setPosEditIdx] = useState(null);
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+    const [deleteTarget, setDeleteTarget] = useState(null);
 
     useEffect(() => {
         let dep = null;
@@ -144,18 +146,22 @@ function MasterSettings() {
         setDeptEditIdx(null);
         showSnackbar(deptEditIdx !== null ? '部署を保存しました' : '部署を追加しました');
     };
-    const handleDeptDelete = (idx) => {
+    const handleDeptDeleteRequest = (idx) => {
         const target = departments[idx];
         if (!target) return;
         if (isDepartmentInUse(target.name)) {
             showSnackbar('利用中の部署は削除できません。アカウントまたは申請フローを先に変更してください', 'warning');
             return;
         }
-        if (!window.confirm(`部署「${target.name}」を削除しますか？`)) return;
+        setDeleteTarget({ type: 'department', idx, name: target.name });
+    };
+
+    const handleDeptDeleteConfirm = (idx) => {
         let newDeps = departments.filter((_, i) => i !== idx);
         setDepartments(newDeps);
         saveDepartments(newDeps);
         setSelectedDeptIdx(Math.min(selectedDeptIdx, newDeps.length - 1));
+        setDeleteTarget(null);
         showSnackbar('部署を削除しました');
     };
 
@@ -198,7 +204,7 @@ function MasterSettings() {
         setPosEditIdx(null);
         showSnackbar(posEditIdx !== null ? '役職を保存しました' : '役職を追加しました');
     };
-    const handlePosDelete = (idx) => {
+    const handlePosDeleteRequest = (idx) => {
         const selectedDepartment = departments[selectedDeptIdx];
         const target = selectedDepartment?.positions[idx];
         if (!target) return;
@@ -206,12 +212,25 @@ function MasterSettings() {
             showSnackbar('利用中の役職は削除できません。アカウントを先に変更してください', 'warning');
             return;
         }
-        if (!window.confirm(`役職「${target.name}」を削除しますか？`)) return;
+        setDeleteTarget({ type: 'position', idx, departmentIdx: selectedDeptIdx, departmentName: selectedDepartment.name, name: target.name });
+    };
+
+    const handlePosDeleteConfirm = (target) => {
         let newDeps = [...departments];
-        newDeps[selectedDeptIdx].positions = newDeps[selectedDeptIdx].positions.filter((_, i) => i !== idx);
+        newDeps[target.departmentIdx].positions = newDeps[target.departmentIdx].positions.filter((_, i) => i !== target.idx);
         setDepartments(newDeps);
         saveDepartments(newDeps);
+        setDeleteTarget(null);
         showSnackbar('役職を削除しました');
+    };
+
+    const handleDeleteConfirm = () => {
+        if (!deleteTarget) return;
+        if (deleteTarget.type === 'department') {
+            handleDeptDeleteConfirm(deleteTarget.idx);
+            return;
+        }
+        handlePosDeleteConfirm(deleteTarget);
     };
 
     const selectedDepartment = departments[selectedDeptIdx];
@@ -249,7 +268,7 @@ function MasterSettings() {
                     <Box className="pageActionBar">
                         <Button variant="outlined" startIcon={<AddIcon />} onClick={() => handleDeptDialogOpen()}>部署追加</Button>
                         <Button variant="outlined" startIcon={<EditIcon />} onClick={() => handleDeptDialogOpen(selectedDeptIdx)} disabled={!selectedDepartment}>部署名変更</Button>
-                        <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={() => handleDeptDelete(selectedDeptIdx)} disabled={departments.length <= 1 || !selectedDepartment}>部署削除</Button>
+                        <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={() => handleDeptDeleteRequest(selectedDeptIdx)} disabled={departments.length <= 1 || !selectedDepartment}>部署削除</Button>
                     </Box>
                 </Box>
                 <Box className="inlineActionGroup" sx={{ mb: 2 }}>
@@ -317,8 +336,16 @@ function MasterSettings() {
                                     <TableCell>{pos.name}</TableCell>
                                     <TableCell>
                                         <Box className="tableActionGroup">
-                                            <Button size="small" variant="outlined" startIcon={<EditIcon />} onClick={() => handlePosDialogOpen(idx)}>編集</Button>
-                                            <Button size="small" variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={() => handlePosDelete(idx)}>削除</Button>
+                                            <Tooltip title="編集">
+                                                <IconButton aria-label={`${pos.name}を編集`} onClick={() => handlePosDialogOpen(idx)}>
+                                                    <EditIcon />
+                                                </IconButton>
+                                            </Tooltip>
+                                            <Tooltip title="削除">
+                                                <IconButton aria-label={`${pos.name}を削除`} color="error" onClick={() => handlePosDeleteRequest(idx)}>
+                                                    <DeleteIcon />
+                                                </IconButton>
+                                            </Tooltip>
                                         </Box>
                                     </TableCell>
                                 </TableRow>
@@ -342,7 +369,7 @@ function MasterSettings() {
                     />
                 </DialogContent>
                 <DialogActions>
-                    <Button variant="outlined" onClick={handleDeptDialogClose}>キャンセル</Button>
+                    <Button variant="outlined" color="inherit" onClick={handleDeptDialogClose}>キャンセル</Button>
                     <Button variant="contained" onClick={handleDeptSave}>保存</Button>
                 </DialogActions>
             </Dialog>
@@ -359,7 +386,7 @@ function MasterSettings() {
                     />
                 </DialogContent>
                 <DialogActions>
-                    <Button variant="outlined" onClick={handlePosDialogClose}>キャンセル</Button>
+                    <Button variant="outlined" color="inherit" onClick={handlePosDialogClose}>キャンセル</Button>
                     <Button variant="contained" onClick={handlePosSave}>保存</Button>
                 </DialogActions>
             </Dialog>
@@ -368,6 +395,18 @@ function MasterSettings() {
                     {snackbar.message}
                 </Alert>
             </Snackbar>
+            <AdminConfirmDialog
+                open={Boolean(deleteTarget)}
+                title={`${deleteTarget?.type === 'department' ? '部署' : '役職'}を削除しますか？`}
+                message={
+                    deleteTarget?.type === 'department'
+                        ? `部署「${deleteTarget?.name || ''}」を削除します。`
+                        : `${deleteTarget?.departmentName || ''} の役職「${deleteTarget?.name || ''}」を削除します。`
+                }
+                confirmLabel="削除"
+                onCancel={() => setDeleteTarget(null)}
+                onConfirm={handleDeleteConfirm}
+            />
         </Container>
     );
 }
