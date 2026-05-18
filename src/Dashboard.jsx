@@ -1,9 +1,10 @@
 import { Box, Button, Chip, Paper, Stack, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import AssignmentIcon from '@mui/icons-material/Assignment';
-import ApprovalIcon from '@mui/icons-material/ThumbUp';
 import EventAvailableIcon from '@mui/icons-material/EventAvailable';
+import FactCheckIcon from '@mui/icons-material/FactCheck';
+import HowToRegIcon from '@mui/icons-material/HowToReg';
+import PunchClockIcon from '@mui/icons-material/PunchClock';
+import RequestQuoteIcon from '@mui/icons-material/RequestQuote';
 import SettingsIcon from '@mui/icons-material/Settings';
 
 const primaryActions = [
@@ -11,28 +12,37 @@ const primaryActions = [
         title: '勤怠を入力',
         description: '今月のタイムシートをまとめて入力します。',
         path: '/attendance-input',
-        icon: <AccessTimeIcon />,
+        icon: <PunchClockIcon />,
         tone: 'primary',
     },
     {
         title: '経費を申請',
         description: '領収書と明細を入力して下書き保存できます。',
         path: '/application',
-        icon: <AssignmentIcon />,
+        state: { startNew: true },
+        icon: <RequestQuoteIcon />,
         tone: 'secondary',
     },
     {
         title: '休暇を申請',
         description: '有給・遅刻・早退などの勤怠申請を作成します。',
         path: '/leave-application',
+        state: { startNew: true },
         icon: <EventAvailableIcon />,
         tone: 'warning',
     },
     {
-        title: '承認を確認',
-        description: '経費と休暇の承認待ちを確認します。',
+        title: '経費承認',
+        description: '経費申請の承認待ちを確認します。',
         path: '/approvals',
-        icon: <ApprovalIcon />,
+        icon: <FactCheckIcon />,
+        tone: 'neutral',
+    },
+    {
+        title: '休暇承認',
+        description: '休暇申請の承認待ちを確認します。',
+        path: '/leave-approvals',
+        icon: <HowToRegIcon />,
         tone: 'neutral',
     },
 ];
@@ -40,8 +50,9 @@ const primaryActions = [
 const statusCards = [
     { label: '勤怠入力', value: '2日', caption: 'サンプル入力済み' },
     { label: '経費申請', value: '2件', caption: '申請済みモック' },
-    { label: '承認待ち', value: '2件', caption: '経費承認画面に反映' },
     { label: '休暇申請', value: '3件', caption: 'ローカル保存対象' },
+    { label: '経費承認待ち', value: '2件', caption: '経費承認画面に反映' },
+    { label: '休暇承認待ち', value: '1件', caption: '休暇承認画面に反映' },
 ];
 
 function Dashboard({ username = '' }) {
@@ -63,7 +74,7 @@ function Dashboard({ username = '' }) {
                 </Box>
                 <Button
                     variant="contained"
-                    startIcon={<AccessTimeIcon />}
+                    startIcon={<PunchClockIcon />}
                     onClick={() => navigate('/attendance-input')}
                 >
                     勤怠入力へ
@@ -103,7 +114,7 @@ function Dashboard({ username = '' }) {
                             <Button
                                 key={action.title}
                                 className={`quickAction quickAction-${action.tone}`}
-                                onClick={() => navigate(action.path)}
+                                onClick={() => navigate(action.path, action.state ? { state: action.state } : undefined)}
                             >
                                 <Box className="quickActionIcon">
                                     {action.icon}
@@ -139,6 +150,7 @@ function Dashboard({ username = '' }) {
                             ['アラート設定', '/reminder-settings'],
                             ['アカウント管理', '/account-management'],
                             ['マスタ管理', '/master-settings'],
+                            ['権限設定', '/permission-settings'],
                         ].map(([label, path]) => (
                             <Button
                                 key={label}

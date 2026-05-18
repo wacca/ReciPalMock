@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Container, TextField, Button, Typography, Box, MenuItem, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio, Dialog, DialogContent, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Snackbar, Alert, Chip, IconButton, Tooltip } from '@mui/material';
+import { useLocation } from 'react-router-dom';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -25,6 +26,7 @@ const hasExpenseRowInput = (row = {}) => (
 );
 
 function ApplicationForm() {
+    const location = useLocation();
     const [formDataList, setFormDataList] = useState([emptyExpenseRow()]);
     const [paymentType, setPaymentType] = useState('個人立替払用');
     const [openDialog, setOpenDialog] = useState(false);
@@ -39,6 +41,14 @@ function ApplicationForm() {
         const savedDrafts = JSON.parse(localStorage.getItem('expenseDrafts') || '[]');
         setDrafts(savedDrafts);
     }, []);
+
+    useEffect(() => {
+        if (!location.state?.startNew) return;
+        setSelectedDraftId('new');
+        setFormDataList([emptyExpenseRow()]);
+        setPaymentType('個人立替払用');
+        setMode('edit');
+    }, [location.state]);
 
     const handleChange = (index, e) => {
         const { name, value } = e.target;
@@ -208,7 +218,7 @@ function ApplicationForm() {
                             <Chip size="small" label="送信後は申請済・承認画面に反映" color="primary" variant="outlined" />
                         </Box>
                         <FormControl component="fieldset">
-                            <FormLabel component="legend">支払方法</FormLabel>
+                            <FormLabel component="legend">支払種別</FormLabel>
                             <RadioGroup
                                 row
                                 aria-label="paymentType"

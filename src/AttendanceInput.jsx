@@ -39,7 +39,6 @@ const TIME_RULES = {
     overtimeEnd: 22 * 60,
     nightStart: 22 * 60,
     nightEnd: 5 * 60,
-    breakMinutes: 60,
     startRoundMinutes: 1,
     endRoundMinutes: 1,
 };
@@ -92,91 +91,68 @@ const floorToUnit = (minutes, unit) => Math.floor(minutes / unit) * unit;
 
 const isBlankEntry = (entry = {}) => !entry.type && !entry.clockIn && !entry.clockOut && !entry.note;
 
+const buildAttendanceSnapshot = (employee, entries) => JSON.stringify({ employee, entries });
+
+const emptyCalculation = (error = '') => ({
+    start: null,
+    end: null,
+    basic: null,
+    earlyOvertime: null,
+    night: null,
+    total: null,
+    error,
+});
+
+const getBreakMinutes = (grossMinutes) => {
+    if (grossMinutes > 8 * 60) return 60;
+    if (grossMinutes > 6 * 60) return 45;
+    return 0;
+};
+
+const overlapMinutes = (start, end, rangeStart, rangeEnd) => (
+    Math.max(0, Math.min(end, rangeEnd) - Math.max(start, rangeStart))
+);
+
+const sumDailyRange = (start, end, rangeStart, rangeEnd) => {
+    const oneDay = 24 * 60;
+    return [0, oneDay].reduce((total, offset) => (
+        total + overlapMinutes(start, end, rangeStart + offset, rangeEnd + offset)
+    ), 0);
+};
+
 const calculateWorkTimes = (clockIn, clockOut) => {
     const cardIn = parseTime(clockIn);
     const cardOut = parseTime(clockOut);
 
     if (cardIn === null || cardOut === null) {
-        return {
-            start: null,
-            end: null,
-            basic: null,
-            earlyOvertime: null,
-            night: null,
-            total: null,
-            error: '',
-        };
+        return emptyCalculation();
     }
 
     const start = ceilToUnit(cardIn, TIME_RULES.startRoundMinutes);
-    const end = floorToUnit(cardOut, TIME_RULES.endRoundMinutes);
+    const roundedOut = floorToUnit(cardOut, TIME_RULES.endRoundMinutes);
+    const end = roundedOut < start ? roundedOut + 24 * 60 : roundedOut;
 
-    if (end < start) {
-        return {
-            start,
-            end,
-            basic: null,
-            earlyOvertime: null,
-            night: null,
-            total: null,
-            error: '退社は出社以降で入力してください',
-        };
+    if (end === start) {
+        return emptyCalculation('退社は出社より後の時刻を入力してください');
     }
 
-    const basic = start <= TIME_RULES.basicStart
-        ? (
-            end <= TIME_RULES.basicStart
-                ? 0
-                : end <= TIME_RULES.basicEnd
-                    ? end - TIME_RULES.basicStart - TIME_RULES.breakMinutes
-                    : TIME_RULES.basicEnd - TIME_RULES.basicStart - TIME_RULES.breakMinutes
-        )
-        : (
-            end <= TIME_RULES.basicEnd
-                ? end - start - TIME_RULES.breakMinutes
-                : TIME_RULES.basicEnd - start < 0
-                    ? 0
-                    : TIME_RULES.basicEnd - start - TIME_RULES.breakMinutes
-        );
-
-    const early = start <= TIME_RULES.earlyEnd
-        ? (
-            start <= TIME_RULES.earlyStart
-                ? (
-                    end <= TIME_RULES.basicStart
-                        ? Math.max(end - TIME_RULES.earlyStart, 0)
-                        : TIME_RULES.earlyEnd - TIME_RULES.earlyStart
-                )
-                : (
-                    end <= TIME_RULES.basicStart
-                        ? end - start
-                        : TIME_RULES.earlyEnd - start
-                )
-        )
-        : 0;
-
-    const overtime = end >= TIME_RULES.overtimeStart
-        ? (
-            end >= TIME_RULES.overtimeEnd
-                ? TIME_RULES.overtimeEnd - TIME_RULES.overtimeStart
-                : end - TIME_RULES.overtimeStart
-        )
-        : 0;
-
-    const night = start >= 0 && start <= TIME_RULES.nightEnd && end >= 0 && end <= TIME_RULES.nightEnd
-        ? end - start
-        : (
-            (start < TIME_RULES.nightEnd ? TIME_RULES.nightEnd - start : 0)
-            + (end > TIME_RULES.nightStart ? end - TIME_RULES.nightStart : 0)
-        );
+    const gross = end - start;
+    const breakMinutes = getBreakMinutes(gross);
+    const basicRaw = sumDailyRange(start, end, TIME_RULES.basicStart, TIME_RULES.basicEnd);
+    const early = sumDailyRange(start, end, TIME_RULES.earlyStart, TIME_RULES.earlyEnd);
+    const overtime = sumDailyRange(start, end, TIME_RULES.overtimeStart, TIME_RULES.overtimeEnd);
+    const night = (
+        sumDailyRange(start, end, 0, TIME_RULES.nightEnd)
+        + sumDailyRange(start, end, TIME_RULES.nightStart, 24 * 60)
+    );
 
     return {
         start,
         end,
-        basic,
+        basic: Math.max(0, basicRaw - breakMinutes),
         earlyOvertime: early + overtime,
         night,
-        total: end - start - TIME_RULES.breakMinutes,
+        total: Math.max(0, gross - breakMinutes),
         error: '',
     };
 };
@@ -196,10 +172,21 @@ function AttendanceInput({ username = '', userId = '' }) {
     });
     const [snackbarOpen, setSnackbarOpen] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState('勤怠入力を保存しました');
+    const [snackbarSeverity, setSnackbarSeverity] = useState('success');
     const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+    const [periodChangeConfirmOpen, setPeriodChangeConfirmOpen] = useState(false);
+    const [pendingPeriodChange, setPendingPeriodChange] = useState(null);
+    const [lastSavedSnapshot, setLastSavedSnapshot] = useState(() => (
+        buildAttendanceSnapshot({ employeeId: userId, name: username, department: '' }, EXCEL_SAMPLE_ENTRIES)
+    ));
 
     const monthKey = monthKeyOf(year, month);
     const storageKey = `attendanceTimesheet:${monthKey}`;
+    const currentSnapshot = useMemo(
+        () => buildAttendanceSnapshot(employee, entries),
+        [employee, entries],
+    );
+    const hasUnsavedChanges = currentSnapshot !== lastSavedSnapshot;
 
     useEffect(() => {
         setEmployee(prev => ({
@@ -212,17 +199,27 @@ function AttendanceInput({ username = '', userId = '' }) {
     useEffect(() => {
         const saved = JSON.parse(localStorage.getItem(storageKey) || 'null');
         if (saved) {
-            setEmployee(prev => ({
-                ...prev,
-                ...(saved.employee || {}),
-                employeeId: saved.employee?.employeeId || prev.employeeId,
-                name: saved.employee?.name || prev.name,
-            }));
-            setEntries(saved.entries || {});
+            const nextEntries = saved.entries || {};
+            setEmployee(prev => {
+                const nextEmployee = {
+                    ...prev,
+                    ...(saved.employee || {}),
+                    employeeId: saved.employee?.employeeId || prev.employeeId,
+                    name: saved.employee?.name || prev.name,
+                };
+                setLastSavedSnapshot(buildAttendanceSnapshot(nextEmployee, nextEntries));
+                return nextEmployee;
+            });
+            setEntries(nextEntries);
             return;
         }
 
-        setEntries(monthKey === SOURCE_MONTH_KEY ? EXCEL_SAMPLE_ENTRIES : {});
+        const nextEntries = monthKey === SOURCE_MONTH_KEY ? EXCEL_SAMPLE_ENTRIES : {};
+        setEntries(nextEntries);
+        setEmployee(prev => {
+            setLastSavedSnapshot(buildAttendanceSnapshot(prev, nextEntries));
+            return prev;
+        });
     }, [monthKey, storageKey]);
 
     const rows = useMemo(() => {
@@ -232,7 +229,7 @@ function AttendanceInput({ username = '', userId = '' }) {
             const date = new Date(year, month - 1, day);
             const dateKey = dateKeyOf(year, month, day);
             const entry = entries[dateKey] || { type: '', clockIn: '', clockOut: '', note: '' };
-            const calc = calculateWorkTimes(entry.clockIn, entry.clockOut);
+            const calc = entry.type === '出勤' ? calculateWorkTimes(entry.clockIn, entry.clockOut) : emptyCalculation();
 
             return {
                 dateKey,
@@ -260,6 +257,21 @@ function AttendanceInput({ username = '', userId = '' }) {
         };
     }, [rows]);
 
+    const validationErrors = useMemo(() => (
+        rows.flatMap(row => {
+            if (row.entry.type !== '出勤') return [];
+            if (!row.entry.clockIn || !row.entry.clockOut) {
+                return [`${row.day}日: 出勤は出社と退社を入力してください`];
+            }
+            if (row.calc.error) {
+                return [`${row.day}日: ${row.calc.error}`];
+            }
+            return [];
+        })
+    ), [rows]);
+
+    const hasSaveBlockingErrors = validationErrors.length > 0;
+
     const handleEmployeeChange = (field) => (event) => {
         setEmployee(prev => ({ ...prev, [field]: event.target.value }));
     };
@@ -271,14 +283,39 @@ function AttendanceInput({ username = '', userId = '' }) {
             [dateKey]: {
                 ...(prev[dateKey] || { type: '', clockIn: '', clockOut: '', note: '' }),
                 [field]: value,
+                ...(field === 'type' && value !== '出勤' ? { clockIn: '', clockOut: '' } : {}),
             },
         }));
     };
 
     const handleDefaultPatternChange = (field) => (event) => {
-        const nextPattern = { ...defaultPattern, [field]: event.target.value };
+        const value = event.target.value;
+        const nextPattern = {
+            ...defaultPattern,
+            [field]: value,
+            ...(field === 'type' && value !== '出勤' ? { clockIn: '', clockOut: '' } : {}),
+        };
         setDefaultPattern(nextPattern);
         localStorage.setItem('attendanceDefaultPattern', JSON.stringify(nextPattern));
+    };
+
+    const requestPeriodChange = (nextPeriod) => {
+        if (hasUnsavedChanges) {
+            setPendingPeriodChange(nextPeriod);
+            setPeriodChangeConfirmOpen(true);
+            return;
+        }
+        setYear(nextPeriod.year);
+        setMonth(nextPeriod.month);
+    };
+
+    const handlePeriodChangeConfirm = () => {
+        if (pendingPeriodChange) {
+            setYear(pendingPeriodChange.year);
+            setMonth(pendingPeriodChange.month);
+        }
+        setPendingPeriodChange(null);
+        setPeriodChangeConfirmOpen(false);
     };
 
     const handleApplyDefaultPattern = () => {
@@ -291,8 +328,8 @@ function AttendanceInput({ username = '', userId = '' }) {
 
             nextEntries[row.dateKey] = {
                 type: defaultPattern.type,
-                clockIn: defaultPattern.clockIn,
-                clockOut: defaultPattern.clockOut,
+                clockIn: defaultPattern.type === '出勤' ? defaultPattern.clockIn : '',
+                clockOut: defaultPattern.type === '出勤' ? defaultPattern.clockOut : '',
                 note: '',
             };
             appliedCount += 1;
@@ -300,12 +337,21 @@ function AttendanceInput({ username = '', userId = '' }) {
 
         setEntries(nextEntries);
         setSnackbarMessage(`${appliedCount}日分にデフォルト勤務を反映しました`);
+        setSnackbarSeverity('success');
         setSnackbarOpen(true);
     };
 
     const handleSave = () => {
+        if (hasSaveBlockingErrors) {
+            setSnackbarMessage('保存前に入力エラーを修正してください');
+            setSnackbarSeverity('warning');
+            setSnackbarOpen(true);
+            return;
+        }
         localStorage.setItem(storageKey, JSON.stringify({ employee, entries }));
+        setLastSavedSnapshot(buildAttendanceSnapshot(employee, entries));
         setSnackbarMessage('勤怠入力を保存しました');
+        setSnackbarSeverity('success');
         setSnackbarOpen(true);
     };
 
@@ -316,8 +362,10 @@ function AttendanceInput({ username = '', userId = '' }) {
     const handleClearConfirm = () => {
         setEntries({});
         localStorage.setItem(storageKey, JSON.stringify({ employee, entries: {} }));
+        setLastSavedSnapshot(buildAttendanceSnapshot(employee, {}));
         setClearConfirmOpen(false);
         setSnackbarMessage('勤怠入力をクリアしました');
+        setSnackbarSeverity('success');
         setSnackbarOpen(true);
     };
 
@@ -338,10 +386,15 @@ function AttendanceInput({ username = '', userId = '' }) {
                             <Button startIcon={<RestartAltIcon />} variant="outlined" color="inherit" onClick={handleClear}>
                                 入力クリア
                             </Button>
-                            <Button startIcon={<SaveIcon />} variant="contained" onClick={handleSave}>
+                            <Button startIcon={<SaveIcon />} variant="contained" onClick={handleSave} disabled={hasSaveBlockingErrors}>
                                 保存
                             </Button>
                         </Box>
+                        {hasSaveBlockingErrors && (
+                            <Alert severity="warning">
+                                保存前に入力エラーを修正してください。{validationErrors[0]}
+                            </Alert>
+                        )}
 
                         <Box
                             sx={{
@@ -359,7 +412,11 @@ function AttendanceInput({ username = '', userId = '' }) {
                                 type="number"
                                 size="small"
                                 value={year}
-                                onChange={(event) => setYear(Number(event.target.value))}
+                                onChange={(event) => {
+                                    const nextYear = Number(event.target.value);
+                                    if (!Number.isFinite(nextYear)) return;
+                                    requestPeriodChange({ year: nextYear, month });
+                                }}
                                 inputProps={{ min: 2000, max: 2100 }}
                             />
                             <TextField
@@ -367,7 +424,11 @@ function AttendanceInput({ username = '', userId = '' }) {
                                 type="number"
                                 size="small"
                                 value={month}
-                                onChange={(event) => setMonth(Math.min(12, Math.max(1, Number(event.target.value))))}
+                                onChange={(event) => {
+                                    const nextMonth = Math.min(12, Math.max(1, Number(event.target.value)));
+                                    if (!Number.isFinite(nextMonth)) return;
+                                    requestPeriodChange({ year, month: nextMonth });
+                                }}
                                 inputProps={{ min: 1, max: 12 }}
                             />
                             <TextField
@@ -431,6 +492,7 @@ function AttendanceInput({ username = '', userId = '' }) {
                                 type="time"
                                 size="small"
                                 value={defaultPattern.clockIn}
+                                disabled={defaultPattern.type !== '出勤'}
                                 onChange={handleDefaultPatternChange('clockIn')}
                                 inputProps={{ step: 60 }}
                             />
@@ -439,6 +501,7 @@ function AttendanceInput({ username = '', userId = '' }) {
                                 type="time"
                                 size="small"
                                 value={defaultPattern.clockOut}
+                                disabled={defaultPattern.type !== '出勤'}
                                 onChange={handleDefaultPatternChange('clockOut')}
                                 inputProps={{ step: 60 }}
                             />
@@ -563,6 +626,7 @@ function AttendanceInput({ username = '', userId = '' }) {
                                             size="small"
                                             value={row.entry.clockIn}
                                             fullWidth
+                                            disabled={row.entry.type !== '出勤'}
                                             onChange={handleEntryChange(row.dateKey, 'clockIn')}
                                             inputProps={{ step: 60 }}
                                         />
@@ -574,6 +638,7 @@ function AttendanceInput({ username = '', userId = '' }) {
                                             value={row.entry.clockOut}
                                             fullWidth
                                             error={Boolean(row.calc.error)}
+                                            disabled={row.entry.type !== '出勤'}
                                             onChange={handleEntryChange(row.dateKey, 'clockOut')}
                                             inputProps={{ step: 60 }}
                                         />
@@ -604,7 +669,7 @@ function AttendanceInput({ username = '', userId = '' }) {
             </Stack>
 
             <Snackbar open={snackbarOpen} autoHideDuration={2500} onClose={() => setSnackbarOpen(false)}>
-                <Alert severity="success" sx={{ width: '100%' }}>
+                <Alert severity={snackbarSeverity} sx={{ width: '100%' }}>
                     {snackbarMessage}
                 </Alert>
             </Snackbar>
@@ -616,6 +681,18 @@ function AttendanceInput({ username = '', userId = '' }) {
                 confirmColor="warning"
                 onCancel={() => setClearConfirmOpen(false)}
                 onConfirm={handleClearConfirm}
+            />
+            <AdminConfirmDialog
+                open={periodChangeConfirmOpen}
+                title="年月を切り替えますか？"
+                message="未保存の入力内容があります。保存せずに年月を切り替えると、現在の変更は破棄されます。"
+                confirmLabel="切り替え"
+                confirmColor="warning"
+                onCancel={() => {
+                    setPendingPeriodChange(null);
+                    setPeriodChangeConfirmOpen(false);
+                }}
+                onConfirm={handlePeriodChangeConfirm}
             />
         </Container>
     );

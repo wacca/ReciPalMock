@@ -29,12 +29,13 @@ function LeaveApprovals() {
 
     const handleStatus = (id, status) => {
         const approver = approvers.find(item => item.value === selectedApprover)?.label || '';
+        const comment = (commentMap[id] || '').trim();
         const newData = data.map(row => (
             row.id === id
                 ? {
                     ...row,
                     status,
-                    remarks: status === '非承認' ? commentMap[id] || '' : '',
+                    remarks: status === '非承認' ? comment : '',
                     approvedBy: approver,
                     approvedAt: new Date().toISOString(),
                 }
@@ -81,36 +82,46 @@ function LeaveApprovals() {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {approvalTargets.map((row, idx) => (
-                                <TableRow key={row.id || idx}>
-                                    <TableCell>{row.submittedAt ? new Date(row.submittedAt).toLocaleString() : '-'}</TableCell>
-                                    <TableCell>{row.leaveType}</TableCell>
-                                    <TableCell>{row.date}</TableCell>
-                                    <TableCell>{row.reason}</TableCell>
-                                    <TableCell><Chip size="small" label="申請中" color="primary" /></TableCell>
-                                    <TableCell>
-                                        <Box className="tableActionGroup">
-                                            <Tooltip title="承認">
-                                                <IconButton aria-label="休暇申請を承認" color="primary" onClick={() => handleStatus(row.id, '承認済')}>
-                                                    <CheckCircleIcon />
-                                                </IconButton>
-                                            </Tooltip>
-                                            <Tooltip title="非承認">
-                                                <IconButton aria-label="休暇申請を非承認" color="error" onClick={() => handleStatus(row.id, '非承認')}>
-                                                    <CancelIcon />
-                                                </IconButton>
-                                            </Tooltip>
-                                        </Box>
-                                        <TextField
-                                            label="承認者備考"
-                                            size="small"
-                                            value={commentMap[row.id] || ''}
-                                            onChange={e => setCommentMap({ ...commentMap, [row.id]: e.target.value })}
-                                            sx={{ mt: 1, minWidth: 240 }}
-                                        />
-                                    </TableCell>
-                                </TableRow>
-                            ))}
+                            {approvalTargets.map((row, idx) => {
+                                const rejectionComment = (commentMap[row.id] || '').trim();
+                                return (
+                                    <TableRow key={row.id || idx}>
+                                        <TableCell>{row.submittedAt ? new Date(row.submittedAt).toLocaleString() : '-'}</TableCell>
+                                        <TableCell>{row.leaveType}</TableCell>
+                                        <TableCell>{row.date}</TableCell>
+                                        <TableCell>{row.reason}</TableCell>
+                                        <TableCell><Chip size="small" label="申請中" color="primary" /></TableCell>
+                                        <TableCell>
+                                            <Box className="tableActionGroup">
+                                                <Tooltip title="承認">
+                                                    <IconButton aria-label="休暇申請を承認" color="primary" onClick={() => handleStatus(row.id, '承認済')}>
+                                                        <CheckCircleIcon />
+                                                    </IconButton>
+                                                </Tooltip>
+                                                <Tooltip title={rejectionComment ? '非承認' : '非承認には承認者備考が必要です'}>
+                                                    <span>
+                                                        <IconButton
+                                                            aria-label="休暇申請を非承認"
+                                                            color="error"
+                                                            disabled={!rejectionComment}
+                                                            onClick={() => handleStatus(row.id, '非承認')}
+                                                        >
+                                                            <CancelIcon />
+                                                        </IconButton>
+                                                    </span>
+                                                </Tooltip>
+                                            </Box>
+                                            <TextField
+                                                label="承認者備考"
+                                                size="small"
+                                                value={commentMap[row.id] || ''}
+                                                onChange={e => setCommentMap({ ...commentMap, [row.id]: e.target.value })}
+                                                sx={{ mt: 1, minWidth: 240 }}
+                                            />
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
                         </TableBody>
                     </Table>
                 </TableContainer>

@@ -1,35 +1,41 @@
 import { useEffect, useState } from 'react';
-import { Container, Typography, Box, Button, TextField, Paper, Snackbar, Alert, Switch, FormControlLabel, Chip } from '@mui/material';
+import { Container, Typography, Box, Button, TextField, Paper, Snackbar, Alert, Switch, FormControlLabel, Chip, MenuItem } from '@mui/material';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import SaveIcon from '@mui/icons-material/Save';
 import AdminConfirmDialog from './components/AdminConfirmDialog';
 
 const STORAGE_KEY = 'reminderSettings';
 
+const TIMING_TYPES = {
+    fixedDay: 'fixedDay',
+    daysBeforeMonthEnd: 'daysBeforeMonthEnd',
+    monthEnd: 'monthEnd',
+};
+
 const ALERT_ITEMS = [
     {
         key: 'forget',
         label: '申請忘れアラート',
         description: '月末前に未申請の利用者へ通知します。',
-        defaultConfig: { enabled: true, day: 25, max: 2 },
+        defaultConfig: { enabled: true, timingType: TIMING_TYPES.daysBeforeMonthEnd, day: 25, daysBeforeMonthEnd: 5, max: 2 },
     },
     {
         key: 'deadline',
         label: '申請締切アラート',
         description: '締切日が近い申請者へ通知します。',
-        defaultConfig: { enabled: false, day: 28, max: 1 },
+        defaultConfig: { enabled: false, timingType: TIMING_TYPES.daysBeforeMonthEnd, day: 28, daysBeforeMonthEnd: 1, max: 1 },
     },
     {
         key: 'approvalDelay',
         label: '承認遅延アラート',
         description: '承認待ちのまま残っている承認者へ通知します。',
-        defaultConfig: { enabled: false, day: 27, max: 1 },
+        defaultConfig: { enabled: false, timingType: TIMING_TYPES.fixedDay, day: 27, daysBeforeMonthEnd: 3, max: 1 },
     },
     {
         key: 'monthlySummary',
         label: '月次未申請サマリーアラート',
         description: '月次の未申請状況を管理者へ集計通知します。',
-        defaultConfig: { enabled: false, day: 20, max: 1 },
+        defaultConfig: { enabled: false, timingType: TIMING_TYPES.monthEnd, day: 20, daysBeforeMonthEnd: 1, max: 1 },
     },
 ];
 
@@ -40,15 +46,38 @@ const createDefaultConfigs = () => (
     }), {})
 );
 
+const normalizeConfig = (config = {}, defaultConfig) => {
+    const timingType = Object.values(TIMING_TYPES).includes(config.timingType)
+        ? config.timingType
+        : TIMING_TYPES.fixedDay;
+
+    return {
+        ...defaultConfig,
+        ...config,
+        timingType,
+        day: Number(config.day || defaultConfig.day),
+        daysBeforeMonthEnd: Number(config.daysBeforeMonthEnd || defaultConfig.daysBeforeMonthEnd),
+        max: Number(config.max || defaultConfig.max),
+    };
+};
+
 const normalizeConfigs = (configs) => (
     ALERT_ITEMS.reduce((next, item) => ({
         ...next,
-        [item.key]: {
-            ...item.defaultConfig,
-            ...(configs?.[item.key] || {}),
-        },
+        [item.key]: normalizeConfig(configs?.[item.key], item.defaultConfig),
     }), {})
 );
+
+const isConfigInvalid = (config) => {
+    if (!Number.isInteger(config.max) || config.max < 1 || config.max > 10) return true;
+    if (config.timingType === TIMING_TYPES.fixedDay) {
+        return !Number.isInteger(config.day) || config.day < 1 || config.day > 28;
+    }
+    if (config.timingType === TIMING_TYPES.daysBeforeMonthEnd) {
+        return !Number.isInteger(config.daysBeforeMonthEnd) || config.daysBeforeMonthEnd < 1 || config.daysBeforeMonthEnd > 10;
+    }
+    return config.timingType !== TIMING_TYPES.monthEnd;
+};
 
 function ReminderSettings() {
     const [alertConfigs, setAlertConfigs] = useState(createDefaultConfigs);
@@ -67,17 +96,10 @@ function ReminderSettings() {
     const handleSave = () => {
         const invalidItem = ALERT_ITEMS.find(item => {
             const config = alertConfigs[item.key];
-            return config.enabled && (
-                !Number.isInteger(config.day) ||
-                config.day < 1 ||
-                config.day > 31 ||
-                !Number.isInteger(config.max) ||
-                config.max < 1 ||
-                config.max > 10
-            );
+            return config.enabled && isConfigInvalid(config);
         });
         if (invalidItem) {
-            setSnackbar({ open: true, message: `${invalidItem.label}の日付または送信回数を確認してください`, severity: 'warning' });
+            setSnackbar({ open: true, message: `${invalidItem.label}の通知タイミングまたは送信回数を確認してください`, severity: 'warning' });
             return;
         }
         localStorage.setItem(STORAGE_KEY, JSON.stringify(alertConfigs));
@@ -97,7 +119,7 @@ function ReminderSettings() {
             ...alertConfigs,
             [type]: {
                 ...alertConfigs[type],
-                [field]: field === 'enabled' ? value : Number(value)
+                [field]: field === 'enabled' || field === 'timingType' ? value : Number(value)
             }
         });
     };
@@ -162,17 +184,50 @@ function ReminderSettings() {
                                 </Typography>
                                 <Box className="alertSettingFields">
                                     <TextField
-                                        label="毎月何日から"
-                                        type="number"
+                                        label="通知タイミング"
+                                        select
                                         size="small"
-                                        slotProps={{ htmlInput: { min: 1, max: 31 } }}
-                                        value={config.day}
-                                        onChange={e => handleAlertChange(alert.key, 'day', e.target.value)}
-                                        sx={{ width: 120 }}
+                                        value={config.timingType}
+                                        onChange={e => handleAlertChange(alert.key, 'timingType', e.target.value)}
+                                        sx={{ width: 180 }}
                                         disabled={!isEnabled}
-                                        error={isEnabled && (config.day < 1 || config.day > 31)}
-                                        helperText={isEnabled && (config.day < 1 || config.day > 31) ? '1-31' : ' '}
-                                    />
+                                        helperText=" "
+                                    >
+                                        <MenuItem value={TIMING_TYPES.fixedDay}>毎月固定日</MenuItem>
+                                        <MenuItem value={TIMING_TYPES.daysBeforeMonthEnd}>月末のN日前</MenuItem>
+                                        <MenuItem value={TIMING_TYPES.monthEnd}>月末</MenuItem>
+                                    </TextField>
+                                    {config.timingType === TIMING_TYPES.fixedDay && (
+                                        <TextField
+                                            label="毎月何日"
+                                            type="number"
+                                            size="small"
+                                            slotProps={{ htmlInput: { min: 1, max: 28 } }}
+                                            value={config.day}
+                                            onChange={e => handleAlertChange(alert.key, 'day', e.target.value)}
+                                            sx={{ width: 120 }}
+                                            disabled={!isEnabled}
+                                            error={isEnabled && (config.day < 1 || config.day > 28)}
+                                            helperText={isEnabled && (config.day < 1 || config.day > 28) ? '1-28' : ' '}
+                                        />
+                                    )}
+                                    {config.timingType === TIMING_TYPES.daysBeforeMonthEnd && (
+                                        <TextField
+                                            label="月末の何日前"
+                                            type="number"
+                                            size="small"
+                                            slotProps={{ htmlInput: { min: 1, max: 10 } }}
+                                            value={config.daysBeforeMonthEnd}
+                                            onChange={e => handleAlertChange(alert.key, 'daysBeforeMonthEnd', e.target.value)}
+                                            sx={{ width: 150 }}
+                                            disabled={!isEnabled}
+                                            error={isEnabled && (config.daysBeforeMonthEnd < 1 || config.daysBeforeMonthEnd > 10)}
+                                            helperText={isEnabled && (config.daysBeforeMonthEnd < 1 || config.daysBeforeMonthEnd > 10) ? '1-10' : ' '}
+                                        />
+                                    )}
+                                    {config.timingType === TIMING_TYPES.monthEnd && (
+                                        <Chip size="small" label="月末当日に通知" variant="outlined" sx={{ height: 32 }} />
+                                    )}
                                     <TextField
                                         label="最大送信回数"
                                         type="number"

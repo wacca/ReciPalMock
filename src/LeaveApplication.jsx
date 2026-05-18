@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Container, Typography, Box, TextField, Button, MenuItem, FormControl, InputLabel, Select, Snackbar, Alert, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Chip, IconButton, Tooltip } from '@mui/material';
+import { useLocation } from 'react-router-dom';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -24,6 +25,7 @@ const hasLeaveRowInput = (row = {}) => (
 );
 
 function LeaveApplication() {
+    const location = useLocation();
     const [leaveList, setLeaveList] = useState([]); // 下書き一覧
     const [mode, setMode] = useState('list'); // 'list' or 'edit'
     const [editId, setEditId] = useState('new');
@@ -36,6 +38,13 @@ function LeaveApplication() {
         loadLeaveApplications();
         setLeaveList(loadLeaveDrafts());
     }, []);
+
+    useEffect(() => {
+        if (!location.state?.startNew) return;
+        setEditId('new');
+        setLeaveRows([emptyLeaveRow()]);
+        setMode('edit');
+    }, [location.state]);
 
     const resetForm = () => {
         setEditId('new');

@@ -107,7 +107,7 @@ function SubmittedApplications() {
                 )}
                 {data.map((group, groupIdx) => {
                     const status = getExpenseApplicationStatus(group);
-                    const isEditable = status === '申請中' || status === '非承認';
+                    const isEditable = status === '非承認';
                     return (
                         <Box key={group.applicationId} className="applicationGroup">
                             <Box className="sectionHeaderRow">

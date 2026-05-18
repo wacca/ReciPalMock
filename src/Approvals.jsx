@@ -32,7 +32,7 @@ function Approvals() {
 
     const handleGroupStatus = (groupIdx, newStatus) => {
         const target = data[groupIdx];
-        const comment = commentMap[target.applicationId] || '';
+        const comment = (commentMap[target.applicationId] || '').trim();
         const newData = [...data];
         newData[groupIdx] = {
             ...target,
@@ -73,6 +73,7 @@ function Approvals() {
                 )}
                 {approvalTargets.map((group) => {
                     const groupIdx = data.findIndex(item => item.applicationId === group.applicationId);
+                    const rejectionComment = (commentMap[group.applicationId] || '').trim();
                     return (
                         <Box key={group.applicationId} className="applicationGroup">
                             <Box className="sectionHeaderRow">
@@ -124,10 +125,17 @@ function Approvals() {
                                             <CheckCircleIcon />
                                         </IconButton>
                                     </Tooltip>
-                                    <Tooltip title="非承認">
-                                        <IconButton aria-label="経費申請を非承認" color="error" onClick={() => handleGroupStatus(groupIdx, '非承認')}>
-                                            <CancelIcon />
-                                        </IconButton>
+                                    <Tooltip title={rejectionComment ? '非承認' : '非承認には承認者備考が必要です'}>
+                                        <span>
+                                            <IconButton
+                                                aria-label="経費申請を非承認"
+                                                color="error"
+                                                disabled={!rejectionComment}
+                                                onClick={() => handleGroupStatus(groupIdx, '非承認')}
+                                            >
+                                                <CancelIcon />
+                                            </IconButton>
+                                        </span>
                                     </Tooltip>
                                 </Box>
                             </Box>
