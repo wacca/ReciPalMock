@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react';
-import { Container, TextField, Button, Typography, Box, MenuItem, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio, Dialog, DialogContent, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Snackbar, Alert, Chip, IconButton, Tooltip } from '@mui/material';
+import {
+    TextField, Button, Typography, Box, MenuItem, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio,
+    Dialog, DialogContent, Snackbar, Alert, IconButton, Tooltip, Stack,
+} from '@mui/material';
 import { useLocation } from 'react-router-dom';
-import AddIcon from '@mui/icons-material/Add';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
-import SaveIcon from '@mui/icons-material/Save';
-import SendIcon from '@mui/icons-material/Send';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
+import AddRoundedIcon from '@mui/icons-material/AddRounded';
+import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
+import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
+import EditRoundedIcon from '@mui/icons-material/EditRounded';
+import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
+import SendRoundedIcon from '@mui/icons-material/SendRounded';
+import UploadFileRoundedIcon from '@mui/icons-material/UploadFileRounded';
+import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded';
 import {
     EXPENSE_CATEGORIES,
     buildExpenseApplication,
@@ -19,11 +23,13 @@ import {
     saveExpenseApplications,
 } from './expenseApplicationStore';
 import AdminConfirmDialog from './components/AdminConfirmDialog';
+import PageScaffold from './ui/PageScaffold.jsx';
+import Section from './ui/Section.jsx';
+import StatusChip from './ui/StatusChip.jsx';
 
-const hasExpenseRowInput = (row = {}) => (
+const hasExpenseRowInput = (row = {}) =>
     ['date', 'description', 'destination', 'category', 'amount', 'receiptName', 'receiptPreview']
-        .some(field => String(row[field] ?? '').trim() !== '')
-);
+        .some((field) => String(row[field] ?? '').trim() !== '');
 
 function ApplicationForm() {
     const location = useLocation();
@@ -33,13 +39,13 @@ function ApplicationForm() {
     const [selectedReceipt, setSelectedReceipt] = useState(null);
     const [drafts, setDrafts] = useState([]);
     const [selectedDraftId, setSelectedDraftId] = useState('new');
-    const [mode, setMode] = useState('list'); // 'list' or 'edit'
+    const [mode, setMode] = useState('list');
     const [snackbar, setSnackbar] = useState({ open: false, message: '' });
     const [deleteTargetIndex, setDeleteTargetIndex] = useState(null);
 
     useEffect(() => {
-        const savedDrafts = JSON.parse(localStorage.getItem('expenseDrafts') || '[]');
-        setDrafts(savedDrafts);
+        const saved = JSON.parse(localStorage.getItem('expenseDrafts') || '[]');
+        setDrafts(saved);
     }, []);
 
     useEffect(() => {
@@ -52,83 +58,55 @@ function ApplicationForm() {
 
     const handleChange = (index, e) => {
         const { name, value } = e.target;
-        const newFormDataList = [...formDataList];
-        newFormDataList[index][name] = value;
-        setFormDataList(newFormDataList);
+        const next = [...formDataList];
+        next[index][name] = value;
+        setFormDataList(next);
     };
 
-    const handleAddFields = () => {
-        setFormDataList([...formDataList, emptyExpenseRow()]);
-    };
-
-    const deleteFieldsAt = (index) => {
-        const newFormDataList = formDataList.filter((_, i) => i !== index);
-        setFormDataList(newFormDataList.length > 0 ? newFormDataList : [emptyExpenseRow()]);
+    const deleteFieldsAt = (i) => {
+        const next = formDataList.filter((_, x) => x !== i);
+        setFormDataList(next.length > 0 ? next : [emptyExpenseRow()]);
         setSnackbar({ open: true, message: '明細行を削除しました' });
     };
-
-    const handleDeleteFields = (index) => {
-        if (hasExpenseRowInput(formDataList[index])) {
-            setDeleteTargetIndex(index);
-            return;
-        }
-        deleteFieldsAt(index);
+    const handleDeleteFields = (i) => {
+        if (hasExpenseRowInput(formDataList[i])) setDeleteTargetIndex(i);
+        else deleteFieldsAt(i);
     };
-
     const handleDeleteFieldsConfirm = () => {
         if (deleteTargetIndex === null) return;
         deleteFieldsAt(deleteTargetIndex);
         setDeleteTargetIndex(null);
     };
 
-    const handleReceiptUpload = (index, e) => {
+    const handleReceiptUpload = (i, e) => {
         const file = e.target.files[0];
         if (file) {
-            const newFormDataList = [...formDataList];
-            newFormDataList[index].receiptName = file.name;
-            newFormDataList[index].receiptPreview = URL.createObjectURL(file);
-            setFormDataList(newFormDataList);
+            const next = [...formDataList];
+            next[i].receiptName = file.name;
+            next[i].receiptPreview = URL.createObjectURL(file);
+            setFormDataList(next);
         }
-    };
-
-    const handleOpenDialog = (receiptPreview) => {
-        setSelectedReceipt(receiptPreview);
-        setOpenDialog(true);
-    };
-
-    const handleCloseDialog = () => {
-        setOpenDialog(false);
-        setSelectedReceipt(null);
     };
 
     const handleSaveDraft = () => {
         const id = selectedDraftId === 'new' ? `draft_${Date.now()}` : selectedDraftId;
         const newDraft = { id, formDataList: formDataList.map(normalizeExpenseRow), paymentType, updated: new Date().toISOString() };
-        let newDrafts;
-        if (selectedDraftId === 'new') {
-            newDrafts = [...drafts, newDraft];
-        } else {
-            newDrafts = drafts.map(d => d.id === id ? newDraft : d);
-        }
-        setDrafts(newDrafts);
-        localStorage.setItem('expenseDrafts', JSON.stringify(newDrafts));
+        const next = selectedDraftId === 'new' ? [...drafts, newDraft] : drafts.map((d) => (d.id === id ? newDraft : d));
+        setDrafts(next);
+        localStorage.setItem('expenseDrafts', JSON.stringify(next));
         setSelectedDraftId(id);
         setSnackbar({ open: true, message: '下書きを保存しました' });
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        const newApplication = buildExpenseApplication({
-            rows: formDataList,
-            paymentType,
-            draftId: selectedDraftId,
-        });
-        const applications = loadExpenseApplications();
-        saveExpenseApplications([newApplication, ...applications]);
+        const app = buildExpenseApplication({ rows: formDataList, paymentType, draftId: selectedDraftId });
+        const apps = loadExpenseApplications();
+        saveExpenseApplications([app, ...apps]);
         if (selectedDraftId !== 'new') {
-            const newDrafts = drafts.filter(draft => draft.id !== selectedDraftId);
-            setDrafts(newDrafts);
-            localStorage.setItem('expenseDrafts', JSON.stringify(newDrafts));
+            const next = drafts.filter((d) => d.id !== selectedDraftId);
+            setDrafts(next);
+            localStorage.setItem('expenseDrafts', JSON.stringify(next));
         }
         setSelectedDraftId('new');
         setFormDataList([emptyExpenseRow()]);
@@ -136,12 +114,12 @@ function ApplicationForm() {
         setMode('list');
     };
 
-    const handleSelectDraft = (draftId) => {
-        setSelectedDraftId(draftId);
+    const handleSelectDraft = (id) => {
+        setSelectedDraftId(id);
         setMode('edit');
-        const draft = drafts.find(d => d.id === draftId);
+        const draft = drafts.find((d) => d.id === id);
         if (draft) {
-            setFormDataList(draft.formDataList.map(row => ({ ...emptyExpenseRow(), ...row })));
+            setFormDataList(draft.formDataList.map((r) => ({ ...emptyExpenseRow(), ...r })));
             setPaymentType(draft.paymentType);
         }
     };
@@ -154,220 +132,283 @@ function ApplicationForm() {
     };
 
     const currentTotal = getExpenseApplicationTotal({ details: formDataList });
+    const filledCount = formDataList.filter(hasExpenseRowInput).length;
 
-    return (
-        <Container maxWidth="md" sx={{ py: 4 }}>
-            {mode === 'list' && (
-                <Box>
-                    <Box className="pageHeaderRow">
-                        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>経費申請 下書き一覧</Typography>
-                        <Box className="pageActionBar">
-                            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleNew}>新規作成</Button>
+    if (mode === 'list') {
+        return (
+            <PageScaffold
+                eyebrow="申請"
+                title="経費申請の下書き"
+                subtitle="作成中の下書きを編集・送信します。送信後は経費申請済・承認画面に反映されます。"
+                actions={(
+                    <Button variant="contained" color="primary" startIcon={<AddRoundedIcon />} onClick={handleNew}>
+                        新規作成
+                    </Button>
+                )}
+            >
+                <Section padded>
+                    {drafts.length === 0 ? (
+                        <Box sx={{ paddingBlock: 4, textAlign: 'center', color: 'var(--ink-tertiary)' }}>
+                            <ReceiptLongRoundedIcon sx={{ fontSize: 40, color: 'var(--ink-muted)' }} />
+                            <Typography variant="body2" sx={{ mt: 1 }}>下書きはありません。</Typography>
+                            <Typography variant="caption">右上の「新規作成」から始めましょう。</Typography>
                         </Box>
-                    </Box>
-                    <TableContainer>
-                        <Table size="small">
-                            <TableHead>
-                                <TableRow>
-                                    <TableCell sx={{ width: 180 }}>作成日</TableCell>
-                                    <TableCell sx={{ width: 300 }}>内容</TableCell>
-                                    <TableCell sx={{ width: 120 }}>支払種別</TableCell>
-                                    <TableCell sx={{ width: 120 }}>操作</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {drafts.length === 0 && (
-                                    <TableRow><TableCell colSpan={4}>下書きはありません</TableCell></TableRow>
-                                )}
-                                {drafts.map(draft => (
-                                    <TableRow key={draft.id}>
-                                        <TableCell>{draft.updated ? new Date(draft.updated).toLocaleString() : '-'}</TableCell>
-                                        <TableCell>{draft.formDataList?.[0]?.description || '-'}</TableCell>
-                                        <TableCell>{draft.paymentType}</TableCell>
-                                        <TableCell>
-                                            <Box className="tableActionGroup">
-                                                <Tooltip title="編集">
-                                                    <IconButton aria-label="下書きを編集" onClick={() => handleSelectDraft(draft.id)}>
-                                                        <EditIcon />
-                                                    </IconButton>
-                                                </Tooltip>
-                                            </Box>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
-                </Box>
-            )}
-            {mode === 'edit' && (
-                <Box>
-                    <Box sx={{ my: 4 }}>
-                        <Typography variant="h6" component="h1" gutterBottom>
-                            経費申請
-                        </Typography>
-                        <Box className="expenseSummaryStrip">
-                            <Box>
-                                <Typography variant="caption" color="text.secondary">明細数</Typography>
-                                <Typography variant="subtitle1">{formDataList.length}件</Typography>
-                            </Box>
-                            <Box>
-                                <Typography variant="caption" color="text.secondary">合計金額</Typography>
-                                <Typography variant="subtitle1">{formatYen(currentTotal)}</Typography>
-                            </Box>
-                            <Chip size="small" label="送信後は申請済・承認画面に反映" color="primary" variant="outlined" />
-                        </Box>
-                        <FormControl component="fieldset">
-                            <FormLabel component="legend">支払種別</FormLabel>
-                            <RadioGroup
-                                row
-                                aria-label="paymentType"
-                                name="paymentType"
-                                value={paymentType}
-                                onChange={(e) => setPaymentType(e.target.value)}
-                            >
-                                <FormControlLabel value="個人立替払用" control={<Radio />} label="個人立替払用" />
-                                <FormControlLabel value="法人カード経費分" control={<Radio />} label="法人カード経費分" />
-                            </RadioGroup>
-                        </FormControl>
-                        <form onSubmit={handleSubmit}>
-                            {formDataList.map((formData, index) => (
-                                <Box className="expenseDetailRow" key={index}>
-                                    <Typography className="expenseDetailIndex" variant="subtitle2">#{index + 1}</Typography>
-                                    <Box>
-                                        <TextField
-                                            fullWidth
-                                            margin="normal"
-                                            label="日付"
-                                            type="date"
-                                            InputLabelProps={{ shrink: true }}
-                                            name="date"
-                                            value={formData.date}
-                                            onChange={(e) => handleChange(index, e)}
-                                            required
-                                        />
-                                    </Box>
-                                    <Box>
-                                        <TextField
-                                            fullWidth
-                                            margin="normal"
-                                            label="内容"
-                                            name="description"
-                                            value={formData.description}
-                                            onChange={(e) => handleChange(index, e)}
-                                            required
-                                        />
-                                    </Box>
-                                    <Box>
-                                        <TextField
-                                            fullWidth
-                                            margin="normal"
-                                            label="用途・行き先"
-                                            name="destination"
-                                            value={formData.destination}
-                                            onChange={(e) => handleChange(index, e)}
-                                            required
-                                        />
-                                    </Box>
-                                    <Box>
-                                        <TextField
-                                            fullWidth
-                                            margin="normal"
-                                            select
-                                            label="費目"
-                                            name="category"
-                                            value={formData.category}
-                                            onChange={(e) => handleChange(index, e)}
-                                            required
-                                        >
-                                            {EXPENSE_CATEGORIES.map(category => (
-                                                <MenuItem key={category} value={category}>{category}</MenuItem>
-                                            ))}
-                                        </TextField>
-                                    </Box>
-                                    <Box>
-                                        <TextField
-                                            fullWidth
-                                            margin="normal"
-                                            label="金額"
-                                            type="number"
-                                            name="amount"
-                                            value={formData.amount}
-                                            onChange={(e) => handleChange(index, e)}
-                                            required
-                                        />
-                                    </Box>
-                                    <Box className="expenseReceiptCell">
-                                        <Button
-                                            variant="outlined"
-                                            component="label"
-                                            startIcon={<UploadFileIcon />}
-                                        >
-                                            領収書アップロード
-                                            <input
-                                                type="file"
-                                                hidden
-                                                onChange={(e) => handleReceiptUpload(index, e)}
-                                            />
-                                        </Button>
-                                        {formData.receiptPreview && (
-                                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                                <img
-                                                    src={formData.receiptPreview}
-                                                    alt="領収書プレビュー"
-                                                    style={{ width: '100px', height: '100px', cursor: 'pointer', marginTop: '8px' }}
-                                                    onClick={() => handleOpenDialog(formData.receiptPreview)}
-                                                />
-                                                <Typography variant="body2" sx={{ mt: 1 }}>
-                                                    {formData.receiptName}
-                                                </Typography>
-                                            </Box>
-                                        )}
-                                    </Box>
-                                    <Box className="expenseRowAction">
-                                        <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={() => handleDeleteFields(index)}>
-                                            削除
-                                        </Button>
-                                    </Box>
+                    ) : (
+                        <Stack spacing={1.25}>
+                            {drafts.map((draft) => (
+                                <Box
+                                    key={draft.id}
+                                    sx={{
+                                        display: 'grid',
+                                        gridTemplateColumns: { xs: '1fr', md: '160px 140px 1fr auto' },
+                                        gap: 1.5,
+                                        alignItems: 'center',
+                                        paddingInline: 2,
+                                        paddingBlock: 1.5,
+                                        borderRadius: 'var(--radius-md)',
+                                        background: 'var(--surface-sunken)',
+                                        transition: 'var(--motion-fast)',
+                                        '&:hover': { background: 'var(--accent-primary-soft)' },
+                                    }}
+                                >
+                                    <Stack direction="row" spacing={1} alignItems="center">
+                                        <StatusChip status="draft" size="sm" />
+                                        <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)' }}>
+                                            {draft.updated ? new Date(draft.updated).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
+                                        </Typography>
+                                    </Stack>
+                                    <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)' }}>{draft.paymentType}</Typography>
+                                    <Typography variant="body2" sx={{ color: 'var(--ink-primary)' }}>
+                                        {draft.formDataList?.[0]?.description || '(内容未入力)'}
+                                    </Typography>
+                                    <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                                        <Tooltip title="編集">
+                                            <IconButton onClick={() => handleSelectDraft(draft.id)}><EditRoundedIcon fontSize="small" /></IconButton>
+                                        </Tooltip>
+                                    </Stack>
                                 </Box>
                             ))}
-                            <Box className="formActionBar">
-                                <Button className="backAction" variant="outlined" startIcon={<ArrowBackIcon />} onClick={() => setMode('list')}>一覧に戻る</Button>
-                                <Button variant="outlined" color="secondary" startIcon={<AddIcon />} onClick={handleAddFields}>行追加</Button>
-                                <Button variant="outlined" color="primary" startIcon={<SaveIcon />} onClick={handleSaveDraft}>下書き保存</Button>
-                                <Button variant="contained" color="primary" startIcon={<SendIcon />} type="submit">送信</Button>
-                            </Box>
-                        </form>
-                    </Box>
-                </Box>
-            )}
-            <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
-                <DialogContent>
-                    {selectedReceipt && (
-                        <img
-                            src={selectedReceipt}
-                            alt="領収書拡大表示"
-                            style={{ width: '100%', height: 'auto' }}
-                        />
+                        </Stack>
                     )}
+                </Section>
+                <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ open: false, message: '' })}>
+                    <Alert severity="success" sx={{ width: '100%' }}>{snackbar.message}</Alert>
+                </Snackbar>
+            </PageScaffold>
+        );
+    }
+
+    return (
+        <PageScaffold
+            eyebrow="申請"
+            title="経費申請"
+            subtitle="領収書と明細を入力します。下書き保存して、後でまとめて送信も可能です。"
+            actions={(
+                <>
+                    <Button variant="text" startIcon={<ArrowBackRoundedIcon />} onClick={() => setMode('list')} sx={{ color: 'var(--ink-tertiary)' }}>
+                        一覧に戻る
+                    </Button>
+                    <Button variant="outlined" color="primary" startIcon={<SaveRoundedIcon />} onClick={handleSaveDraft}>
+                        下書き保存
+                    </Button>
+                    <Button form="expense-form" type="submit" variant="contained" color="primary" startIcon={<SendRoundedIcon />}>
+                        送信
+                    </Button>
+                </>
+            )}
+        >
+            <Box
+                sx={{
+                    position: 'sticky',
+                    top: 60,
+                    zIndex: 5,
+                    paddingInline: 2,
+                    paddingBlock: 1.25,
+                    borderRadius: 'var(--radius-md)',
+                    background: 'var(--surface-overlay)',
+                    boxShadow: 'var(--shadow-1)',
+                    backdropFilter: 'blur(8px)',
+                }}
+            >
+                <Stack direction="row" alignItems="center" spacing={3} flexWrap="wrap">
+                    <Stat label="明細" value={`${formDataList.length}件`} tone="primary" />
+                    <Stat label="入力済み" value={`${filledCount}件`} tone="leaf" />
+                    <Stat label="合計" value={formatYen(currentTotal)} tone="iris" wide />
+                    <Box sx={{ flex: 1 }} />
+                    <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)', maxWidth: 280, textAlign: 'right' }}>
+                        送信後は申請済・承認画面に反映されます。
+                    </Typography>
+                </Stack>
+            </Box>
+
+            <Section padded>
+                <FormControl component="fieldset">
+                    <FormLabel component="legend" sx={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-tertiary)', letterSpacing: 0.5 }}>
+                        支払種別
+                    </FormLabel>
+                    <RadioGroup row name="paymentType" value={paymentType} onChange={(e) => setPaymentType(e.target.value)}>
+                        <FormControlLabel value="個人立替払用" control={<Radio />} label="個人立替払用" />
+                        <FormControlLabel value="法人カード経費分" control={<Radio />} label="法人カード経費分" />
+                    </RadioGroup>
+                </FormControl>
+            </Section>
+
+            <Box component="form" id="expense-form" onSubmit={handleSubmit}>
+                <Stack spacing={1.5}>
+                    {formDataList.map((formData, index) => (
+                        <Section
+                            key={index}
+                            padded
+                            sx={{ background: 'var(--surface-raised)', animation: 'recrovaFloatIn 200ms cubic-bezier(.2,.8,.2,1)' }}
+                        >
+                            <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 1.5 }}>
+                                <Box
+                                    sx={{
+                                        width: 28,
+                                        height: 28,
+                                        borderRadius: 'var(--radius-pill)',
+                                        background: 'var(--surface-sunken)',
+                                        display: 'grid',
+                                        placeItems: 'center',
+                                        fontSize: 12,
+                                        fontWeight: 700,
+                                        color: 'var(--ink-tertiary)',
+                                        flexShrink: 0,
+                                    }}
+                                >
+                                    {index + 1}
+                                </Box>
+                                <Box sx={{ flex: 1, minWidth: 0 }}>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                                        {formData.description || '内容未入力'}
+                                    </Typography>
+                                    <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)' }}>
+                                        {formData.date || '日付未入力'} ・ {formData.category || 'カテゴリ未選択'}
+                                    </Typography>
+                                </Box>
+                                {formData.amount && (
+                                    <Typography sx={{ fontWeight: 700, color: 'var(--accent-iris)' }} className="tabular-nums">
+                                        {formatYen(formData.amount)}
+                                    </Typography>
+                                )}
+                                <Tooltip title="この行を削除">
+                                    <IconButton color="error" size="small" onClick={() => handleDeleteFields(index)}>
+                                        <DeleteOutlineRoundedIcon fontSize="small" />
+                                    </IconButton>
+                                </Tooltip>
+                            </Stack>
+
+                            <Box
+                                sx={{
+                                    display: 'grid',
+                                    gridTemplateColumns: {
+                                        xs: '1fr',
+                                        sm: '1fr 1fr',
+                                        md: 'repeat(6, minmax(0, 1fr))',
+                                    },
+                                    gap: 1.5,
+                                }}
+                            >
+                                <Box sx={{ gridColumn: { md: 'span 1' } }}>
+                                    <TextField fullWidth label="日付" type="date" InputLabelProps={{ shrink: true }} name="date" value={formData.date} onChange={(e) => handleChange(index, e)} required />
+                                </Box>
+                                <Box sx={{ gridColumn: { md: 'span 2' } }}>
+                                    <TextField fullWidth label="内容" name="description" value={formData.description} onChange={(e) => handleChange(index, e)} required />
+                                </Box>
+                                <Box sx={{ gridColumn: { md: 'span 2' } }}>
+                                    <TextField fullWidth label="用途・行き先" name="destination" value={formData.destination} onChange={(e) => handleChange(index, e)} required />
+                                </Box>
+                                <Box sx={{ gridColumn: { md: 'span 1' } }}>
+                                    <TextField fullWidth select label="費目" name="category" value={formData.category} onChange={(e) => handleChange(index, e)} required>
+                                        {EXPENSE_CATEGORIES.map((c) => <MenuItem key={c} value={c}>{c}</MenuItem>)}
+                                    </TextField>
+                                </Box>
+                                <Box sx={{ gridColumn: { md: 'span 2' } }}>
+                                    <TextField
+                                        fullWidth
+                                        label="金額"
+                                        type="number"
+                                        name="amount"
+                                        value={formData.amount}
+                                        onChange={(e) => handleChange(index, e)}
+                                        required
+                                        InputProps={{ sx: { fontVariantNumeric: 'tabular-nums', fontWeight: 600 } }}
+                                    />
+                                </Box>
+                                <Box sx={{ gridColumn: { md: 'span 4' } }}>
+                                    <Stack direction="row" spacing={1.5} alignItems="center">
+                                        <Button variant="outlined" component="label" startIcon={<UploadFileRoundedIcon />} sx={{ borderStyle: 'dashed', flex: 1 }}>
+                                            {formData.receiptName ? '領収書を変更' : '領収書をアップロード'}
+                                            <input type="file" hidden onChange={(e) => handleReceiptUpload(index, e)} />
+                                        </Button>
+                                        {formData.receiptPreview && (
+                                            <Box
+                                                onClick={() => { setSelectedReceipt(formData.receiptPreview); setOpenDialog(true); }}
+                                                sx={{
+                                                    width: 56,
+                                                    height: 56,
+                                                    borderRadius: 'var(--radius-md)',
+                                                    overflow: 'hidden',
+                                                    cursor: 'pointer',
+                                                    boxShadow: 'var(--shadow-1)',
+                                                    transition: 'var(--motion-fast)',
+                                                    '&:hover': { transform: 'scale(1.05)', boxShadow: 'var(--shadow-2)' },
+                                                }}
+                                            >
+                                                <img src={formData.receiptPreview} alt="領収書プレビュー" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            </Box>
+                                        )}
+                                    </Stack>
+                                    {formData.receiptName && (
+                                        <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)', mt: 0.5, display: 'block' }}>
+                                            {formData.receiptName}
+                                        </Typography>
+                                    )}
+                                </Box>
+                            </Box>
+                        </Section>
+                    ))}
+                </Stack>
+                <Button
+                    variant="outlined"
+                    startIcon={<AddRoundedIcon />}
+                    onClick={() => setFormDataList([...formDataList, emptyExpenseRow()])}
+                    sx={{ borderStyle: 'dashed', width: '100%', paddingBlock: 1.5, mt: 2, color: 'var(--ink-tertiary)' }}
+                >
+                    明細行を追加
+                </Button>
+            </Box>
+
+            <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md" fullWidth>
+                <DialogContent>
+                    {selectedReceipt && <img src={selectedReceipt} alt="領収書拡大表示" style={{ width: '100%', height: 'auto' }} />}
                 </DialogContent>
             </Dialog>
-            <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-                <Alert severity="success" sx={{ width: '100%' }}>
-                    {snackbar.message}
-                </Alert>
+            <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ open: false, message: '' })}>
+                <Alert severity="success" sx={{ width: '100%' }}>{snackbar.message}</Alert>
             </Snackbar>
             <AdminConfirmDialog
                 open={deleteTargetIndex !== null}
                 title="明細行を削除しますか？"
-                message={`#${deleteTargetIndex + 1} の明細行を削除します。`}
+                message={`#${deleteTargetIndex + 1} の明細行を削除します。入力内容も失われます。`}
                 confirmLabel="削除"
                 onCancel={() => setDeleteTargetIndex(null)}
                 onConfirm={handleDeleteFieldsConfirm}
             />
-        </Container>
+        </PageScaffold>
     );
 }
 
-export default ApplicationForm;
+const Stat = ({ label, value, tone = 'primary', wide = false }) => {
+    const tones = { primary: 'var(--accent-primary)', leaf: 'var(--accent-leaf)', iris: 'var(--accent-iris)' };
+    return (
+        <Box sx={{ minWidth: wide ? 120 : 'auto' }}>
+            <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)', display: 'block', lineHeight: 1 }}>{label}</Typography>
+            <Typography sx={{ fontWeight: 800, fontSize: wide ? 22 : 22, color: tones[tone], lineHeight: 1.1 }} className="tabular-nums">
+                {value}
+            </Typography>
+        </Box>
+    );
+};
 
+export default ApplicationForm;

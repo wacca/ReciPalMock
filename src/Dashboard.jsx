@@ -1,172 +1,389 @@
-import { Box, Button, Chip, Paper, Stack, Typography } from '@mui/material';
+import { useMemo } from 'react';
+import { Box, Button, Stack, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import EventAvailableIcon from '@mui/icons-material/EventAvailable';
-import FactCheckIcon from '@mui/icons-material/FactCheck';
-import HowToRegIcon from '@mui/icons-material/HowToReg';
-import PunchClockIcon from '@mui/icons-material/PunchClock';
-import RequestQuoteIcon from '@mui/icons-material/RequestQuote';
-import SettingsIcon from '@mui/icons-material/Settings';
+import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded';
+import FactCheckRoundedIcon from '@mui/icons-material/FactCheckRounded';
+import HowToRegRoundedIcon from '@mui/icons-material/HowToRegRounded';
+import PunchClockRoundedIcon from '@mui/icons-material/PunchClockRounded';
+import RequestQuoteRoundedIcon from '@mui/icons-material/RequestQuoteRounded';
+import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
+import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 
-const primaryActions = [
+import PageScaffold from './ui/PageScaffold.jsx';
+import Section from './ui/Section.jsx';
+import FocusCard from './ui/FocusCard.jsx';
+import { KeyHint } from './ui/KeyHint.jsx';
+import { usePendingCounts } from './ui/PendingPulse.jsx';
+
+const greetingByHour = () => {
+    const h = new Date().getHours();
+    if (h < 5) return 'お疲れさまです';
+    if (h < 11) return 'おはようございます';
+    if (h < 17) return 'こんにちは';
+    return 'お疲れさまです';
+};
+
+const focusCandidate = ({ counts }) => {
+    const h = new Date().getHours();
+    const day = new Date().getDate();
+    const monthEnd = day >= 25;
+
+    if (counts.expense + counts.leave >= 3) {
+        return {
+            key: 'approve',
+            eyebrow: '承認待ちが溜まっています',
+            title: `承認待ちが ${counts.expense + counts.leave} 件あります`,
+            description: '滞りなく業務を回すため、まずは承認を片付けるのが効率的です。',
+            cta: '承認画面へ',
+            path: counts.expense >= counts.leave ? '/approvals' : '/leave-approvals',
+            icon: <FactCheckRoundedIcon />,
+            accent: 'amber',
+        };
+    }
+    if (monthEnd) {
+        return {
+            key: 'expense',
+            eyebrow: '月末の経費まとめ',
+            title: '今月分の経費申請を仕上げましょう',
+            description: '締め日が近づいています。下書きを開いて、領収書と金額をチェック。',
+            cta: '経費申請を開く',
+            path: '/application',
+            icon: <RequestQuoteRoundedIcon />,
+            accent: 'primary',
+        };
+    }
+    if (h < 11) {
+        return {
+            key: 'attendance',
+            eyebrow: '今日の入口',
+            title: '勤怠を入力して一日を始めましょう',
+            description: '前日までの未入力があれば一括反映で素早く整えられます。',
+            cta: '勤怠入力へ',
+            path: '/attendance-input',
+            icon: <PunchClockRoundedIcon />,
+            accent: 'primary',
+        };
+    }
+    return {
+        key: 'expense',
+        eyebrow: '今日できる小さな一歩',
+        title: '経費の下書きを進めましょう',
+        description: '記憶が鮮明な今日のうちに、明細だけでも作っておくと後がラクです。',
+        cta: '経費申請を開く',
+        path: '/application',
+        icon: <RequestQuoteRoundedIcon />,
+        accent: 'iris',
+    };
+};
+
+const buildPrimaryActions = (counts) => [
     {
         title: '勤怠を入力',
-        description: '今月のタイムシートをまとめて入力します。',
+        description: '今月のタイムシート',
         path: '/attendance-input',
-        icon: <PunchClockIcon />,
+        icon: <PunchClockRoundedIcon />,
         tone: 'primary',
     },
     {
         title: '経費を申請',
-        description: '領収書と明細を入力して下書き保存できます。',
+        description: '領収書付きで下書き保存',
         path: '/application',
         state: { startNew: true },
-        icon: <RequestQuoteIcon />,
-        tone: 'secondary',
+        icon: <RequestQuoteRoundedIcon />,
+        tone: 'iris',
     },
     {
         title: '休暇を申請',
-        description: '有給・遅刻・早退などの勤怠申請を作成します。',
+        description: '有給・遅刻・早退',
         path: '/leave-application',
         state: { startNew: true },
-        icon: <EventAvailableIcon />,
-        tone: 'warning',
+        icon: <EventAvailableRoundedIcon />,
+        tone: 'amber',
     },
     {
         title: '経費承認',
-        description: '経費申請の承認待ちを確認します。',
+        description: counts.expense > 0 ? `${counts.expense}件の承認待ち` : '承認待ちなし',
         path: '/approvals',
-        icon: <FactCheckIcon />,
-        tone: 'neutral',
+        icon: <FactCheckRoundedIcon />,
+        tone: 'leaf',
+        badge: counts.expense,
     },
     {
         title: '休暇承認',
-        description: '休暇申請の承認待ちを確認します。',
+        description: counts.leave > 0 ? `${counts.leave}件の承認待ち` : '承認待ちなし',
         path: '/leave-approvals',
-        icon: <HowToRegIcon />,
-        tone: 'neutral',
+        icon: <HowToRegRoundedIcon />,
+        tone: 'leaf',
+        badge: counts.leave,
     },
 ];
 
-const statusCards = [
-    { label: '勤怠入力', value: '2日', caption: 'サンプル入力済み' },
-    { label: '経費申請', value: '2件', caption: '申請済みモック' },
-    { label: '休暇申請', value: '3件', caption: 'ローカル保存対象' },
-    { label: '経費承認待ち', value: '2件', caption: '経費承認画面に反映' },
-    { label: '休暇承認待ち', value: '1件', caption: '休暇承認画面に反映' },
+const adminItems = [
+    ['申請フロー設定', '/flow-settings-menu'],
+    ['アラート設定', '/reminder-settings'],
+    ['アカウント管理', '/account-management'],
+    ['マスタ管理', '/master-settings'],
+    ['権限設定', '/permission-settings'],
 ];
+
+const tones = {
+    primary: { bg: 'var(--accent-primary-soft)', fg: 'var(--accent-primary)' },
+    iris:    { bg: 'var(--accent-iris-soft)',    fg: 'var(--accent-iris)' },
+    amber:   { bg: 'var(--accent-amber-soft)',   fg: 'var(--accent-amber)' },
+    leaf:    { bg: 'var(--accent-leaf-soft)',    fg: 'var(--accent-leaf)' },
+};
 
 function Dashboard({ username = '' }) {
     const navigate = useNavigate();
+    const counts = usePendingCounts();
+
+    const focus = useMemo(() => focusCandidate({ counts }), [counts]);
+
+    const metrics = [
+        { label: '承認待ち 経費', value: counts.expense, unit: '件', tone: counts.expense ? 'amber' : 'leaf' },
+        { label: '承認待ち 休暇', value: counts.leave,   unit: '件', tone: counts.leave   ? 'amber' : 'leaf' },
+        { label: '進行中 下書き', value: counts.drafts,  unit: '件', tone: 'iris' },
+        {
+            label: '本日',
+            value: new Date().toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', weekday: 'short' }),
+            unit: '',
+            tone: 'primary',
+        },
+    ];
 
     return (
-        <Box className="dashboardPage">
-            <Box className="pageHero">
-                <Box>
-                    <Typography variant="overline" color="text.secondary">
-                        Recrova Mock
-                    </Typography>
-                    <Typography variant="h5">
-                        {username ? `${username}さんのワークスペース` : 'ワークスペース'}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                        申請、承認、勤怠入力をここから開始できます。
-                    </Typography>
-                </Box>
-                <Button
-                    variant="contained"
-                    startIcon={<PunchClockIcon />}
-                    onClick={() => navigate('/attendance-input')}
+        <PageScaffold
+            eyebrow={greetingByHour()}
+            title={username ? `${username}さん、おかえりなさい` : 'おかえりなさい'}
+            subtitle="今やるべきことを一つに絞ってお見せします。落ち着いて、目の前のひとつから。"
+        >
+            <FocusCard
+                eyebrow={focus.eyebrow}
+                title={focus.title}
+                description={focus.description}
+                cta={focus.cta}
+                icon={focus.icon}
+                accent={focus.accent}
+                onAction={() => navigate(focus.path, focus.state ? { state: focus.state } : undefined)}
+            />
+
+            <Box
+                sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' },
+                    gap: 2,
+                }}
+            >
+                {metrics.map((m) => {
+                    const tone = tones[m.tone];
+                    return (
+                        <Box
+                            key={m.label}
+                            sx={{
+                                padding: 2.25,
+                                borderRadius: 'var(--radius-lg)',
+                                background: 'var(--surface-raised)',
+                                boxShadow: 'var(--shadow-1)',
+                                position: 'relative',
+                                overflow: 'hidden',
+                            }}
+                        >
+                            <Box
+                                aria-hidden
+                                sx={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    width: 3,
+                                    bottom: 0,
+                                    background: tone.fg,
+                                    opacity: 0.7,
+                                }}
+                            />
+                            <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)', fontWeight: 700, letterSpacing: 0.6 }}>
+                                {m.label}
+                            </Typography>
+                            <Stack direction="row" alignItems="baseline" spacing={0.75} sx={{ mt: 0.5 }}>
+                                <Typography
+                                    sx={{
+                                        fontSize: typeof m.value === 'number' ? 32 : 18,
+                                        fontWeight: 800,
+                                        lineHeight: 1,
+                                        color: tone.fg,
+                                        fontVariantNumeric: 'tabular-nums',
+                                    }}
+                                >
+                                    {m.value}
+                                </Typography>
+                                {m.unit && (
+                                    <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)', fontWeight: 600 }}>
+                                        {m.unit}
+                                    </Typography>
+                                )}
+                            </Stack>
+                        </Box>
+                    );
+                })}
+            </Box>
+
+            <Box
+                sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1.4fr) minmax(0, 1fr)' },
+                    gap: 3,
+                }}
+            >
+                <Section
+                    title="主要アクション"
+                    subtitle="迷ったらここから。脳のステップを1つに絞ります。"
+                    actions={<KeyHint keys={['Mod', 'K']} />}
                 >
-                    勤怠入力へ
-                </Button>
-            </Box>
-
-            <Box className="dashboardMetrics">
-                {statusCards.map(card => (
-                    <Paper key={card.label} className="metricCard">
-                        <Typography variant="caption" color="text.secondary">
-                            {card.label}
-                        </Typography>
-                        <Typography variant="h5">
-                            {card.value}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                            {card.caption}
-                        </Typography>
-                    </Paper>
-                ))}
-            </Box>
-
-            <Box className="dashboardGrid">
-                <Paper className="workflowPanel">
-                    <Box className="panelHeader">
-                        <Box>
-                            <Typography variant="h6">
-                                よく使う操作
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                                入力作業にすぐ移動できます。
-                            </Typography>
-                        </Box>
-                    </Box>
-                    <Box className="actionGrid">
-                        {primaryActions.map(action => (
-                            <Button
-                                key={action.title}
-                                className={`quickAction quickAction-${action.tone}`}
-                                onClick={() => navigate(action.path, action.state ? { state: action.state } : undefined)}
-                            >
-                                <Box className="quickActionIcon">
-                                    {action.icon}
+                    <Box
+                        sx={{
+                            display: 'grid',
+                            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', md: 'repeat(3, minmax(0, 1fr))' },
+                            gap: 1.5,
+                        }}
+                    >
+                        {buildPrimaryActions(counts).map((action, idx) => {
+                            const tone = tones[action.tone];
+                            const badge = action.badge;
+                            return (
+                                <Box
+                                    key={action.title}
+                                    component="button"
+                                    onClick={() => navigate(action.path, action.state ? { state: action.state } : undefined)}
+                                    sx={{
+                                        all: 'unset',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 1.5,
+                                        padding: 2,
+                                        borderRadius: 'var(--radius-lg)',
+                                        background: 'var(--surface-raised)',
+                                        boxShadow: 'var(--shadow-1)',
+                                        transition: 'var(--motion-base)',
+                                        minHeight: 96,
+                                        position: 'relative',
+                                        '&:hover': {
+                                            transform: 'translateY(-2px)',
+                                            boxShadow: 'var(--shadow-2)',
+                                        },
+                                        '&:focus-visible': {
+                                            outline: 'none',
+                                            boxShadow: 'var(--shadow-glow)',
+                                        },
+                                    }}
+                                >
+                                    <Box
+                                        sx={{
+                                            width: 44,
+                                            height: 44,
+                                            borderRadius: 'var(--radius-md)',
+                                            background: tone.bg,
+                                            color: tone.fg,
+                                            display: 'grid',
+                                            placeItems: 'center',
+                                            flexShrink: 0,
+                                            position: 'relative',
+                                            '& svg': { fontSize: 22 },
+                                        }}
+                                    >
+                                        {action.icon}
+                                        {badge > 0 && (
+                                            <Box
+                                                aria-label={`${badge}件の承認待ち`}
+                                                sx={{
+                                                    position: 'absolute',
+                                                    top: -6,
+                                                    right: -6,
+                                                    minWidth: 20,
+                                                    height: 20,
+                                                    paddingInline: 0.5,
+                                                    borderRadius: 'var(--radius-pill)',
+                                                    background: 'var(--accent-amber)',
+                                                    color: '#fff',
+                                                    fontSize: 11,
+                                                    fontWeight: 800,
+                                                    display: 'grid',
+                                                    placeItems: 'center',
+                                                    boxShadow: 'var(--shadow-1)',
+                                                    animation: 'recrovaPulse 1800ms ease-in-out infinite',
+                                                }}
+                                            >
+                                                {badge}
+                                            </Box>
+                                        )}
+                                    </Box>
+                                    <Box sx={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                                        <Stack direction="row" alignItems="center" spacing={0.75}>
+                                            <Typography sx={{ fontWeight: 700, color: 'var(--ink-primary)' }}>
+                                                {action.title}
+                                            </Typography>
+                                            <Typography
+                                                variant="caption"
+                                                sx={{
+                                                    color: 'var(--ink-muted)',
+                                                    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                                                    fontSize: 10,
+                                                }}
+                                            >
+                                                {idx + 1}
+                                            </Typography>
+                                        </Stack>
+                                        <Typography variant="body2" sx={{
+                                            color: badge > 0 ? 'var(--accent-amber)' : 'var(--ink-tertiary)',
+                                            fontWeight: badge > 0 ? 600 : 400,
+                                        }}>
+                                            {action.description}
+                                        </Typography>
+                                    </Box>
+                                    <ArrowForwardRoundedIcon
+                                        sx={{
+                                            color: 'var(--ink-muted)',
+                                            transition: 'var(--motion-fast)',
+                                            'button:hover &': { transform: 'translateX(2px)', color: tone.fg },
+                                        }}
+                                    />
                                 </Box>
-                                <Box className="quickActionText">
-                                    <Typography variant="subtitle1">
-                                        {action.title}
-                                    </Typography>
-                                    <Typography variant="body2">
-                                        {action.description}
-                                    </Typography>
-                                </Box>
-                            </Button>
-                        ))}
+                            );
+                        })}
                     </Box>
-                </Paper>
+                </Section>
 
-                <Paper className="workflowPanel sidePanel">
-                    <Box className="panelHeader">
-                        <Box>
-                            <Typography variant="h6">
-                                管理メニュー
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                                初期設定と権限を確認します。
-                            </Typography>
-                        </Box>
-                        <SettingsIcon color="primary" />
-                    </Box>
-                    <Stack spacing={1.25}>
-                        {[
-                            ['申請フロー設定', '/flow-settings-menu'],
-                            ['アラート設定', '/reminder-settings'],
-                            ['アカウント管理', '/account-management'],
-                            ['マスタ管理', '/master-settings'],
-                            ['権限設定', '/permission-settings'],
-                        ].map(([label, path]) => (
+                <Section
+                    title="管理メニュー"
+                    subtitle="初期設定・運用ルール"
+                    icon={<SettingsRoundedIcon />}
+                >
+                    <Stack spacing={1}>
+                        {adminItems.map(([label, path]) => (
                             <Button
                                 key={label}
-                                variant="outlined"
-                                color="inherit"
+                                variant="text"
                                 onClick={() => navigate(path)}
-                                sx={{ justifyContent: 'space-between' }}
+                                endIcon={<ArrowForwardRoundedIcon />}
+                                sx={{
+                                    justifyContent: 'space-between',
+                                    color: 'var(--ink-primary)',
+                                    paddingInline: 1.5,
+                                    paddingBlock: 1.1,
+                                    fontWeight: 600,
+                                    background: 'var(--surface-sunken)',
+                                    '&:hover': {
+                                        background: 'var(--accent-primary-soft)',
+                                        color: 'var(--accent-primary-ink)',
+                                    },
+                                }}
                             >
                                 {label}
-                                <Chip label="設定" size="small" />
                             </Button>
                         ))}
                     </Stack>
-                </Paper>
+                </Section>
             </Box>
-        </Box>
+        </PageScaffold>
     );
 }
 

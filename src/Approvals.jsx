@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Container, Typography, Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, MenuItem, Select, FormControl, TextField, Snackbar, Alert, Chip, IconButton, Tooltip } from '@mui/material';
-import CancelIcon from '@mui/icons-material/Cancel';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import {
+    Box, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, MenuItem, Select, FormControl,
+    TextField, Snackbar, Alert, Button, Typography,
+} from '@mui/material';
+import CancelRoundedIcon from '@mui/icons-material/CancelRounded';
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
+import FactCheckRoundedIcon from '@mui/icons-material/FactCheckRounded';
 import {
     formatYen,
     getExpenseApplicationStatus,
@@ -9,6 +13,9 @@ import {
     loadExpenseApplications,
     saveExpenseApplications,
 } from './expenseApplicationStore';
+import PageScaffold from './ui/PageScaffold.jsx';
+import Section from './ui/Section.jsx';
+import StatusChip, { statusBarColor } from './ui/StatusChip.jsx';
 
 const approvers = [
     { value: 'user1', label: '由引 安人(ubiast@univa.tech)' },
@@ -20,135 +27,158 @@ function Approvals() {
     const [commentMap, setCommentMap] = useState({});
     const [selectedApprover, setSelectedApprover] = useState('user1');
     const [snackbar, setSnackbar] = useState({ open: false, message: '' });
+    const [showRejectFor, setShowRejectFor] = useState(null);
 
-    useEffect(() => {
-        setData(loadExpenseApplications());
-    }, []);
+    useEffect(() => { setData(loadExpenseApplications()); }, []);
 
-    const persistData = (newData) => {
-        setData(newData);
-        saveExpenseApplications(newData);
-    };
+    const persist = (next) => { setData(next); saveExpenseApplications(next); };
 
-    const handleGroupStatus = (groupIdx, newStatus) => {
+    const handleStatus = (groupIdx, newStatus) => {
         const target = data[groupIdx];
         const comment = (commentMap[target.applicationId] || '').trim();
-        const newData = [...data];
-        newData[groupIdx] = {
+        if (newStatus === '非承認' && !comment) {
+            setShowRejectFor(target.applicationId);
+            return;
+        }
+        const next = [...data];
+        next[groupIdx] = {
             ...target,
             remarks: newStatus === '非承認' ? comment : '',
-            approvedBy: approvers.find(approver => approver.value === selectedApprover)?.label,
+            approvedBy: approvers.find((a) => a.value === selectedApprover)?.label,
             approvedAt: new Date().toISOString(),
-            details: target.details.map(row => ({ ...row, status: newStatus })),
+            details: target.details.map((r) => ({ ...r, status: newStatus })),
         };
-        persistData(newData);
+        persist(next);
         setCommentMap({ ...commentMap, [target.applicationId]: '' });
+        setShowRejectFor(null);
         setSnackbar({ open: true, message: newStatus === '承認済' ? '申請を承認しました' : '申請を非承認にしました' });
     };
 
-    const approvalTargets = data.filter(application => getExpenseApplicationStatus(application) === '申請中');
+    const approvalTargets = data.filter((a) => getExpenseApplicationStatus(a) === '申請中');
 
     return (
-        <Container maxWidth="lg" sx={{ textAlign: 'left' }}>
-            <Box sx={{ my: 4 }}>
-                <Box className="pageHeaderRow">
-                    <Box>
-                        <Typography variant="h6" component="div">
-                            経費承認
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                            申請中の経費のみを表示します。承認結果は申請済画面にも反映されます。
-                        </Typography>
-                    </Box>
-                    <FormControl size="small" sx={{ minWidth: 260 }}>
-                        <Select value={selectedApprover} onChange={e => setSelectedApprover(e.target.value)}>
-                            {approvers.map(approver => (
-                                <MenuItem key={approver.value} value={approver.value}>{approver.label}</MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-                </Box>
-                {approvalTargets.length === 0 && (
-                    <Alert severity="info">承認待ちの経費申請はありません。</Alert>
-                )}
-                {approvalTargets.map((group) => {
-                    const groupIdx = data.findIndex(item => item.applicationId === group.applicationId);
-                    const rejectionComment = (commentMap[group.applicationId] || '').trim();
-                    return (
-                        <Box key={group.applicationId} className="applicationGroup">
-                            <Box className="sectionHeaderRow">
-                                <Box>
-                                    <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                                        申請ID: {group.applicationId}
-                                    </Typography>
-                                    <Typography variant="body2" color="text.secondary">
-                                        申請日: {group.applicationDate} / 支払種別: {group.paymentType || '-'} / 合計: {formatYen(getExpenseApplicationTotal(group))}
-                                    </Typography>
-                                </Box>
-                                <Chip label="申請中" color="primary" />
-                            </Box>
-                            <TableContainer component={Paper}>
-                                <Table>
-                                    <TableHead>
-                                        <TableRow>
-                                            <TableCell sx={{ width: 150 }}>日付</TableCell>
-                                            <TableCell sx={{ width: 220 }}>内容</TableCell>
-                                            <TableCell>用途・行き先</TableCell>
-                                            <TableCell sx={{ width: 180 }}>費目</TableCell>
-                                            <TableCell sx={{ width: 140 }}>金額</TableCell>
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        {group.details.map((row, rowIdx) => (
-                                            <TableRow key={`${group.applicationId}_${rowIdx}`}>
-                                                <TableCell>{row.date}</TableCell>
-                                                <TableCell>{row.description}</TableCell>
-                                                <TableCell>{row.destination}</TableCell>
-                                                <TableCell>{row.category}</TableCell>
-                                                <TableCell>{formatYen(row.amount)}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </TableContainer>
-                            <Box className="formActionBar">
-                                <TextField
-                                    label="承認者備考"
-                                    size="small"
-                                    value={commentMap[group.applicationId] || ''}
-                                    onChange={e => setCommentMap({ ...commentMap, [group.applicationId]: e.target.value })}
-                                    sx={{ minWidth: 320 }}
-                                />
-                                <Box className="tableActionGroup">
-                                    <Tooltip title="承認">
-                                        <IconButton aria-label="経費申請を承認" color="primary" onClick={() => handleGroupStatus(groupIdx, '承認済')}>
-                                            <CheckCircleIcon />
-                                        </IconButton>
-                                    </Tooltip>
-                                    <Tooltip title={rejectionComment ? '非承認' : '非承認には承認者備考が必要です'}>
-                                        <span>
-                                            <IconButton
-                                                aria-label="経費申請を非承認"
+        <PageScaffold
+            eyebrow="承認"
+            title="経費承認"
+            subtitle="申請中の経費のみ表示します。承認結果は申請済画面にも反映されます。"
+            actions={(
+                <FormControl size="small" sx={{ minWidth: 260 }}>
+                    <Select value={selectedApprover} onChange={(e) => setSelectedApprover(e.target.value)}>
+                        {approvers.map((a) => <MenuItem key={a.value} value={a.value}>{a.label}</MenuItem>)}
+                    </Select>
+                </FormControl>
+            )}
+        >
+            {approvalTargets.length === 0 ? (
+                <Section padded sx={{ textAlign: 'center', paddingBlock: 6 }}>
+                    <FactCheckRoundedIcon sx={{ fontSize: 40, color: 'var(--accent-leaf)' }} />
+                    <Typography variant="body2" sx={{ color: 'var(--ink-tertiary)', mt: 1, fontWeight: 600 }}>承認待ちの経費申請はありません。</Typography>
+                    <Typography variant="caption" sx={{ color: 'var(--ink-muted)' }}>お疲れさまです。</Typography>
+                </Section>
+            ) : (
+                <Stack spacing={1.5}>
+                    {approvalTargets.map((group) => {
+                        const groupIdx = data.findIndex((g) => g.applicationId === group.applicationId);
+                        const comment = commentMap[group.applicationId] || '';
+                        const total = getExpenseApplicationTotal(group);
+                        const showReject = showRejectFor === group.applicationId;
+                        return (
+                            <Box
+                                key={group.applicationId}
+                                sx={{
+                                    position: 'relative',
+                                    borderRadius: 'var(--radius-lg)',
+                                    background: 'var(--surface-raised)',
+                                    boxShadow: 'var(--shadow-1)',
+                                    overflow: 'hidden',
+                                }}
+                            >
+                                <Box aria-hidden sx={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: statusBarColor('pending') }} />
+                                <Box sx={{ paddingInline: { xs: 2, md: 3 }, paddingLeft: { xs: 2.5, md: 3.5 }, paddingBlock: 2 }}>
+                                    <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'center' }} spacing={1.5}>
+                                        <Box>
+                                            <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
+                                                <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'var(--ink-primary)' }}>
+                                                    {group.applicationId}
+                                                </Typography>
+                                                <StatusChip status="pending" />
+                                            </Stack>
+                                            <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)' }}>
+                                                申請日 {group.applicationDate} ・ {group.paymentType || '-'}
+                                            </Typography>
+                                        </Box>
+                                        <Typography sx={{ fontWeight: 800, fontSize: 22, color: 'var(--accent-iris)' }} className="tabular-nums">
+                                            {formatYen(total)}
+                                        </Typography>
+                                    </Stack>
+                                    <TableContainer sx={{ mt: 2, borderRadius: 'var(--radius-md)', background: 'var(--surface-sunken)' }}>
+                                        <Table size="small">
+                                            <TableHead>
+                                                <TableRow>
+                                                    <TableCell sx={{ width: 130 }}>日付</TableCell>
+                                                    <TableCell sx={{ width: 220 }}>内容</TableCell>
+                                                    <TableCell>用途・行き先</TableCell>
+                                                    <TableCell sx={{ width: 180 }}>費目</TableCell>
+                                                    <TableCell sx={{ width: 140 }} align="right">金額</TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {group.details.map((row, idx) => (
+                                                    <TableRow key={`${group.applicationId}_${idx}`}>
+                                                        <TableCell>{row.date}</TableCell>
+                                                        <TableCell sx={{ fontWeight: 500 }}>{row.description}</TableCell>
+                                                        <TableCell>{row.destination}</TableCell>
+                                                        <TableCell>{row.category}</TableCell>
+                                                        <TableCell align="right" className="tabular-nums" sx={{ fontWeight: 600 }}>{formatYen(row.amount)}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                    <Stack
+                                        direction={{ xs: 'column', md: 'row' }}
+                                        spacing={1.5}
+                                        alignItems={{ xs: 'stretch', md: 'center' }}
+                                        sx={{ mt: 2 }}
+                                    >
+                                        <TextField
+                                            label="承認者備考（非承認時は必須）"
+                                            size="small"
+                                            value={comment}
+                                            onChange={(e) => setCommentMap({ ...commentMap, [group.applicationId]: e.target.value })}
+                                            sx={{ flex: 1 }}
+                                            error={showReject && !comment.trim()}
+                                            helperText={showReject && !comment.trim() ? '非承認には備考を入力してください' : ' '}
+                                        />
+                                        <Stack direction="row" spacing={1} justifyContent="flex-end">
+                                            <Button
+                                                variant="outlined"
                                                 color="error"
-                                                disabled={!rejectionComment}
-                                                onClick={() => handleGroupStatus(groupIdx, '非承認')}
+                                                startIcon={<CancelRoundedIcon />}
+                                                onClick={() => handleStatus(groupIdx, '非承認')}
                                             >
-                                                <CancelIcon />
-                                            </IconButton>
-                                        </span>
-                                    </Tooltip>
+                                                非承認
+                                            </Button>
+                                            <Button
+                                                variant="contained"
+                                                color="primary"
+                                                startIcon={<CheckCircleRoundedIcon />}
+                                                onClick={() => handleStatus(groupIdx, '承認済')}
+                                            >
+                                                承認する
+                                            </Button>
+                                        </Stack>
+                                    </Stack>
                                 </Box>
                             </Box>
-                        </Box>
-                    );
-                })}
-            </Box>
-            <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-                <Alert severity="success" sx={{ width: '100%' }}>
-                    {snackbar.message}
-                </Alert>
+                        );
+                    })}
+                </Stack>
+            )}
+            <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ open: false, message: '' })}>
+                <Alert severity="success" sx={{ width: '100%' }}>{snackbar.message}</Alert>
             </Snackbar>
-        </Container>
+        </PageScaffold>
     );
 }
 

@@ -1,12 +1,18 @@
 import { useState, useEffect } from 'react';
-import { Container, Typography, Box, Button, TextField, Paper, Snackbar, Alert, MenuItem, Table, TableHead, TableRow, TableCell, TableBody, IconButton, Switch, Dialog, DialogTitle, DialogContent, DialogActions, Chip, InputAdornment, Tooltip } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
-import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
-import SaveIcon from '@mui/icons-material/Save';
-import CancelIcon from '@mui/icons-material/Cancel';
-import SearchIcon from '@mui/icons-material/Search';
+import {
+    Box, Button, TextField, Snackbar, Alert, MenuItem, Table, TableHead, TableRow, TableCell, TableBody, IconButton,
+    Switch, Dialog, DialogTitle, DialogContent, DialogActions, InputAdornment, Tooltip, Typography, Stack,
+} from '@mui/material';
+import AddRoundedIcon from '@mui/icons-material/AddRounded';
+import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
+import EditRoundedIcon from '@mui/icons-material/EditRounded';
+import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
+import CancelRoundedIcon from '@mui/icons-material/CancelRounded';
+import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import AdminConfirmDialog from './components/AdminConfirmDialog';
+import PageScaffold from './ui/PageScaffold.jsx';
+import Section from './ui/Section.jsx';
+import StatusChip from './ui/StatusChip.jsx';
 
 const SAMPLE_DEPARTMENTS = [
     { name: '営業部', positions: [{ name: '部長' }, { name: '課長' }, { name: '一般社員' }] },
@@ -27,9 +33,7 @@ const normalizeDepartments = (rawDepartments) => {
     return rawDepartments.map((department, index) => ({
         name: typeof department === 'string' ? department : department?.name || `部署${index + 1}`,
         positions: Array.isArray(department?.positions)
-            ? department.positions
-                .map(position => (typeof position === 'string' ? { name: position } : position))
-                .filter(position => position?.name)
+            ? department.positions.map((position) => (typeof position === 'string' ? { name: position } : position)).filter((position) => position?.name)
             : [],
     }));
 };
@@ -50,7 +54,7 @@ const loadAccounts = () => {
         const stored = JSON.parse(localStorage.getItem('accounts') || '[]');
         if (Array.isArray(stored) && stored.length > 0) return stored;
     } catch {
-        // モックなので壊れたローカルデータは初期データで復旧する
+        /* fall through */
     }
     localStorage.setItem('accounts', JSON.stringify(SAMPLE_ACCOUNTS));
     return SAMPLE_ACCOUNTS;
@@ -62,9 +66,7 @@ function AccountManagement() {
     const [accounts, setAccounts] = useState([]);
     const [editIdx, setEditIdx] = useState(null);
     const [editAccount, setEditAccount] = useState({});
-    const [snackbarOpen, setSnackbarOpen] = useState(false);
-    const [snackbarMessage, setSnackbarMessage] = useState('');
-    const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+    const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
     const [departments, setDepartments] = useState([]);
     const [addDialogOpen, setAddDialogOpen] = useState(false);
     const [addForm, setAddForm] = useState(emptyAccount);
@@ -77,284 +79,227 @@ function AccountManagement() {
         setAccounts(loadAccounts());
     }, []);
 
-    const showSnackbar = (message, severity = 'success') => {
-        setSnackbarMessage(message);
-        setSnackbarSeverity(severity);
-        setSnackbarOpen(true);
-    };
+    const showSnackbar = (message, severity = 'success') => setSnackbar({ open: true, message, severity });
 
-    const getPositionsForDepartment = (departmentName) => (
-        departments.find(department => department.name === departmentName)?.positions?.map(position => position.name) || []
-    );
+    const getPositionsForDepartment = (departmentName) =>
+        departments.find((d) => d.name === departmentName)?.positions?.map((p) => p.name) || [];
 
     const validateAccount = (account, currentIdx = null) => {
-        if (!account.name || !account.userId || !account.department || !account.position || !account.email) {
-            return '必須項目を入力してください';
-        }
-        if (!isValidEmail(account.email)) {
-            return 'メールアドレスの形式を確認してください';
-        }
-        const duplicateUserId = accounts.some((item, idx) => idx !== currentIdx && item.userId === account.userId);
-        if (duplicateUserId) {
-            return '同じユーザーIDのアカウントが既に存在します';
-        }
-        const duplicateEmail = accounts.some((item, idx) => idx !== currentIdx && item.email === account.email);
-        if (duplicateEmail) {
-            return '同じメールアドレスのアカウントが既に存在します';
-        }
+        if (!account.name || !account.userId || !account.department || !account.position || !account.email) return '必須項目を入力してください';
+        if (!isValidEmail(account.email)) return 'メールアドレスの形式を確認してください';
+        if (accounts.some((item, idx) => idx !== currentIdx && item.userId === account.userId)) return '同じユーザーIDのアカウントが既に存在します';
+        if (accounts.some((item, idx) => idx !== currentIdx && item.email === account.email)) return '同じメールアドレスのアカウントが既に存在します';
         return '';
     };
 
-    const handleAddOpen = () => {
-        setAddForm(emptyAccount);
-        setAddDialogOpen(true);
-    };
-    const handleAddClose = () => {
-        setAddDialogOpen(false);
-    };
-    const handleAddChange = (field, value) => {
-        setAddForm({
-            ...addForm,
-            [field]: value,
-            ...(field === 'department' ? { position: '' } : {}),
-        });
-    };
+    const handleAddOpen = () => { setAddForm(emptyAccount); setAddDialogOpen(true); };
+    const handleAddChange = (field, value) => setAddForm({ ...addForm, [field]: value, ...(field === 'department' ? { position: '' } : {}) });
     const handleAdd = () => {
-        const validationMessage = validateAccount(addForm);
-        if (validationMessage) {
-            showSnackbar(validationMessage, 'warning');
-            return;
-        }
-        const newAccount = { ...addForm };
-        const newAccounts = [...accounts, newAccount];
+        const msg = validateAccount(addForm);
+        if (msg) { showSnackbar(msg, 'warning'); return; }
+        const newAccounts = [...accounts, { ...addForm }];
         setAccounts(newAccounts);
         localStorage.setItem('accounts', JSON.stringify(newAccounts));
         setAddDialogOpen(false);
         showSnackbar('アカウントを追加しました');
     };
 
-    const handleDeleteRequest = (idx) => {
-        setDeleteTarget({ idx, account: accounts[idx] });
-    };
-
     const handleDeleteConfirm = () => {
         if (!deleteTarget) return;
-        const newAccounts = accounts.filter((_, i) => i !== deleteTarget.idx);
-        setAccounts(newAccounts);
-        localStorage.setItem('accounts', JSON.stringify(newAccounts));
+        const next = accounts.filter((_, i) => i !== deleteTarget.idx);
+        setAccounts(next);
+        localStorage.setItem('accounts', JSON.stringify(next));
         setDeleteTarget(null);
         showSnackbar('アカウントを削除しました');
     };
 
-    const handleEdit = (idx) => {
-        setEditIdx(idx);
-        setEditAccount({ ...accounts[idx] });
-    };
-    const handleEditChange = (field, value) => {
-        setEditAccount({
-            ...editAccount,
-            [field]: value,
-            ...(field === 'department' ? { position: '' } : {}),
-        });
-    };
+    const handleEdit = (idx) => { setEditIdx(idx); setEditAccount({ ...accounts[idx] }); };
+    const handleEditChange = (field, value) => setEditAccount({ ...editAccount, [field]: value, ...(field === 'department' ? { position: '' } : {}) });
     const handleSave = () => {
         if (editIdx === null) return;
-        const validationMessage = validateAccount(editAccount, editIdx);
-        if (validationMessage) {
-            showSnackbar(validationMessage, 'warning');
-            return;
-        }
-        const newAccounts = [...accounts];
-        newAccounts[editIdx] = editAccount;
-        setAccounts(newAccounts);
-        localStorage.setItem('accounts', JSON.stringify(newAccounts));
-        setEditIdx(null);
-        setEditAccount({});
+        const msg = validateAccount(editAccount, editIdx);
+        if (msg) { showSnackbar(msg, 'warning'); return; }
+        const next = [...accounts];
+        next[editIdx] = editAccount;
+        setAccounts(next);
+        localStorage.setItem('accounts', JSON.stringify(next));
+        setEditIdx(null); setEditAccount({});
         showSnackbar('アカウントを保存しました');
     };
-    const handleCancel = () => {
-        setEditIdx(null);
-        setEditAccount({});
-    };
+    const handleCancel = () => { setEditIdx(null); setEditAccount({}); };
 
-    const filteredAccounts = accounts.filter(account => {
-        const keyword = searchText.trim().toLowerCase();
-        const matchesKeyword = !keyword || [account.name, account.userId, account.department, account.position, account.email]
-            .some(value => String(value || '').toLowerCase().includes(keyword));
-        const matchesStatus = statusFilter === 'all' || (statusFilter === 'active' ? account.status : !account.status);
-        return matchesKeyword && matchesStatus;
+    const filteredAccounts = accounts.filter((a) => {
+        const k = searchText.trim().toLowerCase();
+        const matchK = !k || [a.name, a.userId, a.department, a.position, a.email].some((v) => String(v || '').toLowerCase().includes(k));
+        const matchS = statusFilter === 'all' || (statusFilter === 'active' ? a.status : !a.status);
+        return matchK && matchS;
     });
 
-    const activeCount = accounts.filter(account => account.status).length;
+    const activeCount = accounts.filter((a) => a.status).length;
 
     return (
-        <Container maxWidth="md" sx={{ py: 4 }}>
-            <Paper sx={{ p: 3, mb: 4 }}>
-                <Box className="pageHeaderRow">
-                    <Box>
-                        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                            アカウント管理
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                            利用者、所属部署、役職、有効状態を管理します。
-                        </Typography>
-                    </Box>
-                    <Box className="pageActionBar">
-                        <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleAddOpen}>新規追加</Button>
-                    </Box>
-                </Box>
-                <Box className="expenseSummaryStrip">
-                    <Box>
-                        <Typography variant="caption" color="text.secondary">登録数</Typography>
-                        <Typography variant="subtitle1">{accounts.length}件</Typography>
-                    </Box>
-                    <Box>
-                        <Typography variant="caption" color="text.secondary">有効</Typography>
-                        <Typography variant="subtitle1">{activeCount}件</Typography>
-                    </Box>
-                    <Box>
-                        <Typography variant="caption" color="text.secondary">無効</Typography>
-                        <Typography variant="subtitle1">{accounts.length - activeCount}件</Typography>
-                    </Box>
-                </Box>
-                <Box className="accountToolbar">
+        <PageScaffold
+            eyebrow="管理"
+            title="アカウント管理"
+            subtitle="利用者、所属部署、役職、有効状態を管理します。"
+            actions={(
+                <Button variant="contained" color="primary" startIcon={<AddRoundedIcon />} onClick={handleAddOpen}>
+                    新規追加
+                </Button>
+            )}
+        >
+            <Section tone="sunken" elevation={0}>
+                <Stack direction="row" spacing={4} flexWrap="wrap">
+                    <Stat label="登録数" value={accounts.length} tone="primary" />
+                    <Stat label="有効" value={activeCount} tone="leaf" />
+                    <Stat label="無効" value={accounts.length - activeCount} tone="slate" />
+                </Stack>
+            </Section>
+
+            <Section padded>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
                     <TextField
                         size="small"
-                        label="検索"
+                        placeholder="氏名・ID・部署・メールで検索"
                         value={searchText}
-                        onChange={e => setSearchText(e.target.value)}
-                        sx={{ minWidth: 280 }}
-                        slotProps={{
-                            input: {
-                                startAdornment: (
-                                    <InputAdornment position="start">
-                                        <SearchIcon fontSize="small" />
-                                    </InputAdornment>
-                                ),
-                            },
+                        onChange={(e) => setSearchText(e.target.value)}
+                        sx={{ minWidth: 300, flex: 1 }}
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <SearchRoundedIcon sx={{ color: 'var(--ink-tertiary)', fontSize: 18 }} />
+                                </InputAdornment>
+                            ),
                         }}
                     />
-                    <TextField
-                        select
-                        size="small"
-                        label="状態"
-                        value={statusFilter}
-                        onChange={e => setStatusFilter(e.target.value)}
-                        sx={{ width: 160 }}
-                    >
+                    <TextField select size="small" label="状態" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} sx={{ width: 160 }}>
                         <MenuItem value="all">すべて</MenuItem>
                         <MenuItem value="active">有効のみ</MenuItem>
                         <MenuItem value="inactive">無効のみ</MenuItem>
                     </TextField>
-                </Box>
-                <Table size="small">
-                    <TableHead>
-                        <TableRow>
-                            <TableCell>氏名</TableCell>
-                            <TableCell>ユーザーID</TableCell>
-                            <TableCell>所属部署</TableCell>
-                            <TableCell>役職</TableCell>
-                            <TableCell>メールアドレス</TableCell>
-                            <TableCell>有効</TableCell>
-                            <TableCell>操作</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {filteredAccounts.length === 0 && (
-                            <TableRow><TableCell colSpan={7}>該当するアカウントはありません</TableCell></TableRow>
-                        )}
-                        {filteredAccounts.map((acc) => {
-                            const accountIdx = accounts.findIndex(account => account.userId === acc.userId);
-                            return (
-                            <TableRow key={acc.userId}>
-                                <TableCell>{acc.name}</TableCell>
-                                <TableCell>{acc.userId}</TableCell>
-                                <TableCell>{acc.department}</TableCell>
-                                <TableCell>{acc.position}</TableCell>
-                                <TableCell>{acc.email}</TableCell>
-                                <TableCell>
-                                    <Chip size="small" label={acc.status ? '有効' : '無効'} color={acc.status ? 'primary' : 'default'} variant={acc.status ? 'filled' : 'outlined'} />
-                                </TableCell>
-                                <TableCell>
-                                    <Box className="tableActionGroup">
-                                        <Tooltip title="編集">
-                                            <IconButton aria-label={`${acc.name}を編集`} onClick={() => handleEdit(accountIdx)}><EditIcon /></IconButton>
-                                        </Tooltip>
-                                        <Tooltip title="削除">
-                                            <IconButton aria-label={`${acc.name}を削除`} color="error" onClick={() => handleDeleteRequest(accountIdx)}><DeleteIcon /></IconButton>
-                                        </Tooltip>
-                                    </Box>
-                                </TableCell>
+                </Stack>
+                <Box sx={{ overflowX: 'auto' }}>
+                    <Table size="small">
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>氏名</TableCell>
+                                <TableCell>ユーザーID</TableCell>
+                                <TableCell>所属部署</TableCell>
+                                <TableCell>役職</TableCell>
+                                <TableCell>メールアドレス</TableCell>
+                                <TableCell>有効</TableCell>
+                                <TableCell align="right">操作</TableCell>
                             </TableRow>
-                        )})}
-                    </TableBody>
-                </Table>
-            </Paper>
-            <Dialog open={addDialogOpen} onClose={handleAddClose} maxWidth="sm" fullWidth>
+                        </TableHead>
+                        <TableBody>
+                            {filteredAccounts.length === 0 && (
+                                <TableRow><TableCell colSpan={7} sx={{ color: 'var(--ink-tertiary)' }}>該当するアカウントはありません</TableCell></TableRow>
+                            )}
+                            {filteredAccounts.map((acc) => {
+                                const idx = accounts.findIndex((a) => a.userId === acc.userId);
+                                return (
+                                    <TableRow key={acc.userId} hover>
+                                        <TableCell sx={{ fontWeight: 600 }}>{acc.name}</TableCell>
+                                        <TableCell sx={{ color: 'var(--ink-tertiary)' }}>{acc.userId}</TableCell>
+                                        <TableCell>{acc.department}</TableCell>
+                                        <TableCell>{acc.position}</TableCell>
+                                        <TableCell sx={{ color: 'var(--ink-tertiary)' }}>{acc.email}</TableCell>
+                                        <TableCell><StatusChip status={acc.status ? 'active' : 'inactive'} size="sm" /></TableCell>
+                                        <TableCell align="right">
+                                            <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                                                <Tooltip title="編集"><IconButton aria-label={`${acc.name}を編集`} onClick={() => handleEdit(idx)}><EditRoundedIcon fontSize="small" /></IconButton></Tooltip>
+                                                <Tooltip title="削除"><IconButton aria-label={`${acc.name}を削除`} color="error" onClick={() => setDeleteTarget({ idx, account: acc })}><DeleteRoundedIcon fontSize="small" /></IconButton></Tooltip>
+                                            </Stack>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
+                        </TableBody>
+                    </Table>
+                </Box>
+            </Section>
+
+            <Dialog open={addDialogOpen} onClose={() => setAddDialogOpen(false)} maxWidth="sm" fullWidth>
                 <DialogTitle>アカウント新規登録</DialogTitle>
                 <DialogContent>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-                        <TextField label="氏名" value={addForm.name} onChange={e => handleAddChange('name', e.target.value)} required />
-                        <TextField label="ユーザーID" value={addForm.userId} onChange={e => handleAddChange('userId', e.target.value)} required />
-                        <TextField select label="所属部署" value={addForm.department} onChange={e => handleAddChange('department', e.target.value)} required>
+                    <Stack spacing={2} sx={{ mt: 1 }}>
+                        <TextField label="氏名" value={addForm.name} onChange={(e) => handleAddChange('name', e.target.value)} required />
+                        <TextField label="ユーザーID" value={addForm.userId} onChange={(e) => handleAddChange('userId', e.target.value)} required />
+                        <TextField select label="所属部署" value={addForm.department} onChange={(e) => handleAddChange('department', e.target.value)} required>
                             {departments.map((dep) => <MenuItem key={dep.name} value={dep.name}>{dep.name}</MenuItem>)}
                         </TextField>
-                        <TextField select label="役職" value={addForm.position} onChange={e => handleAddChange('position', e.target.value)} required disabled={!addForm.department}>
+                        <TextField select label="役職" value={addForm.position} onChange={(e) => handleAddChange('position', e.target.value)} required disabled={!addForm.department}>
                             {getPositionsForDepartment(addForm.department).map((pos) => <MenuItem key={pos} value={pos}>{pos}</MenuItem>)}
                         </TextField>
-                        <TextField label="メールアドレス" type="email" value={addForm.email} onChange={e => handleAddChange('email', e.target.value)} required />
-                        <Box className="inlineActionGroup">
-                            <Typography>状態</Typography>
-                            <Switch checked={addForm.status} onChange={e => handleAddChange('status', e.target.checked)} />
-                            <Chip size="small" label={addForm.status ? '有効' : '無効'} color={addForm.status ? 'primary' : 'default'} variant={addForm.status ? 'filled' : 'outlined'} />
-                        </Box>
-                    </Box>
+                        <TextField label="メールアドレス" type="email" value={addForm.email} onChange={(e) => handleAddChange('email', e.target.value)} required />
+                        <Stack direction="row" alignItems="center" spacing={1.5}>
+                            <Typography variant="body2" sx={{ color: 'var(--ink-secondary)' }}>状態</Typography>
+                            <Switch checked={addForm.status} onChange={(e) => handleAddChange('status', e.target.checked)} />
+                            <StatusChip status={addForm.status ? 'active' : 'inactive'} size="sm" />
+                        </Stack>
+                    </Stack>
                 </DialogContent>
                 <DialogActions>
-                    <Button variant="outlined" color="inherit" startIcon={<CancelIcon />} onClick={handleAddClose}>キャンセル</Button>
-                    <Button variant="contained" startIcon={<SaveIcon />} onClick={handleAdd}>登録</Button>
+                    <Button variant="text" color="inherit" startIcon={<CancelRoundedIcon />} onClick={() => setAddDialogOpen(false)}>キャンセル</Button>
+                    <Button variant="contained" startIcon={<SaveRoundedIcon />} onClick={handleAdd}>登録</Button>
                 </DialogActions>
             </Dialog>
+
             <Dialog open={editIdx !== null} onClose={handleCancel} maxWidth="sm" fullWidth>
                 <DialogTitle>アカウント編集</DialogTitle>
                 <DialogContent>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-                        <TextField label="氏名" value={editAccount.name || ''} onChange={e => handleEditChange('name', e.target.value)} required />
-                        <TextField label="ユーザーID" value={editAccount.userId || ''} onChange={e => handleEditChange('userId', e.target.value)} required />
-                        <TextField select label="所属部署" value={editAccount.department || ''} onChange={e => handleEditChange('department', e.target.value)} required>
+                    <Stack spacing={2} sx={{ mt: 1 }}>
+                        <TextField label="氏名" value={editAccount.name || ''} onChange={(e) => handleEditChange('name', e.target.value)} required />
+                        <TextField label="ユーザーID" value={editAccount.userId || ''} onChange={(e) => handleEditChange('userId', e.target.value)} required />
+                        <TextField select label="所属部署" value={editAccount.department || ''} onChange={(e) => handleEditChange('department', e.target.value)} required>
                             {departments.map((dep) => <MenuItem key={dep.name} value={dep.name}>{dep.name}</MenuItem>)}
                         </TextField>
-                        <TextField select label="役職" value={editAccount.position || ''} onChange={e => handleEditChange('position', e.target.value)} required disabled={!editAccount.department}>
+                        <TextField select label="役職" value={editAccount.position || ''} onChange={(e) => handleEditChange('position', e.target.value)} required disabled={!editAccount.department}>
                             {getPositionsForDepartment(editAccount.department).map((pos) => <MenuItem key={pos} value={pos}>{pos}</MenuItem>)}
                         </TextField>
-                        <TextField label="メールアドレス" type="email" value={editAccount.email || ''} onChange={e => handleEditChange('email', e.target.value)} required />
-                        <Box className="inlineActionGroup">
-                            <Typography>状態</Typography>
-                            <Switch checked={Boolean(editAccount.status)} onChange={e => handleEditChange('status', e.target.checked)} />
-                            <Chip size="small" label={editAccount.status ? '有効' : '無効'} color={editAccount.status ? 'primary' : 'default'} variant={editAccount.status ? 'filled' : 'outlined'} />
-                        </Box>
-                    </Box>
+                        <TextField label="メールアドレス" type="email" value={editAccount.email || ''} onChange={(e) => handleEditChange('email', e.target.value)} required />
+                        <Stack direction="row" alignItems="center" spacing={1.5}>
+                            <Typography variant="body2" sx={{ color: 'var(--ink-secondary)' }}>状態</Typography>
+                            <Switch checked={Boolean(editAccount.status)} onChange={(e) => handleEditChange('status', e.target.checked)} />
+                            <StatusChip status={editAccount.status ? 'active' : 'inactive'} size="sm" />
+                        </Stack>
+                    </Stack>
                 </DialogContent>
                 <DialogActions>
-                    <Button variant="outlined" color="inherit" startIcon={<CancelIcon />} onClick={handleCancel}>キャンセル</Button>
-                    <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSave}>保存</Button>
+                    <Button variant="text" color="inherit" startIcon={<CancelRoundedIcon />} onClick={handleCancel}>キャンセル</Button>
+                    <Button variant="contained" startIcon={<SaveRoundedIcon />} onClick={handleSave}>保存</Button>
                 </DialogActions>
             </Dialog>
-            <Snackbar open={snackbarOpen} autoHideDuration={3000} onClose={() => setSnackbarOpen(false)}>
-                <Alert severity={snackbarSeverity} sx={{ width: '100%' }}>
-                    {snackbarMessage}
-                </Alert>
+
+            <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+                <Alert severity={snackbar.severity} sx={{ width: '100%' }}>{snackbar.message}</Alert>
             </Snackbar>
             <AdminConfirmDialog
                 open={Boolean(deleteTarget)}
                 title="アカウントを削除しますか？"
-                message={`${deleteTarget?.account?.name || ''} をアカウント一覧から削除します。`}
+                message={`${deleteTarget?.account?.name || ''} をアカウント一覧から削除します。元に戻すことはできません。`}
                 confirmLabel="削除"
                 onCancel={() => setDeleteTarget(null)}
                 onConfirm={handleDeleteConfirm}
             />
-        </Container>
+        </PageScaffold>
     );
 }
+
+const Stat = ({ label, value, tone = 'primary' }) => {
+    const tones = {
+        primary: 'var(--accent-primary)',
+        leaf: 'var(--accent-leaf)',
+        slate: 'var(--ink-tertiary)',
+    };
+    return (
+        <Box>
+            <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)' }}>{label}</Typography>
+            <Typography variant="h6" sx={{ fontWeight: 800, color: tones[tone] }}>
+                <span className="tabular-nums">{value}</span>件
+            </Typography>
+        </Box>
+    );
+};
 
 export default AccountManagement;

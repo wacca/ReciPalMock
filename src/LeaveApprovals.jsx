@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Container, Typography, Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Snackbar, Alert, TextField, Chip, FormControl, Select, MenuItem, IconButton, Tooltip } from '@mui/material';
-import CancelIcon from '@mui/icons-material/Cancel';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import {
-    loadLeaveApplications,
-    saveLeaveApplications,
-} from './leaveApplicationStore';
+import { Box, Stack, Snackbar, Alert, TextField, FormControl, Select, MenuItem, Button, Typography } from '@mui/material';
+import CancelRoundedIcon from '@mui/icons-material/CancelRounded';
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
+import HowToRegRoundedIcon from '@mui/icons-material/HowToRegRounded';
+import { loadLeaveApplications, saveLeaveApplications } from './leaveApplicationStore';
+import PageScaffold from './ui/PageScaffold.jsx';
+import Section from './ui/Section.jsx';
+import StatusChip, { statusBarColor } from './ui/StatusChip.jsx';
 
 const approvers = [
     { value: 'user1', label: '油ニ 和平(univapay@univa.tech)' },
@@ -17,121 +18,111 @@ function LeaveApprovals() {
     const [commentMap, setCommentMap] = useState({});
     const [selectedApprover, setSelectedApprover] = useState('user1');
     const [snackbar, setSnackbar] = useState({ open: false, message: '' });
+    const [showRejectFor, setShowRejectFor] = useState(null);
 
-    useEffect(() => {
-        setData(loadLeaveApplications());
-    }, []);
+    useEffect(() => { setData(loadLeaveApplications()); }, []);
 
-    const persistData = (newData) => {
-        setData(newData);
-        saveLeaveApplications(newData);
-    };
+    const persist = (next) => { setData(next); saveLeaveApplications(next); };
 
     const handleStatus = (id, status) => {
-        const approver = approvers.find(item => item.value === selectedApprover)?.label || '';
+        const approver = approvers.find((a) => a.value === selectedApprover)?.label || '';
         const comment = (commentMap[id] || '').trim();
-        const newData = data.map(row => (
-            row.id === id
-                ? {
-                    ...row,
-                    status,
-                    remarks: status === '非承認' ? comment : '',
-                    approvedBy: approver,
-                    approvedAt: new Date().toISOString(),
-                }
-                : row
+        if (status === '非承認' && !comment) {
+            setShowRejectFor(id);
+            return;
+        }
+        const next = data.map((row) => (
+            row.id === id ? { ...row, status, remarks: status === '非承認' ? comment : '', approvedBy: approver, approvedAt: new Date().toISOString() } : row
         ));
-        persistData(newData);
+        persist(next);
         setCommentMap({ ...commentMap, [id]: '' });
+        setShowRejectFor(null);
         setSnackbar({ open: true, message: status === '承認済' ? '休暇申請を承認しました' : '休暇申請を非承認にしました' });
     };
-    const approvalTargets = data.filter(row => (row.status || '申請中') === '申請中');
+
+    const approvalTargets = data.filter((row) => (row.status || '申請中') === '申請中');
 
     return (
-        <Container maxWidth="md" sx={{ py: 4 }}>
-            <Box className="pageHeaderRow">
-                <Box>
-                    <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                        休暇承認
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                        申請中の休暇申請のみを表示します。承認結果は申請済み一覧に反映されます。
-                    </Typography>
-                </Box>
+        <PageScaffold
+            eyebrow="承認"
+            title="休暇承認"
+            subtitle="申請中の休暇申請のみ表示します。承認結果は申請済画面に反映されます。"
+            actions={(
                 <FormControl size="small" sx={{ minWidth: 260 }}>
-                    <Select value={selectedApprover} onChange={e => setSelectedApprover(e.target.value)}>
-                        {approvers.map(approver => (
-                            <MenuItem key={approver.value} value={approver.value}>{approver.label}</MenuItem>
-                        ))}
+                    <Select value={selectedApprover} onChange={(e) => setSelectedApprover(e.target.value)}>
+                        {approvers.map((a) => <MenuItem key={a.value} value={a.value}>{a.label}</MenuItem>)}
                     </Select>
                 </FormControl>
-            </Box>
-            {approvalTargets.length === 0 ? (
-                <Alert severity="info">承認待ち申請はありません。</Alert>
-            ) : (
-                <TableContainer component={Paper}>
-                    <Table size="small">
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>申請日</TableCell>
-                                <TableCell>申請種別</TableCell>
-                                <TableCell>日付</TableCell>
-                                <TableCell>理由・備考</TableCell>
-                                <TableCell>状態</TableCell>
-                                <TableCell>操作</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {approvalTargets.map((row, idx) => {
-                                const rejectionComment = (commentMap[row.id] || '').trim();
-                                return (
-                                    <TableRow key={row.id || idx}>
-                                        <TableCell>{row.submittedAt ? new Date(row.submittedAt).toLocaleString() : '-'}</TableCell>
-                                        <TableCell>{row.leaveType}</TableCell>
-                                        <TableCell>{row.date}</TableCell>
-                                        <TableCell>{row.reason}</TableCell>
-                                        <TableCell><Chip size="small" label="申請中" color="primary" /></TableCell>
-                                        <TableCell>
-                                            <Box className="tableActionGroup">
-                                                <Tooltip title="承認">
-                                                    <IconButton aria-label="休暇申請を承認" color="primary" onClick={() => handleStatus(row.id, '承認済')}>
-                                                        <CheckCircleIcon />
-                                                    </IconButton>
-                                                </Tooltip>
-                                                <Tooltip title={rejectionComment ? '非承認' : '非承認には承認者備考が必要です'}>
-                                                    <span>
-                                                        <IconButton
-                                                            aria-label="休暇申請を非承認"
-                                                            color="error"
-                                                            disabled={!rejectionComment}
-                                                            onClick={() => handleStatus(row.id, '非承認')}
-                                                        >
-                                                            <CancelIcon />
-                                                        </IconButton>
-                                                    </span>
-                                                </Tooltip>
-                                            </Box>
-                                            <TextField
-                                                label="承認者備考"
-                                                size="small"
-                                                value={commentMap[row.id] || ''}
-                                                onChange={e => setCommentMap({ ...commentMap, [row.id]: e.target.value })}
-                                                sx={{ mt: 1, minWidth: 240 }}
-                                            />
-                                        </TableCell>
-                                    </TableRow>
-                                );
-                            })}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
             )}
-            <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-                <Alert severity="success" sx={{ width: '100%' }}>
-                    {snackbar.message}
-                </Alert>
+        >
+            {approvalTargets.length === 0 ? (
+                <Section padded sx={{ textAlign: 'center', paddingBlock: 6 }}>
+                    <HowToRegRoundedIcon sx={{ fontSize: 40, color: 'var(--accent-leaf)' }} />
+                    <Typography variant="body2" sx={{ color: 'var(--ink-tertiary)', mt: 1, fontWeight: 600 }}>承認待ちの休暇申請はありません。</Typography>
+                </Section>
+            ) : (
+                <Stack spacing={1.25}>
+                    {approvalTargets.map((row) => {
+                        const comment = commentMap[row.id] || '';
+                        const showReject = showRejectFor === row.id;
+                        return (
+                            <Box
+                                key={row.id}
+                                sx={{
+                                    position: 'relative',
+                                    borderRadius: 'var(--radius-lg)',
+                                    background: 'var(--surface-raised)',
+                                    boxShadow: 'var(--shadow-1)',
+                                    overflow: 'hidden',
+                                }}
+                            >
+                                <Box aria-hidden sx={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: statusBarColor('pending') }} />
+                                <Box sx={{ paddingInline: { xs: 2, md: 3 }, paddingLeft: { xs: 2.5, md: 3.5 }, paddingBlock: 2 }}>
+                                    <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'center' }} spacing={1.5}>
+                                        <Box>
+                                            <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
+                                                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                                                    {row.leaveType} <Typography component="span" variant="body2" sx={{ color: 'var(--ink-tertiary)' }}>／ {row.date}</Typography>
+                                                </Typography>
+                                                <StatusChip status="pending" />
+                                            </Stack>
+                                            <Typography variant="body2" sx={{ color: 'var(--ink-secondary)', mt: 0.5 }}>
+                                                {row.reason || '理由なし'}
+                                            </Typography>
+                                            <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)' }}>
+                                                申請: {row.submittedAt ? new Date(row.submittedAt).toLocaleString() : '-'}
+                                            </Typography>
+                                        </Box>
+                                    </Stack>
+                                    <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', md: 'center' }} sx={{ mt: 2 }}>
+                                        <TextField
+                                            label="承認者備考（非承認時は必須）"
+                                            size="small"
+                                            value={comment}
+                                            onChange={(e) => setCommentMap({ ...commentMap, [row.id]: e.target.value })}
+                                            sx={{ flex: 1 }}
+                                            error={showReject && !comment.trim()}
+                                            helperText={showReject && !comment.trim() ? '非承認には備考を入力してください' : ' '}
+                                        />
+                                        <Stack direction="row" spacing={1} justifyContent="flex-end">
+                                            <Button variant="outlined" color="error" startIcon={<CancelRoundedIcon />} onClick={() => handleStatus(row.id, '非承認')}>
+                                                非承認
+                                            </Button>
+                                            <Button variant="contained" color="primary" startIcon={<CheckCircleRoundedIcon />} onClick={() => handleStatus(row.id, '承認済')}>
+                                                承認する
+                                            </Button>
+                                        </Stack>
+                                    </Stack>
+                                </Box>
+                            </Box>
+                        );
+                    })}
+                </Stack>
+            )}
+            <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ open: false, message: '' })}>
+                <Alert severity="success" sx={{ width: '100%' }}>{snackbar.message}</Alert>
             </Snackbar>
-        </Container>
+        </PageScaffold>
     );
 }
 

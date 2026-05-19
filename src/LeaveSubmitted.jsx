@@ -1,21 +1,24 @@
 import { useState, useEffect } from 'react';
-import { Container, Typography, Box, Button, Dialog, DialogContent, DialogTitle, DialogActions, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Snackbar, Alert, Chip, IconButton, Tooltip, TextField } from '@mui/material';
-import CancelIcon from '@mui/icons-material/Cancel';
-import CloseIcon from '@mui/icons-material/Close';
-import EditIcon from '@mui/icons-material/Edit';
-import ReplayIcon from '@mui/icons-material/Replay';
-import SaveIcon from '@mui/icons-material/Save';
 import {
-    loadLeaveApplications,
-    saveLeaveApplications,
-} from './leaveApplicationStore';
+    Box, Button, Dialog, DialogContent, DialogTitle, DialogActions, Snackbar, Alert, IconButton, Tooltip, TextField, Stack, Typography,
+} from '@mui/material';
+import CancelRoundedIcon from '@mui/icons-material/CancelRounded';
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
+import EditRoundedIcon from '@mui/icons-material/EditRounded';
+import ReplayRoundedIcon from '@mui/icons-material/ReplayRounded';
+import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
+import EventNoteRoundedIcon from '@mui/icons-material/EventNoteRounded';
+import { loadLeaveApplications, saveLeaveApplications } from './leaveApplicationStore';
 import AdminConfirmDialog from './components/AdminConfirmDialog';
+import PageScaffold from './ui/PageScaffold.jsx';
+import Section from './ui/Section.jsx';
+import StatusChip, { statusBarColor } from './ui/StatusChip.jsx';
 
-const statusColor = {
-    申請中: 'primary',
-    承認済: 'success',
-    非承認: 'error',
-    取消: 'default',
+const toStatusKey = (s) => {
+    if (s === '承認済') return 'approved';
+    if (s === '非承認') return 'rejected';
+    if (s === '取消') return 'cancelled';
+    return 'pending';
 };
 
 function LeaveSubmitted() {
@@ -25,188 +28,159 @@ function LeaveSubmitted() {
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [editTargetId, setEditTargetId] = useState(null);
     const [editReason, setEditReason] = useState('');
+    const [expandedId, setExpandedId] = useState(null);
 
-    useEffect(() => {
-        setSubmitted(loadLeaveApplications());
-    }, []);
+    useEffect(() => { setSubmitted(loadLeaveApplications()); }, []);
 
-    const persistSubmitted = (newList) => {
-        setSubmitted(newList);
-        saveLeaveApplications(newList);
-    };
+    const persist = (next) => { setSubmitted(next); saveLeaveApplications(next); };
 
     const handleEditOpen = (row) => {
         setEditTargetId(row.id);
         setEditReason(row.reason || '');
         setEditDialogOpen(true);
     };
-
-    const handleEditClose = () => {
-        setEditDialogOpen(false);
-        setEditTargetId(null);
-        setEditReason('');
-    };
-
+    const handleEditClose = () => { setEditDialogOpen(false); setEditTargetId(null); setEditReason(''); };
     const handleEditSave = () => {
         if (!editTargetId) return;
-        const newList = submitted.map(row => (
-            row.id === editTargetId ? { ...row, reason: editReason } : row
-        ));
-        persistSubmitted(newList);
+        persist(submitted.map((r) => (r.id === editTargetId ? { ...r, reason: editReason } : r)));
         handleEditClose();
         setSnackbar({ open: true, message: '休暇申請の理由・備考を保存しました' });
     };
-
-    const handleCancel = (id) => {
-        setCancelTargetId(id);
-    };
-
     const handleCancelConfirm = () => {
         if (!cancelTargetId) return;
-        const newList = submitted.map(row => (
-            row.id === cancelTargetId ? { ...row, status: '取消', remarks: '' } : row
-        ));
-        persistSubmitted(newList);
+        persist(submitted.map((r) => (r.id === cancelTargetId ? { ...r, status: '取消', remarks: '' } : r)));
         setCancelTargetId(null);
         setSnackbar({ open: true, message: '休暇申請を取り消しました' });
     };
-
     const handleResubmit = (id) => {
-        const newList = submitted.map(row => (
-            row.id === id ? { ...row, status: '申請中', remarks: '', submittedAt: new Date().toISOString() } : row
-        ));
-        persistSubmitted(newList);
+        persist(submitted.map((r) => (r.id === id ? { ...r, status: '申請中', remarks: '', submittedAt: new Date().toISOString() } : r)));
         setSnackbar({ open: true, message: '休暇申請を再申請しました' });
     };
 
-    const statusCounts = submitted.reduce((counts, row) => {
-        const status = row.status || '申請中';
-        return { ...counts, [status]: (counts[status] || 0) + 1 };
-    }, {});
+    const counts = submitted.reduce((acc, row) => { const k = row.status || '申請中'; acc[k] = (acc[k] || 0) + 1; return acc; }, {});
 
     return (
-        <Container maxWidth="lg" sx={{ textAlign: 'left' }}>
-            <Box sx={{ my: 4 }}>
-                <Box className="pageHeaderRow">
-                    <Typography variant="h6" component="div">
-                        休暇申請済一覧
-                    </Typography>
-                </Box>
-                <Box className="applicationGroup">
-                    <Box className="sectionHeaderRow">
-                        <Box>
-                            <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                                申請履歴
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                                休暇申請を一覧で確認します。申請中は取消、非承認は再申請できます。
-                            </Typography>
-                        </Box>
-                    </Box>
-                    <Box className="expenseSummaryStrip">
-                        <Box>
-                            <Typography variant="caption" color="text.secondary">申請数</Typography>
-                            <Typography variant="subtitle1">{submitted.length}件</Typography>
-                        </Box>
-                        <Box>
-                            <Typography variant="caption" color="text.secondary">申請中</Typography>
-                            <Typography variant="subtitle1">{statusCounts['申請中'] || 0}件</Typography>
-                        </Box>
-                        <Box>
-                            <Typography variant="caption" color="text.secondary">承認済</Typography>
-                            <Typography variant="subtitle1">{statusCounts['承認済'] || 0}件</Typography>
-                        </Box>
-                        <Box>
-                            <Typography variant="caption" color="text.secondary">非承認</Typography>
-                            <Typography variant="subtitle1">{statusCounts['非承認'] || 0}件</Typography>
-                        </Box>
-                    </Box>
-                    <TableContainer>
-                        <Table size="small">
-                            <TableHead>
-                                <TableRow>
-                                    <TableCell>申請日</TableCell>
-                                    <TableCell>申請種別</TableCell>
-                                    <TableCell>日付</TableCell>
-                                    <TableCell>理由・備考</TableCell>
-                                    <TableCell>承認者備考</TableCell>
-                                    <TableCell>状態</TableCell>
-                                    <TableCell>操作</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {submitted.length === 0 && (
-                                    <TableRow><TableCell colSpan={7}>申請履歴がありません</TableCell></TableRow>
-                                )}
-                                {submitted.map((row, idx) => (
-                                    <TableRow key={row.id || idx}>
-                                        <TableCell>{row.submittedAt ? new Date(row.submittedAt).toLocaleString() : '-'}</TableCell>
-                                        <TableCell>{row.leaveType}</TableCell>
-                                        <TableCell>{row.date}</TableCell>
-                                        <TableCell>{row.reason || '-'}</TableCell>
-                                        <TableCell>{(row.status || '申請中') === '非承認' ? row.remarks || '-' : '-'}</TableCell>
-                                        <TableCell>
-                                            <Chip size="small" label={row.status || '申請中'} color={statusColor[row.status || '申請中']} variant={(row.status || '申請中') === '申請中' ? 'filled' : 'outlined'} />
-                                        </TableCell>
-                                        <TableCell>
-                                            <Box className="tableActionGroup">
-                                                <Tooltip title="取消">
-                                                    <span>
-                                                        <IconButton aria-label="休暇申請を取消" color="error" onClick={() => handleCancel(row.id)} disabled={(row.status || '申請中') !== '申請中'}>
-                                                            <CancelIcon />
+        <PageScaffold
+            eyebrow="申請"
+            title="休暇申請済 一覧"
+            subtitle="一覧で確認します。申請中は取消、非承認は再申請できます。"
+        >
+            <Section tone="sunken" elevation={0}>
+                <Stack direction="row" spacing={4} flexWrap="wrap">
+                    <Stat label="申請数" value={submitted.length} tone="primary" />
+                    <Stat label="申請中" value={counts['申請中'] || 0} tone="iris" />
+                    <Stat label="承認済" value={counts['承認済'] || 0} tone="leaf" />
+                    <Stat label="非承認" value={counts['非承認'] || 0} tone="rose" />
+                </Stack>
+            </Section>
+
+            {submitted.length === 0 && (
+                <Section padded sx={{ textAlign: 'center', paddingBlock: 6 }}>
+                    <EventNoteRoundedIcon sx={{ fontSize: 40, color: 'var(--ink-muted)' }} />
+                    <Typography variant="body2" sx={{ color: 'var(--ink-tertiary)', mt: 1 }}>申請履歴がありません。</Typography>
+                </Section>
+            )}
+
+            <Stack spacing={1.25}>
+                {submitted.map((row) => {
+                    const status = row.status || '申請中';
+                    const sKey = toStatusKey(status);
+                    const expanded = expandedId === row.id;
+                    return (
+                        <Box
+                            key={row.id}
+                            sx={{
+                                position: 'relative',
+                                borderRadius: 'var(--radius-lg)',
+                                background: 'var(--surface-raised)',
+                                boxShadow: 'var(--shadow-1)',
+                                overflow: 'hidden',
+                                transition: 'var(--motion-fast)',
+                                '&:hover': { boxShadow: 'var(--shadow-2)' },
+                            }}
+                        >
+                            <Box aria-hidden sx={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: statusBarColor(sKey) }} />
+                            <Box
+                                onClick={() => setExpandedId(expanded ? null : row.id)}
+                                sx={{
+                                    cursor: 'pointer',
+                                    paddingInline: { xs: 2, md: 3 },
+                                    paddingLeft: { xs: 2.5, md: 3.5 },
+                                    paddingBlock: 1.75,
+                                    display: 'grid',
+                                    gridTemplateColumns: { xs: '1fr', md: '140px 140px 1fr 110px' },
+                                    alignItems: 'center',
+                                    gap: 2,
+                                }}
+                            >
+                                <Typography variant="body2" sx={{ fontWeight: 600 }}>{row.date || '-'}</Typography>
+                                <Typography variant="body2" sx={{ color: 'var(--ink-secondary)' }}>{row.leaveType}</Typography>
+                                <Typography variant="body2" sx={{
+                                    color: 'var(--ink-primary)',
+                                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                }}>
+                                    {row.reason || '理由なし'}
+                                </Typography>
+                                <Box sx={{ justifySelf: { xs: 'flex-start', md: 'flex-end' } }}>
+                                    <StatusChip status={sKey} />
+                                </Box>
+                            </Box>
+
+                            {expanded && (
+                                <Box sx={{ paddingInline: { xs: 2, md: 3 }, paddingBottom: 2.5, animation: 'recrovaFloatIn 200ms' }}>
+                                    <Stack spacing={1.5}>
+                                        <KV label="申請日時" value={row.submittedAt ? new Date(row.submittedAt).toLocaleString() : '-'} />
+                                        <KV label="理由・備考" value={row.reason || '-'} />
+                                        {status === '非承認' && row.remarks && (
+                                            <Alert severity="warning" sx={{ borderRadius: 'var(--radius-md)' }}>
+                                                <Typography variant="caption" sx={{ fontWeight: 700, display: 'block' }}>承認者備考</Typography>
+                                                {row.remarks}
+                                            </Alert>
+                                        )}
+                                        <Stack direction="row" spacing={1} justifyContent="flex-end">
+                                            <Tooltip title="取消">
+                                                <span>
+                                                    <IconButton color="error" onClick={(e) => { e.stopPropagation(); setCancelTargetId(row.id); }} disabled={status !== '申請中'}>
+                                                        <CancelRoundedIcon fontSize="small" />
+                                                    </IconButton>
+                                                </span>
+                                            </Tooltip>
+                                            {status === '非承認' && (
+                                                <>
+                                                    <Tooltip title="編集">
+                                                        <IconButton color="primary" onClick={(e) => { e.stopPropagation(); handleEditOpen(row); }}>
+                                                            <EditRoundedIcon fontSize="small" />
                                                         </IconButton>
-                                                    </span>
-                                                </Tooltip>
-                                                {(row.status || '申請中') === '非承認' && (
-                                                    <>
-                                                        <Tooltip title="編集">
-                                                            <IconButton aria-label="休暇申請の理由・備考を編集" color="primary" onClick={() => handleEditOpen(row)}>
-                                                                <EditIcon />
-                                                            </IconButton>
-                                                        </Tooltip>
-                                                        <Tooltip title="再申請">
-                                                            <IconButton aria-label="休暇申請を再申請" color="success" onClick={() => handleResubmit(row.id)}>
-                                                                <ReplayIcon />
-                                                            </IconButton>
-                                                        </Tooltip>
-                                                    </>
-                                                )}
-                                            </Box>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
-                </Box>
-            </Box>
+                                                    </Tooltip>
+                                                    <Tooltip title="再申請">
+                                                        <IconButton sx={{ color: 'var(--accent-leaf)' }} onClick={(e) => { e.stopPropagation(); handleResubmit(row.id); }}>
+                                                            <ReplayRoundedIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                </>
+                                            )}
+                                        </Stack>
+                                    </Stack>
+                                </Box>
+                            )}
+                        </Box>
+                    );
+                })}
+            </Stack>
+
             <Dialog open={editDialogOpen} onClose={handleEditClose} maxWidth="sm" fullWidth>
                 <DialogTitle>理由・備考を編集</DialogTitle>
                 <DialogContent>
-                    <TextField
-                        autoFocus
-                        fullWidth
-                        multiline
-                        minRows={3}
-                        label="理由・備考"
-                        value={editReason}
-                        onChange={event => setEditReason(event.target.value)}
-                        sx={{ mt: 1 }}
-                    />
+                    <TextField autoFocus fullWidth multiline minRows={3} label="理由・備考" value={editReason} onChange={(e) => setEditReason(e.target.value)} sx={{ mt: 1 }} />
                 </DialogContent>
                 <DialogActions>
-                    <Button variant="outlined" color="inherit" startIcon={<CloseIcon />} onClick={handleEditClose}>
-                        キャンセル
-                    </Button>
-                    <Button variant="contained" startIcon={<SaveIcon />} onClick={handleEditSave}>
-                        保存
-                    </Button>
+                    <Button variant="text" color="inherit" startIcon={<CloseRoundedIcon />} onClick={handleEditClose}>キャンセル</Button>
+                    <Button variant="contained" startIcon={<SaveRoundedIcon />} onClick={handleEditSave}>保存</Button>
                 </DialogActions>
             </Dialog>
-            <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-                <Alert severity="success" sx={{ width: '100%' }}>
-                    {snackbar.message}
-                </Alert>
+
+            <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ open: false, message: '' })}>
+                <Alert severity="success" sx={{ width: '100%' }}>{snackbar.message}</Alert>
             </Snackbar>
             <AdminConfirmDialog
                 open={Boolean(cancelTargetId)}
@@ -217,8 +191,27 @@ function LeaveSubmitted() {
                 onCancel={() => setCancelTargetId(null)}
                 onConfirm={handleCancelConfirm}
             />
-        </Container>
+        </PageScaffold>
     );
 }
+
+const Stat = ({ label, value, tone = 'primary' }) => {
+    const tones = { primary: 'var(--accent-primary)', iris: 'var(--accent-iris)', leaf: 'var(--accent-leaf)', rose: 'var(--accent-rose)' };
+    return (
+        <Box>
+            <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)', display: 'block', lineHeight: 1 }}>{label}</Typography>
+            <Typography sx={{ fontWeight: 800, fontSize: 22, color: tones[tone], lineHeight: 1.1 }} className="tabular-nums">
+                {value}<Typography component="span" variant="caption" sx={{ ml: 0.5, color: 'var(--ink-tertiary)', fontSize: 12 }}>件</Typography>
+            </Typography>
+        </Box>
+    );
+};
+
+const KV = ({ label, value }) => (
+    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 0.25, sm: 2 }}>
+        <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)', minWidth: 100, fontWeight: 700 }}>{label}</Typography>
+        <Typography variant="body2" sx={{ color: 'var(--ink-primary)', whiteSpace: 'pre-wrap' }}>{value}</Typography>
+    </Stack>
+);
 
 export default LeaveSubmitted;
