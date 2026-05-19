@@ -29,7 +29,7 @@ const hasLeaveRowInput = (row = {}) =>
     row.leaveType !== emptyLeaveRow().leaveType ||
     ['date', 'reason'].some((field) => String(row[field] ?? '').trim() !== '');
 
-function LeaveApplication() {
+function LeaveApplication({ userId }) {
     const location = useLocation();
     const [leaveList, setLeaveList] = useState([]);
     const [mode, setMode] = useState('list');
@@ -105,7 +105,7 @@ function LeaveApplication() {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        const apps = buildLeaveApplications({ editId, rows: leaveRows });
+        const apps = buildLeaveApplications({ editId, rows: leaveRows, applicantId: userId });
         const prev = loadLeaveApplications();
         saveLeaveApplications([...apps, ...prev]);
         const next = leaveList.filter((d) => d.id !== editId);
@@ -125,7 +125,7 @@ function LeaveApplication() {
             <PageScaffold
                 eyebrow="申請"
                 title="休暇申請の下書き"
-                subtitle="作成中の下書きを編集・送信できます。送信後は休暇申請済画面に反映されます。"
+                subtitle="作成中の下書きを編集・送信できます。送信後は休暇履歴画面に反映されます。"
                 actions={(
                     <Button variant="contained" color="primary" startIcon={<AddRoundedIcon />} onClick={handleNew}>
                         新規作成

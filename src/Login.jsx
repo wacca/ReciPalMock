@@ -4,8 +4,8 @@ import AccountCircleRoundedIcon from '@mui/icons-material/AccountCircleRounded';
 import LockRoundedIcon from '@mui/icons-material/LockRounded';
 import KeyboardArrowRightRoundedIcon from '@mui/icons-material/KeyboardArrowRightRounded';
 import { SideRailLogo } from './ui/SideRail.jsx';
-
-const MOCK_USER_NAME = '由仁場 技朗';
+import { USER_DIRECTORY, getUserProfile } from './userDirectory';
+import { ROLE_LABELS } from './permissions';
 
 function Login({ onLogin }) {
     const [userId, setUserId] = useState('univatech@univa.tech');
@@ -29,7 +29,8 @@ function Login({ onLogin }) {
     const handleLogin = (event) => {
         event.preventDefault();
         if (userId && password) {
-            onLogin(MOCK_USER_NAME, userId);
+            const profile = getUserProfile(userId);
+            onLogin(profile.name, profile.id);
         }
     };
 
@@ -148,6 +149,50 @@ function Login({ onLogin }) {
                     >
                         ログイン
                     </Button>
+
+                    <Box sx={{
+                        background: 'var(--surface-sunken)',
+                        borderRadius: 'var(--radius-md)',
+                        padding: 1.5,
+                    }}>
+                        <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)', fontWeight: 700, letterSpacing: 0.5, display: 'block', mb: 0.75 }}>
+                            デモアカウント（任意の ID でログイン可）
+                        </Typography>
+                        <Stack spacing={0.5}>
+                            {USER_DIRECTORY.map((u) => (
+                                <Box
+                                    key={u.id}
+                                    component="button"
+                                    type="button"
+                                    onClick={() => setUserId(u.id)}
+                                    sx={{
+                                        all: 'unset',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        gap: 1,
+                                        padding: 0.5,
+                                        paddingInline: 0.75,
+                                        borderRadius: 'var(--radius-sm)',
+                                        '&:hover': { background: 'var(--surface-raised)' },
+                                    }}
+                                >
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                                        <Typography variant="caption" sx={{ color: 'var(--ink-primary)', fontWeight: 600, lineHeight: 1.2 }}>
+                                            {u.name}
+                                        </Typography>
+                                        <Typography variant="caption" sx={{ color: 'var(--ink-muted)', fontSize: 10, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                            {u.id}
+                                        </Typography>
+                                    </Box>
+                                    <Typography variant="caption" sx={{ color: 'var(--accent-primary)', fontWeight: 700, fontSize: 10, whiteSpace: 'nowrap' }}>
+                                        {ROLE_LABELS[u.role]}
+                                    </Typography>
+                                </Box>
+                            ))}
+                        </Stack>
+                    </Box>
 
                     <Typography variant="caption" sx={{ color: 'var(--ink-muted)', textAlign: 'center', lineHeight: 1.6 }}>
                         Recrova はモック環境です。<br />

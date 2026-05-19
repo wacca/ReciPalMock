@@ -1,22 +1,18 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
-    Box, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, MenuItem, Select, FormControl,
-    TextField, Snackbar, Alert, Button, Typography, Tabs, Tab, InputLabel, ToggleButton, ToggleButtonGroup,
+    Box, Stack, Snackbar, Alert, TextField, FormControl, Select, MenuItem, Button, Typography, Tabs, Tab,
+    InputLabel, ToggleButton, ToggleButtonGroup, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
 } from '@mui/material';
 import CancelRoundedIcon from '@mui/icons-material/CancelRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
-import FactCheckRoundedIcon from '@mui/icons-material/FactCheckRounded';
+import HowToRegRoundedIcon from '@mui/icons-material/HowToRegRounded';
 import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded';
 import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 import SearchOffRoundedIcon from '@mui/icons-material/SearchOffRounded';
 import {
-    formatYen,
-    getExpenseApplicationStatus,
-    getExpenseApplicationTotal,
-    loadExpenseApplications,
-    saveExpenseApplications,
-} from './expenseApplicationStore';
-import { getLastNMonths, inDateRange } from './dateRangeHelpers';
+    loadAttendanceTimesheets, saveAttendanceTimesheets, upsertAttendance, getAttendanceIntegrationStatus,
+} from './attendanceStore';
+import { getLastNMonths } from './dateRangeHelpers';
 import PageScaffold from './ui/PageScaffold.jsx';
 import Section from './ui/Section.jsx';
 import StatusChip from './ui/StatusChip.jsx';
@@ -24,8 +20,8 @@ import ApplicationCard from './ui/ApplicationCard.jsx';
 import IntegrationStatusChip from './ui/IntegrationStatusChip.jsx';
 
 const approvers = [
-    { value: 'user1', label: '由引 安人(ubiast@univa.tech)' },
-    { value: 'user2', label: '油ニ 和平(univapay@univa.tech)' },
+    { value: 'user1', label: '油ニ 和平(univapay@univa.tech)' },
+    { value: 'user2', label: '由引 安人(ubiast@univa.tech)' },
 ];
 
 const HISTORY_STATUS_OPTIONS = ['承認済', '非承認'];
@@ -34,8 +30,51 @@ const toStatusKey = (s) => (
     s === '承認済' ? 'approved' : s === '非承認' ? 'rejected' : s === '取消' ? 'cancelled' : 'pending'
 );
 
-function Approvals() {
-    const [data, setData] = useState([]);
+const pad2 = (v) => String(v).padStart(2, '0');
+const parseTime = (v) => {
+    if (!v) return null;
+    const [h, m] = v.split(':').map(Number);
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+    return h * 60 + m;
+};
+const formatDuration = (m) => {
+    if (m === null || m === undefined || !Number.isFinite(m)) return '-';
+    const sign = m < 0 ? '-' : '';
+    const a = Math.abs(m);
+    return `${sign}${Math.floor(a / 60)}:${pad2(a % 60)}`;
+};
+const getBreak = (g) => (g > 8 * 60 ? 60 : g > 6 * 60 ? 45 : 0);
+const dayTotalMinutes = (entry) => {
+    if (!entry || entry.type !== '出勤') return 0;
+    const ci = parseTime(entry.clockIn);
+    const co = parseTime(entry.clockOut);
+    if (ci === null || co === null) return 0;
+    const end = co < ci ? co + 24 * 60 : co;
+    const gross = end - ci;
+    return Math.max(0, gross - getBreak(gross));
+};
+const computeSummary = (entries) => {
+    const list = Object.values(entries || {});
+    const count = (t) => list.filter((e) => e.type === t).length;
+    const totalMinutes = list.reduce((s, e) => s + dayTotalMinutes(e), 0);
+    return {
+        workDays: count('出勤'),
+        absenceDays: count('欠勤'),
+        paidLeaveDays: count('有給'),
+        substituteLeaveDays: count('振替休日'),
+        totalWork: totalMinutes,
+    };
+};
+
+const inDateRange = (date, from, to) => {
+    if (!date) return !from && !to;
+    if (from && date < from) return false;
+    if (to && date > to) return false;
+    return true;
+};
+
+function AttendanceApprovals() {
+    const [records, setRecords] = useState([]);
     const [commentMap, setCommentMap] = useState({});
     const [selectedApprover, setSelectedApprover] = useState('user1');
     const [snackbar, setSnackbar] = useState({ open: false, message: '' });
@@ -48,54 +87,50 @@ function Approvals() {
     const [historyStatus, setHistoryStatus] = useState('all');
     const [historyMineOnly, setHistoryMineOnly] = useState(true);
 
-    useEffect(() => { setData(loadExpenseApplications()); }, []);
+    useEffect(() => { setRecords(loadAttendanceTimesheets()); }, []);
 
-    const persist = (next) => { setData(next); saveExpenseApplications(next); };
+    const persist = (next) => { setRecords(next); saveAttendanceTimesheets(next); };
 
     const currentApproverLabel = approvers.find((a) => a.value === selectedApprover)?.label || '';
 
-    const handleStatus = (groupId, newStatus) => {
-        const target = data.find((g) => g.applicationId === groupId);
+    const handleStatus = (id, newStatus) => {
+        const target = records.find((r) => r.id === id);
         if (!target) return;
-        const comment = (commentMap[target.applicationId] || '').trim();
+        const comment = (commentMap[id] || '').trim();
         if (newStatus === '非承認' && !comment) {
-            setShowRejectFor(target.applicationId);
+            setShowRejectFor(id);
             return;
         }
-        persist(data.map((g) => (
-            g.applicationId === groupId
-                ? {
-                    ...g,
-                    remarks: newStatus === '非承認' ? comment : '',
-                    approvedBy: currentApproverLabel,
-                    approvedAt: new Date().toISOString(),
-                    integrationStatus: newStatus === '承認済' ? 'pending' : 'not_applicable',
-                    details: g.details.map((r) => ({ ...r, status: newStatus })),
-                }
-                : g
-        )));
-        setCommentMap({ ...commentMap, [target.applicationId]: '' });
+        const updated = {
+            ...target,
+            approvalStatus: newStatus,
+            approvedBy: currentApproverLabel,
+            approvedAt: new Date().toISOString(),
+            remarks: newStatus === '非承認' ? comment : '',
+            integrationStatus: newStatus === '承認済' ? 'pending' : 'not_applicable',
+        };
+        persist(upsertAttendance(records, updated));
+        setCommentMap({ ...commentMap, [id]: '' });
         setShowRejectFor(null);
-        setSnackbar({ open: true, message: newStatus === '承認済' ? '申請を承認しました' : '申請を非承認にしました' });
+        setSnackbar({ open: true, message: newStatus === '承認済' ? '勤怠を承認しました' : '勤怠を差戻しました' });
     };
 
     const approvalTargets = useMemo(() => (
-        data.filter((a) => getExpenseApplicationStatus(a) === '申請中')
-    ), [data]);
+        records.filter((r) => r.approvalStatus === '申請中').sort((a, b) => (a.submittedAt || '').localeCompare(b.submittedAt || ''))
+    ), [records]);
 
     const historyRows = useMemo(() => (
-        data
-            .map((g) => ({ ...g, _status: getExpenseApplicationStatus(g) }))
-            .filter((g) => HISTORY_STATUS_OPTIONS.includes(g._status))
-            .filter((g) => {
-                if (historyStatus !== 'all' && g._status !== historyStatus) return false;
-                const ref = (g.approvedAt || '').slice(0, 10) || g.applicationDate;
+        records
+            .filter((r) => HISTORY_STATUS_OPTIONS.includes(r.approvalStatus))
+            .filter((r) => {
+                if (historyStatus !== 'all' && r.approvalStatus !== historyStatus) return false;
+                const ref = (r.approvedAt || '').slice(0, 10);
                 if (!inDateRange(ref, historyFrom, historyTo)) return false;
-                if (historyMineOnly && g.approvedBy !== currentApproverLabel) return false;
+                if (historyMineOnly && r.approvedBy !== currentApproverLabel) return false;
                 return true;
             })
-            .sort((a, b) => (b.approvedAt || b.applicationDate || '').localeCompare(a.approvedAt || a.applicationDate || ''))
-    ), [data, historyStatus, historyFrom, historyTo, historyMineOnly, currentApproverLabel]);
+            .sort((a, b) => (b.approvedAt || '').localeCompare(a.approvedAt || ''))
+    ), [records, historyStatus, historyFrom, historyTo, historyMineOnly, currentApproverLabel]);
 
     const handleResetHistory = () => {
         setHistoryFrom(defaultRange.from);
@@ -110,8 +145,8 @@ function Approvals() {
     return (
         <PageScaffold
             eyebrow="承認"
-            title="経費承認"
-            subtitle="申請中の承認、過去の承認履歴をタブで切り替えて確認できます。"
+            title="勤怠承認"
+            subtitle="部下の月次勤怠を承認/差戻しできます。承認結果は給与 SaaS への連携対象になります。"
             actions={(
                 <FormControl size="small" sx={{ minWidth: 260 }}>
                     <Select value={selectedApprover} onChange={(e) => setSelectedApprover(e.target.value)}>
@@ -122,113 +157,82 @@ function Approvals() {
         >
             <Box sx={{ borderBottom: '1px solid var(--surface-border)' }}>
                 <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ '& .MuiTab-root': { fontWeight: 700, minHeight: 44 } }}>
-                    <Tab
-                        value="pending"
-                        icon={<FactCheckRoundedIcon fontSize="small" />}
-                        iconPosition="start"
-                        label={`承認待ち (${approvalTargets.length})`}
-                    />
-                    <Tab
-                        value="history"
-                        icon={<HistoryRoundedIcon fontSize="small" />}
-                        iconPosition="start"
-                        label={`承認履歴 (${historyRows.length})`}
-                    />
+                    <Tab value="pending" icon={<HowToRegRoundedIcon fontSize="small" />} iconPosition="start" label={`承認待ち (${approvalTargets.length})`} />
+                    <Tab value="history" icon={<HistoryRoundedIcon fontSize="small" />} iconPosition="start" label={`承認履歴 (${historyRows.length})`} />
                 </Tabs>
             </Box>
 
             {tab === 'pending' && (
                 approvalTargets.length === 0 ? (
                     <Section padded sx={{ textAlign: 'center', paddingBlock: 6 }}>
-                        <FactCheckRoundedIcon sx={{ fontSize: 40, color: 'var(--accent-leaf)' }} />
-                        <Typography variant="body2" sx={{ color: 'var(--ink-tertiary)', mt: 1, fontWeight: 600 }}>承認待ちの経費申請はありません。</Typography>
-                        <Typography variant="caption" sx={{ color: 'var(--ink-muted)' }}>お疲れさまです。</Typography>
+                        <HowToRegRoundedIcon sx={{ fontSize: 40, color: 'var(--accent-leaf)' }} />
+                        <Typography variant="body2" sx={{ color: 'var(--ink-tertiary)', mt: 1, fontWeight: 600 }}>承認待ちの勤怠申請はありません。</Typography>
                     </Section>
                 ) : (
                     <Stack spacing={1.5}>
-                        {approvalTargets.map((group) => {
-                            const comment = commentMap[group.applicationId] || '';
-                            const total = getExpenseApplicationTotal(group);
-                            const showReject = showRejectFor === group.applicationId;
+                        {approvalTargets.map((rec) => {
+                            const summary = computeSummary(rec.entries);
+                            const comment = commentMap[rec.id] || '';
+                            const showReject = showRejectFor === rec.id;
                             return (
-                                <ApplicationCard key={group.applicationId} statusKey="pending">
+                                <ApplicationCard key={rec.id} statusKey="pending">
                                     <Box sx={{ paddingInline: { xs: 2, md: 3 }, paddingLeft: { xs: 2.5, md: 3.5 }, paddingBlock: 2 }}>
                                         <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'center' }} spacing={1.5}>
                                             <Box>
                                                 <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
-                                                    <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'var(--ink-primary)' }}>
-                                                        {group.applicationId}
+                                                    <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
+                                                        {rec.year}年{rec.month}月
                                                     </Typography>
                                                     <StatusChip status="pending" />
                                                 </Stack>
-                                                <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)', display: 'block' }}>
-                                                    申請日 {group.applicationDate} ・ {group.paymentType || '-'}
-                                                </Typography>
                                                 <Typography variant="body2" sx={{ color: 'var(--ink-secondary)', mt: 0.5, fontWeight: 600 }}>
-                                                    {group.applicantName || '-'}
+                                                    {rec.userName}
                                                     <Typography component="span" variant="caption" sx={{ color: 'var(--ink-tertiary)', ml: 1 }}>
-                                                        {group.applicantDepartment || ''}
+                                                        {rec.department}
                                                     </Typography>
                                                 </Typography>
+                                                <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)' }}>
+                                                    申請: {rec.submittedAt ? new Date(rec.submittedAt).toLocaleString() : '-'}
+                                                </Typography>
                                             </Box>
-                                            <Typography sx={{ fontWeight: 800, fontSize: 22, color: 'var(--accent-iris)' }} className="tabular-nums">
-                                                {formatYen(total)}
-                                            </Typography>
                                         </Stack>
-                                        <TableContainer sx={{ mt: 2, borderRadius: 'var(--radius-md)', background: 'var(--surface-sunken)' }}>
+                                        <TableContainer sx={{ mt: 1.5, borderRadius: 'var(--radius-md)', background: 'var(--surface-sunken)' }}>
                                             <Table size="small">
                                                 <TableHead>
                                                     <TableRow>
-                                                        <TableCell sx={{ width: 130 }}>日付</TableCell>
-                                                        <TableCell sx={{ width: 220 }}>内容</TableCell>
-                                                        <TableCell>用途・行き先</TableCell>
-                                                        <TableCell sx={{ width: 180 }}>費目</TableCell>
-                                                        <TableCell sx={{ width: 140 }} align="right">金額</TableCell>
+                                                        <TableCell>出勤日数</TableCell>
+                                                        <TableCell>欠勤日数</TableCell>
+                                                        <TableCell>有給</TableCell>
+                                                        <TableCell>振替休日</TableCell>
+                                                        <TableCell align="right">総就業時間</TableCell>
                                                     </TableRow>
                                                 </TableHead>
                                                 <TableBody>
-                                                    {group.details.map((row, idx) => (
-                                                        <TableRow key={`${group.applicationId}_${idx}`}>
-                                                            <TableCell>{row.date}</TableCell>
-                                                            <TableCell sx={{ fontWeight: 500 }}>{row.description}</TableCell>
-                                                            <TableCell>{row.destination}</TableCell>
-                                                            <TableCell>{row.category}</TableCell>
-                                                            <TableCell align="right" className="tabular-nums" sx={{ fontWeight: 600 }}>{formatYen(row.amount)}</TableCell>
-                                                        </TableRow>
-                                                    ))}
+                                                    <TableRow>
+                                                        <TableCell className="tabular-nums">{summary.workDays}日</TableCell>
+                                                        <TableCell className="tabular-nums">{summary.absenceDays}日</TableCell>
+                                                        <TableCell className="tabular-nums">{summary.paidLeaveDays}日</TableCell>
+                                                        <TableCell className="tabular-nums">{summary.substituteLeaveDays}日</TableCell>
+                                                        <TableCell className="tabular-nums" align="right" sx={{ fontWeight: 700 }}>{formatDuration(summary.totalWork)}</TableCell>
+                                                    </TableRow>
                                                 </TableBody>
                                             </Table>
                                         </TableContainer>
-                                        <Stack
-                                            direction={{ xs: 'column', md: 'row' }}
-                                            spacing={1.5}
-                                            alignItems={{ xs: 'stretch', md: 'center' }}
-                                            sx={{ mt: 2 }}
-                                        >
+                                        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', md: 'center' }} sx={{ mt: 2 }}>
                                             <TextField
-                                                label="承認者備考（非承認時は必須）"
+                                                label="承認者備考（差戻し時は必須）"
                                                 size="small"
                                                 value={comment}
-                                                onChange={(e) => setCommentMap({ ...commentMap, [group.applicationId]: e.target.value })}
+                                                onChange={(e) => setCommentMap({ ...commentMap, [rec.id]: e.target.value })}
                                                 sx={{ flex: 1 }}
                                                 error={showReject && !comment.trim()}
-                                                helperText={showReject && !comment.trim() ? '非承認には備考を入力してください' : ' '}
+                                                helperText={showReject && !comment.trim() ? '差戻しには備考を入力してください' : ' '}
                                             />
                                             <Stack direction="row" spacing={1} justifyContent="flex-end">
-                                                <Button
-                                                    variant="outlined"
-                                                    color="error"
-                                                    startIcon={<CancelRoundedIcon />}
-                                                    onClick={() => handleStatus(group.applicationId, '非承認')}
-                                                >
-                                                    非承認
+                                                <Button variant="outlined" color="error" startIcon={<CancelRoundedIcon />} onClick={() => handleStatus(rec.id, '非承認')}>
+                                                    差戻し
                                                 </Button>
-                                                <Button
-                                                    variant="contained"
-                                                    color="primary"
-                                                    startIcon={<CheckCircleRoundedIcon />}
-                                                    onClick={() => handleStatus(group.applicationId, '承認済')}
-                                                >
+                                                <Button variant="contained" color="primary" startIcon={<CheckCircleRoundedIcon />} onClick={() => handleStatus(rec.id, '承認済')}>
                                                     承認する
                                                 </Button>
                                             </Stack>
@@ -251,22 +255,8 @@ function Approvals() {
                                 gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(3, minmax(160px, 1fr))' },
                                 flex: 1,
                             }}>
-                                <TextField
-                                    size="small"
-                                    type="date"
-                                    label="承認日（開始）"
-                                    InputLabelProps={{ shrink: true }}
-                                    value={historyFrom}
-                                    onChange={(e) => setHistoryFrom(e.target.value)}
-                                />
-                                <TextField
-                                    size="small"
-                                    type="date"
-                                    label="承認日（終了）"
-                                    InputLabelProps={{ shrink: true }}
-                                    value={historyTo}
-                                    onChange={(e) => setHistoryTo(e.target.value)}
-                                />
+                                <TextField size="small" type="date" label="承認日（開始）" InputLabelProps={{ shrink: true }} value={historyFrom} onChange={(e) => setHistoryFrom(e.target.value)} />
+                                <TextField size="small" type="date" label="承認日（終了）" InputLabelProps={{ shrink: true }} value={historyTo} onChange={(e) => setHistoryTo(e.target.value)} />
                                 <FormControl size="small">
                                     <InputLabel>状態</InputLabel>
                                     <Select label="状態" value={historyStatus} onChange={(e) => setHistoryStatus(e.target.value)}>
@@ -305,14 +295,7 @@ function Approvals() {
                                     <ToggleButton value="mine">自分の承認分</ToggleButton>
                                     <ToggleButton value="all">すべての承認者</ToggleButton>
                                 </ToggleButtonGroup>
-                                <Button
-                                    variant="text"
-                                    color="inherit"
-                                    size="small"
-                                    startIcon={<RestartAltRoundedIcon />}
-                                    onClick={handleResetHistory}
-                                    disabled={!historyFiltersActive}
-                                >
+                                <Button variant="text" color="inherit" size="small" startIcon={<RestartAltRoundedIcon />} onClick={handleResetHistory} disabled={!historyFiltersActive}>
                                     リセット
                                 </Button>
                             </Stack>
@@ -328,49 +311,53 @@ function Approvals() {
                         </Section>
                     ) : (
                         <Stack spacing={1.25}>
-                            {historyRows.map((group) => {
-                                const total = getExpenseApplicationTotal(group);
-                                const statusKey = toStatusKey(group._status);
+                            {historyRows.map((rec) => {
+                                const summary = computeSummary(rec.entries);
+                                const statusKey = toStatusKey(rec.approvalStatus);
+                                const integration = getAttendanceIntegrationStatus(rec);
                                 return (
-                                    <ApplicationCard key={group.applicationId} statusKey={statusKey} hoverable={false}>
+                                    <ApplicationCard key={rec.id} statusKey={statusKey} hoverable={false}>
                                         <Box sx={{ paddingInline: { xs: 2, md: 3 }, paddingLeft: { xs: 2.5, md: 3.5 }, paddingBlock: 1.75 }}>
                                             <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'center' }} spacing={1.5}>
                                                 <Box sx={{ minWidth: 0 }}>
                                                     <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
-                                                        <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'var(--ink-primary)' }}>
-                                                            {group.applicationId}
+                                                        <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                                                            {rec.year}年{rec.month}月
                                                         </Typography>
                                                         <StatusChip status={statusKey} size="sm" />
-                                                        {group._status === '承認済' && (
-                                                            <IntegrationStatusChip
-                                                                status={group.integrationStatus && group.integrationStatus !== 'not_applicable' ? group.integrationStatus : 'pending'}
-                                                                target="expense"
-                                                                size="sm"
-                                                            />
+                                                        {rec.approvalStatus === '承認済' && (
+                                                            <IntegrationStatusChip status={integration} target="attendance" size="sm" />
+                                                        )}
+                                                        {rec.closingStatus === 'closed' && (
+                                                            <IntegrationStatusChip status="closed" size="sm" />
                                                         )}
                                                     </Stack>
-                                                    <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)', display: 'block' }}>
-                                                        申請日 {group.applicationDate} ・ {group.paymentType || '-'}
-                                                    </Typography>
                                                     <Typography variant="body2" sx={{ color: 'var(--ink-secondary)', mt: 0.5, fontWeight: 600 }}>
-                                                        申請者: {group.applicantName || '-'}
+                                                        申請者: {rec.userName}
                                                         <Typography component="span" variant="caption" sx={{ color: 'var(--ink-tertiary)', ml: 1 }}>
-                                                            {group.applicantDepartment || ''}
+                                                            {rec.department}
                                                         </Typography>
                                                     </Typography>
                                                     <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)', display: 'block', mt: 0.25 }}>
-                                                        承認: {group.approvedBy || '-'}
-                                                        {group.approvedAt && ` ・ ${new Date(group.approvedAt).toLocaleString()}`}
+                                                        承認: {rec.approvedBy || '-'}
+                                                        {rec.approvedAt && ` ・ ${new Date(rec.approvedAt).toLocaleString()}`}
                                                     </Typography>
-                                                    {group._status === '非承認' && group.remarks && (
+                                                    {rec.approvalStatus === '非承認' && rec.remarks && (
                                                         <Typography variant="caption" sx={{ color: 'var(--accent-rose)', display: 'block', mt: 0.25 }}>
-                                                            備考: {group.remarks}
+                                                            備考: {rec.remarks}
                                                         </Typography>
                                                     )}
                                                 </Box>
-                                                <Typography sx={{ fontWeight: 700, fontSize: 20, color: 'var(--accent-iris)' }} className="tabular-nums">
-                                                    {formatYen(total)}
-                                                </Typography>
+                                                <Stack direction="row" spacing={3} alignItems="center">
+                                                    <Box sx={{ textAlign: 'right' }}>
+                                                        <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)', display: 'block' }}>出勤</Typography>
+                                                        <Typography sx={{ fontWeight: 800, fontSize: 18, color: 'var(--ink-primary)' }} className="tabular-nums">{summary.workDays}日</Typography>
+                                                    </Box>
+                                                    <Box sx={{ textAlign: 'right' }}>
+                                                        <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)', display: 'block' }}>総就業</Typography>
+                                                        <Typography sx={{ fontWeight: 800, fontSize: 18, color: 'var(--accent-iris)' }} className="tabular-nums">{formatDuration(summary.totalWork)}</Typography>
+                                                    </Box>
+                                                </Stack>
                                             </Stack>
                                         </Box>
                                     </ApplicationCard>
@@ -388,4 +375,4 @@ function Approvals() {
     );
 }
 
-export default Approvals;
+export default AttendanceApprovals;

@@ -31,7 +31,7 @@ const hasExpenseRowInput = (row = {}) =>
     ['date', 'description', 'destination', 'category', 'amount', 'receiptName', 'receiptPreview']
         .some((field) => String(row[field] ?? '').trim() !== '');
 
-function ApplicationForm() {
+function ApplicationForm({ userId }) {
     const location = useLocation();
     const [formDataList, setFormDataList] = useState([emptyExpenseRow()]);
     const [paymentType, setPaymentType] = useState('個人立替払用');
@@ -100,7 +100,7 @@ function ApplicationForm() {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        const app = buildExpenseApplication({ rows: formDataList, paymentType, draftId: selectedDraftId });
+        const app = buildExpenseApplication({ rows: formDataList, paymentType, draftId: selectedDraftId, applicantId: userId });
         const apps = loadExpenseApplications();
         saveExpenseApplications([app, ...apps]);
         if (selectedDraftId !== 'new') {
@@ -139,7 +139,7 @@ function ApplicationForm() {
             <PageScaffold
                 eyebrow="申請"
                 title="経費申請の下書き"
-                subtitle="作成中の下書きを編集・送信します。送信後は経費申請済・承認画面に反映されます。"
+                subtitle="作成中の下書きを編集・送信します。送信後は経費履歴・承認画面に反映されます。"
                 actions={(
                     <Button variant="contained" color="primary" startIcon={<AddRoundedIcon />} onClick={handleNew}>
                         新規作成
@@ -236,7 +236,7 @@ function ApplicationForm() {
                     <Stat label="合計" value={formatYen(currentTotal)} tone="iris" wide />
                     <Box sx={{ flex: 1 }} />
                     <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)', maxWidth: 280, textAlign: 'right' }}>
-                        送信後は申請済・承認画面に反映されます。
+                        送信後は経費履歴・承認画面に反映されます。
                     </Typography>
                 </Stack>
             </Box>

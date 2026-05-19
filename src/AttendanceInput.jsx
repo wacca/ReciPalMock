@@ -4,15 +4,23 @@ import {
     TableContainer, TableHead, TableRow, TextField, Typography,
 } from '@mui/material';
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
+import SendRoundedIcon from '@mui/icons-material/SendRounded';
 import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 import AdminConfirmDialog from './components/AdminConfirmDialog';
 import PageScaffold from './ui/PageScaffold.jsx';
 import Section from './ui/Section.jsx';
+import StatusChip from './ui/StatusChip.jsx';
+import IntegrationStatusChip from './ui/IntegrationStatusChip.jsx';
 import { KeyHint } from './ui/KeyHint.jsx';
-
-const SOURCE_YEAR = 2025;
-const SOURCE_MONTH = 2;
-const SOURCE_MONTH_KEY = `${SOURCE_YEAR}-${String(SOURCE_MONTH).padStart(2, '0')}`;
+import {
+    emptyAttendance,
+    findAttendance,
+    getAttendanceIntegrationStatus,
+    loadAttendanceTimesheets,
+    saveAttendanceTimesheets,
+    upsertAttendance,
+} from './attendanceStore';
+import { getUserProfile } from './userDirectory';
 
 const ATTENDANCE_TYPES = ['出勤', '欠勤', '有給', '振替休日'];
 
@@ -24,18 +32,12 @@ const TIME_RULES = {
     startRoundMinutes: 1, endRoundMinutes: 1,
 };
 
-const EXCEL_SAMPLE_ENTRIES = {
-    '2025-02-03': { type: '出勤', clockIn: '08:00', clockOut: '15:00', note: '' },
-    '2025-02-04': { type: '出勤', clockIn: '10:00', clockOut: '23:00', note: '' },
-};
-
 const DEFAULT_PATTERN = { type: '出勤', clockIn: '09:30', clockOut: '18:30', target: 'weekdays' };
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
 const pad2 = (v) => String(v).padStart(2, '0');
-const monthKeyOf = (y, m) => `${y}-${pad2(m)}`;
-const dateKeyOf = (y, m, d) => `${monthKeyOf(y, m)}-${pad2(d)}`;
+const dateKeyOf = (y, m, d) => `${y}-${pad2(m)}-${pad2(d)}`;
 const getDaysInMonth = (y, m) => new Date(y, m, 0).getDate();
 const parseTime = (v) => {
     if (!v) return null;
@@ -57,7 +59,7 @@ const formatDuration = (m) => {
 const ceilToUnit = (m, u) => Math.ceil(m / u) * u;
 const floorToUnit = (m, u) => Math.floor(m / u) * u;
 const isBlankEntry = (e = {}) => !e.type && !e.clockIn && !e.clockOut && !e.note;
-const buildSnapshot = (employee, entries) => JSON.stringify({ employee, entries });
+const buildSnapshot = (entries) => JSON.stringify(entries);
 const emptyCalc = (error = '') => ({ start: null, end: null, basic: null, earlyOvertime: null, night: null, total: null, error });
 const getBreakMinutes = (g) => (g > 8 * 60 ? 60 : g > 6 * 60 ? 45 : 0);
 const overlapMinutes = (s, e, rs, re) => Math.max(0, Math.min(e, re) - Math.max(s, rs));
@@ -83,48 +85,43 @@ const calculateWorkTimes = (clockIn, clockOut) => {
     return { start, end, basic: Math.max(0, basicRaw - br), earlyOvertime: early + ot, night, total: Math.max(0, gross - br), error: '' };
 };
 
+const toApprovalStatusKey = (s) => (
+    s === '承認済' ? 'approved' : s === '非承認' ? 'rejected' : s === '取消' ? 'cancelled' : s === '下書き' ? 'draft' : 'pending'
+);
+
 function AttendanceInput({ username = '', userId = '' }) {
-    const [year, setYear] = useState(SOURCE_YEAR);
-    const [month, setMonth] = useState(SOURCE_MONTH);
-    const [employee, setEmployee] = useState({ employeeId: userId, name: username, department: '' });
-    const [entries, setEntries] = useState(EXCEL_SAMPLE_ENTRIES);
+    const profile = getUserProfile(userId);
+    const today = new Date();
+    const [year, setYear] = useState(today.getFullYear());
+    const [month, setMonth] = useState(today.getMonth() + 1);
+    const [record, setRecord] = useState(() => emptyAttendance(profile.id, today.getFullYear(), today.getMonth() + 1));
     const [defaultPattern, setDefaultPattern] = useState(() => {
         const saved = JSON.parse(localStorage.getItem('attendanceDefaultPattern') || 'null');
         return { ...DEFAULT_PATTERN, ...(saved || {}) };
     });
-    const [snackbar, setSnackbar] = useState({ open: false, message: '勤怠入力を保存しました', severity: 'success' });
+    const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
     const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
     const [periodChangeConfirmOpen, setPeriodChangeConfirmOpen] = useState(false);
     const [pendingPeriodChange, setPendingPeriodChange] = useState(null);
-    const [lastSavedSnapshot, setLastSavedSnapshot] = useState(() =>
-        buildSnapshot({ employeeId: userId, name: username, department: '' }, EXCEL_SAMPLE_ENTRIES),
-    );
+    const [submitConfirmOpen, setSubmitConfirmOpen] = useState(false);
+    const [lastSavedSnapshot, setLastSavedSnapshot] = useState(() => buildSnapshot({}));
 
-    const monthKey = monthKeyOf(year, month);
-    const storageKey = `attendanceTimesheet:${monthKey}`;
-    const currentSnapshot = useMemo(() => buildSnapshot(employee, entries), [employee, entries]);
+    const currentSnapshot = useMemo(() => buildSnapshot(record.entries), [record.entries]);
     const hasUnsavedChanges = currentSnapshot !== lastSavedSnapshot;
+    const isEditable = record.approvalStatus === '下書き' || record.approvalStatus === '非承認';
+    const isLocked = !isEditable;
 
     useEffect(() => {
-        setEmployee((prev) => ({ ...prev, employeeId: prev.employeeId || userId, name: prev.name || username }));
-    }, [userId, username]);
+        const all = loadAttendanceTimesheets();
+        const found = findAttendance(all, profile.id, year, month);
+        const next = found || emptyAttendance(profile.id, year, month);
+        setRecord(next);
+        setLastSavedSnapshot(buildSnapshot(next.entries));
+    }, [profile.id, year, month]);
 
-    useEffect(() => {
-        const saved = JSON.parse(localStorage.getItem(storageKey) || 'null');
-        if (saved) {
-            const next = saved.entries || {};
-            setEmployee((prev) => {
-                const nextEmp = { ...prev, ...(saved.employee || {}), employeeId: saved.employee?.employeeId || prev.employeeId, name: saved.employee?.name || prev.name };
-                setLastSavedSnapshot(buildSnapshot(nextEmp, next));
-                return nextEmp;
-            });
-            setEntries(next);
-            return;
-        }
-        const next = monthKey === SOURCE_MONTH_KEY ? EXCEL_SAMPLE_ENTRIES : {};
-        setEntries(next);
-        setEmployee((prev) => { setLastSavedSnapshot(buildSnapshot(prev, next)); return prev; });
-    }, [monthKey, storageKey]);
+    const updateEntries = (updater) => {
+        setRecord((prev) => ({ ...prev, entries: typeof updater === 'function' ? updater(prev.entries) : updater }));
+    };
 
     const rows = useMemo(() => {
         const days = getDaysInMonth(year, month);
@@ -132,11 +129,11 @@ function AttendanceInput({ username = '', userId = '' }) {
             const day = idx + 1;
             const date = new Date(year, month - 1, day);
             const dateKey = dateKeyOf(year, month, day);
-            const entry = entries[dateKey] || { type: '', clockIn: '', clockOut: '', note: '' };
+            const entry = record.entries[dateKey] || { type: '', clockIn: '', clockOut: '', note: '' };
             const calc = entry.type === '出勤' ? calculateWorkTimes(entry.clockIn, entry.clockOut) : emptyCalc();
             return { dateKey, day, weekday: WEEKDAYS[date.getDay()], isWeekend: date.getDay() === 0 || date.getDay() === 6, entry, calc };
         });
-    }, [entries, month, year]);
+    }, [record.entries, month, year]);
 
     const summary = useMemo(() => {
         const count = (t) => rows.filter((r) => r.entry.type === t).length;
@@ -162,11 +159,12 @@ function AttendanceInput({ username = '', userId = '' }) {
     [rows]);
 
     const hasBlocking = validationErrors.length > 0;
+    const hasAnyEntries = Object.values(record.entries).some((e) => !isBlankEntry(e));
 
-    const handleEmployeeChange = (field) => (e) => setEmployee((p) => ({ ...p, [field]: e.target.value }));
     const handleEntryChange = (dateKey, field) => (e) => {
+        if (isLocked) return;
         const value = e.target.value;
-        setEntries((p) => ({
+        updateEntries((p) => ({
             ...p,
             [dateKey]: {
                 ...(p[dateKey] || { type: '', clockIn: '', clockOut: '', note: '' }),
@@ -196,8 +194,9 @@ function AttendanceInput({ username = '', userId = '' }) {
         setPeriodChangeConfirmOpen(false);
     };
     const handleApplyDefaultPattern = () => {
+        if (isLocked) return;
         let applied = 0;
-        const next = { ...entries };
+        const next = { ...record.entries };
         rows.forEach((r) => {
             if (defaultPattern.target === 'weekdays' && r.isWeekend) return;
             if (!isBlankEntry(next[r.dateKey])) return;
@@ -209,23 +208,63 @@ function AttendanceInput({ username = '', userId = '' }) {
             };
             applied += 1;
         });
-        setEntries(next);
+        updateEntries(next);
         setSnackbar({ open: true, message: `${applied}日分にデフォルト勤務を反映しました`, severity: 'success' });
     };
 
+    const persist = (updated) => {
+        const all = loadAttendanceTimesheets();
+        const next = upsertAttendance(all, updated);
+        saveAttendanceTimesheets(next);
+    };
+
     const handleSave = () => {
+        if (isLocked) return;
         if (hasBlocking) {
             setSnackbar({ open: true, message: '保存前に入力エラーを修正してください', severity: 'warning' });
             return;
         }
-        localStorage.setItem(storageKey, JSON.stringify({ employee, entries }));
-        setLastSavedSnapshot(buildSnapshot(employee, entries));
+        const updated = { ...record, approvalStatus: record.approvalStatus === '非承認' ? '下書き' : record.approvalStatus };
+        persist(updated);
+        setRecord(updated);
+        setLastSavedSnapshot(buildSnapshot(updated.entries));
         setSnackbar({ open: true, message: '勤怠入力を保存しました', severity: 'success' });
     };
+
+    const handleSubmit = () => {
+        if (isLocked) return;
+        if (hasBlocking) {
+            setSnackbar({ open: true, message: '申請前に入力エラーを修正してください', severity: 'warning' });
+            return;
+        }
+        if (!hasAnyEntries) {
+            setSnackbar({ open: true, message: '勤怠が未入力です', severity: 'warning' });
+            return;
+        }
+        const updated = {
+            ...record,
+            approvalStatus: '申請中',
+            submittedAt: new Date().toISOString(),
+            remarks: '',
+            approvedBy: '',
+            approvedAt: '',
+        };
+        persist(updated);
+        setRecord(updated);
+        setLastSavedSnapshot(buildSnapshot(updated.entries));
+        setSubmitConfirmOpen(false);
+        setSnackbar({ open: true, message: `${year}年${month}月の勤怠を申請しました`, severity: 'success' });
+    };
+
     const handleClearConfirm = () => {
-        setEntries({});
-        localStorage.setItem(storageKey, JSON.stringify({ employee, entries: {} }));
-        setLastSavedSnapshot(buildSnapshot(employee, {}));
+        if (isLocked) {
+            setClearConfirmOpen(false);
+            return;
+        }
+        const updated = { ...record, entries: {} };
+        persist(updated);
+        setRecord(updated);
+        setLastSavedSnapshot(buildSnapshot({}));
         setClearConfirmOpen(false);
         setSnackbar({ open: true, message: '勤怠入力をクリアしました', severity: 'success' });
     };
@@ -240,33 +279,80 @@ function AttendanceInput({ username = '', userId = '' }) {
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [employee, entries, hasBlocking]);
+    }, [record, hasBlocking, isLocked]);
+
+    const approvalKey = toApprovalStatusKey(record.approvalStatus);
+    const integrationStatus = getAttendanceIntegrationStatus(record);
 
     return (
         <PageScaffold
             eyebrow="勤怠"
             title="月次タイムシート"
-            subtitle="出社・退社を記入すると、計算列が自動で更新されます。「型を流す」で平日を一気に整えられます。"
+            subtitle={`${profile.name}（${profile.department}）の月次勤怠です。${isLocked ? '承認状態のため編集はロックされています。' : '入力後に上長へ申請してください。'}`}
             actions={(
                 <>
-                    <Button startIcon={<RestartAltRoundedIcon />} variant="text" color="inherit" onClick={() => setClearConfirmOpen(true)} sx={{ color: 'var(--ink-tertiary)' }}>
+                    <Button
+                        startIcon={<RestartAltRoundedIcon />}
+                        variant="text"
+                        color="inherit"
+                        onClick={() => setClearConfirmOpen(true)}
+                        disabled={isLocked}
+                        sx={{ color: 'var(--ink-tertiary)' }}
+                    >
                         入力クリア
                     </Button>
                     <Button
                         startIcon={<SaveRoundedIcon />}
-                        variant="contained"
+                        variant="outlined"
                         onClick={handleSave}
-                        disabled={hasBlocking}
+                        disabled={isLocked || hasBlocking}
                         endIcon={<KeyHint keys={['Mod', 'S']} />}
                     >
-                        保存
+                        下書き保存
+                    </Button>
+                    <Button
+                        startIcon={<SendRoundedIcon />}
+                        variant="contained"
+                        onClick={() => setSubmitConfirmOpen(true)}
+                        disabled={isLocked || hasBlocking || !hasAnyEntries}
+                    >
+                        申請する
                     </Button>
                 </>
             )}
         >
-            {hasBlocking && (
+            <Section padded sx={{ paddingBlock: 2 }}>
+                <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }} flexWrap="wrap" rowGap={1.5}>
+                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" rowGap={1}>
+                        <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)', fontWeight: 700 }}>承認状態:</Typography>
+                        <StatusChip status={approvalKey} size="sm" />
+                        <IntegrationStatusChip status={integrationStatus} target="attendance" size="sm" />
+                        {record.closingStatus === 'closed' && (
+                            <IntegrationStatusChip status="closed" size="sm" />
+                        )}
+                    </Stack>
+                    {record.submittedAt && (
+                        <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)' }}>
+                            申請: {new Date(record.submittedAt).toLocaleString()}
+                        </Typography>
+                    )}
+                    {record.approvedBy && (
+                        <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)' }}>
+                            承認: {record.approvedBy}{record.approvedAt && ` ・ ${new Date(record.approvedAt).toLocaleString()}`}
+                        </Typography>
+                    )}
+                </Stack>
+                {record.approvalStatus === '非承認' && record.remarks && (
+                    <Alert severity="warning" sx={{ mt: 1.5, borderRadius: 'var(--radius-md)' }}>
+                        <Typography variant="caption" sx={{ fontWeight: 700, display: 'block' }}>承認者備考</Typography>
+                        {record.remarks}
+                    </Alert>
+                )}
+            </Section>
+
+            {hasBlocking && !isLocked && (
                 <Alert severity="warning" sx={{ borderRadius: 'var(--radius-md)' }}>
-                    保存前に入力エラーを修正してください。{validationErrors[0]}
+                    保存・申請前に入力エラーを修正してください。{validationErrors[0]}
                 </Alert>
             )}
 
@@ -285,9 +371,9 @@ function AttendanceInput({ username = '', userId = '' }) {
                         <TextField label="月" type="number" size="small" value={month}
                             onChange={(e) => { const v = Math.min(12, Math.max(1, Number(e.target.value))); if (Number.isFinite(v)) requestPeriodChange({ year, month: v }); }}
                             inputProps={{ min: 1, max: 12 }} />
-                        <TextField label="社員ID" size="small" value={employee.employeeId} onChange={handleEmployeeChange('employeeId')} />
-                        <TextField label="氏名" size="small" value={employee.name} onChange={handleEmployeeChange('name')} />
-                        <TextField label="所属" size="small" value={employee.department} onChange={handleEmployeeChange('department')} />
+                        <TextField label="社員ID" size="small" value={record.userId} InputProps={{ readOnly: true }} />
+                        <TextField label="氏名" size="small" value={record.userName} InputProps={{ readOnly: true }} />
+                        <TextField label="所属" size="small" value={record.department} InputProps={{ readOnly: true }} />
                     </Box>
 
                     <Box
@@ -299,6 +385,8 @@ function AttendanceInput({ username = '', userId = '' }) {
                             padding: 2,
                             background: 'var(--accent-iris-soft)',
                             borderRadius: 'var(--radius-md)',
+                            opacity: isLocked ? 0.5 : 1,
+                            pointerEvents: isLocked ? 'none' : 'auto',
                         }}
                     >
                         <Box sx={{ gridColumn: { xs: '1', sm: '1 / -1', lg: 'auto' } }}>
@@ -427,14 +515,14 @@ function AttendanceInput({ username = '', userId = '' }) {
                                     {row.weekday}
                                 </TableCell>
                                 <TableCell>
-                                    <Select size="small" value={row.entry.type} displayEmpty fullWidth onChange={handleEntryChange(row.dateKey, 'type')}>
+                                    <Select size="small" value={row.entry.type} displayEmpty fullWidth disabled={isLocked} onChange={handleEntryChange(row.dateKey, 'type')}>
                                         <MenuItem value=""><span style={{ color: 'var(--ink-muted)' }}>未選択</span></MenuItem>
                                         {ATTENDANCE_TYPES.map((t) => <MenuItem key={t} value={t}>{t}</MenuItem>)}
                                     </Select>
                                 </TableCell>
                                 <TableCell>
                                     <TextField type="time" size="small" value={row.entry.clockIn} fullWidth
-                                        disabled={row.entry.type !== '出勤'} onChange={handleEntryChange(row.dateKey, 'clockIn')} inputProps={{ step: 60 }} />
+                                        disabled={isLocked || row.entry.type !== '出勤'} onChange={handleEntryChange(row.dateKey, 'clockIn')} inputProps={{ step: 60 }} />
                                 </TableCell>
                                 <TableCell>
                                     <TextField
@@ -443,7 +531,7 @@ function AttendanceInput({ username = '', userId = '' }) {
                                         value={row.entry.clockOut}
                                         fullWidth
                                         error={Boolean(row.calc.error)}
-                                        disabled={row.entry.type !== '出勤'}
+                                        disabled={isLocked || row.entry.type !== '出勤'}
                                         onChange={handleEntryChange(row.dateKey, 'clockOut')}
                                         inputProps={{ step: 60 }}
                                         sx={row.calc.error ? { '& .MuiOutlinedInput-root': { background: 'var(--accent-amber-soft)' } } : {}}
@@ -464,6 +552,7 @@ function AttendanceInput({ username = '', userId = '' }) {
                                         fullWidth
                                         multiline
                                         maxRows={2}
+                                        disabled={isLocked}
                                         onChange={handleEntryChange(row.dateKey, 'note')}
                                         helperText={row.calc.error || ' '}
                                         error={Boolean(row.calc.error)}
@@ -496,6 +585,15 @@ function AttendanceInput({ username = '', userId = '' }) {
                 confirmColor="warning"
                 onCancel={() => { setPendingPeriodChange(null); setPeriodChangeConfirmOpen(false); }}
                 onConfirm={handlePeriodChangeConfirm}
+            />
+            <AdminConfirmDialog
+                open={submitConfirmOpen}
+                title={`${year}年${month}月の勤怠を申請しますか？`}
+                message="申請後は上長の承認が必要となり、編集できなくなります。差戻された場合は再度編集できます。"
+                confirmLabel="申請する"
+                confirmColor="primary"
+                onCancel={() => setSubmitConfirmOpen(false)}
+                onConfirm={handleSubmit}
             />
         </PageScaffold>
     );

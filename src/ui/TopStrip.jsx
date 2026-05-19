@@ -1,7 +1,10 @@
 import {
     Avatar,
     Box,
+    Divider,
     IconButton,
+    ListItemIcon,
+    ListItemText,
     Menu,
     MenuItem,
     Stack,
@@ -18,9 +21,12 @@ import AutoModeRoundedIcon from '@mui/icons-material/AutoModeRounded';
 import DensitySmallRoundedIcon from '@mui/icons-material/DensitySmallRounded';
 import DensityMediumRoundedIcon from '@mui/icons-material/DensityMediumRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
+import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
+import SwapHorizRoundedIcon from '@mui/icons-material/SwapHorizRounded';
 import { useUiPreferences } from './UiPreferencesContext.jsx';
 import { PendingPulse } from './PendingPulse.jsx';
 import { KeyHint } from './KeyHint.jsx';
+import { ROLES, ROLE_LABELS, ROLE_DESCRIPTIONS, ROLE_ACCENTS, ROLE_ORDER } from '../permissions';
 
 const isMacLike = () =>
     typeof navigator !== 'undefined' &&
@@ -78,9 +84,21 @@ export const TopStrip = ({
     onOpenMobileNav,
     onOpenPalette,
     isDesktop,
+    baseRole = ROLES.EMPLOYEE,
+    effectiveRole = ROLES.EMPLOYEE,
+    onRoleChange,
+    isRoleOverridden = false,
 }) => {
     const [anchorEl, setAnchorEl] = useState(null);
     const mac = isMacLike();
+    const roleAccent = ROLE_ACCENTS[effectiveRole] || ROLE_ACCENTS[ROLES.EMPLOYEE];
+
+    const handleRoleSelect = (role) => {
+        if (!onRoleChange) return;
+        // baseRole に戻すときは null を渡して override を解除
+        onRoleChange(role === baseRole ? null : role);
+        setAnchorEl(null);
+    };
 
     return (
         <Box
@@ -175,6 +193,26 @@ export const TopStrip = ({
             <PendingPulse />
             <DensityToggle />
             <ThemeToggle />
+            <Tooltip title={isRoleOverridden ? `ロール切替中: ${ROLE_LABELS[effectiveRole]} (本来 ${ROLE_LABELS[baseRole]})` : ROLE_LABELS[effectiveRole]} arrow>
+                <Box
+                    sx={{
+                        display: { xs: 'none', md: 'inline-flex' },
+                        alignItems: 'center',
+                        gap: 0.5,
+                        background: roleAccent.bg,
+                        color: roleAccent.fg,
+                        paddingInline: 1.25,
+                        paddingBlock: 0.5,
+                        borderRadius: 'var(--radius-pill)',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        border: isRoleOverridden ? `1px dashed ${roleAccent.fg}` : 'none',
+                    }}
+                >
+                    {isRoleOverridden && <SwapHorizRoundedIcon sx={{ fontSize: 14 }} />}
+                    {ROLE_LABELS[effectiveRole]}
+                </Box>
+            </Tooltip>
             <Tooltip title={`${username} (${userId})`} arrow>
                 <IconButton
                     onClick={(e) => setAnchorEl(e.currentTarget)}
@@ -201,7 +239,7 @@ export const TopStrip = ({
                 onClose={() => setAnchorEl(null)}
                 anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
                 transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-                PaperProps={{ sx: { mt: 0.5, minWidth: 220, p: 0.5 } }}
+                PaperProps={{ sx: { mt: 0.5, minWidth: 280, p: 0.5 } }}
             >
                 <Box sx={{ paddingInline: 1.5, paddingBlock: 1 }}>
                     <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
@@ -210,7 +248,71 @@ export const TopStrip = ({
                     <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)' }}>
                         {userId}
                     </Typography>
+                    <Box sx={{ mt: 0.75 }}>
+                        <Box sx={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 0.5,
+                            background: roleAccent.bg,
+                            color: roleAccent.fg,
+                            paddingInline: 1,
+                            paddingBlock: 0.25,
+                            borderRadius: 'var(--radius-pill)',
+                            fontSize: 11,
+                            fontWeight: 700,
+                            border: isRoleOverridden ? `1px dashed ${roleAccent.fg}` : 'none',
+                        }}>
+                            {ROLE_LABELS[effectiveRole]}{isRoleOverridden ? '（切替中）' : ''}
+                        </Box>
+                    </Box>
                 </Box>
+                <Divider sx={{ my: 0.5 }} />
+                <Box sx={{ paddingInline: 1.5, paddingBlock: 0.5 }}>
+                    <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)', fontWeight: 700, letterSpacing: 0.5 }}>
+                        ロール切替（デモ用）
+                    </Typography>
+                </Box>
+                {ROLE_ORDER.map((role) => {
+                    const accent = ROLE_ACCENTS[role];
+                    const selected = effectiveRole === role;
+                    const isBase = role === baseRole;
+                    return (
+                        <MenuItem
+                            key={role}
+                            onClick={() => handleRoleSelect(role)}
+                            selected={selected}
+                            sx={{
+                                borderRadius: 'var(--radius-md)',
+                                marginBlock: 0.25,
+                                '&.Mui-selected': { background: 'var(--surface-sunken)' },
+                            }}
+                        >
+                            <ListItemIcon sx={{ minWidth: 28, color: selected ? accent.fg : 'var(--ink-muted)' }}>
+                                {selected ? <CheckRoundedIcon fontSize="small" /> : <Box sx={{ width: 18 }} />}
+                            </ListItemIcon>
+                            <ListItemText
+                                primary={(
+                                    <Stack direction="row" alignItems="center" spacing={0.75}>
+                                        <Typography variant="body2" sx={{ fontWeight: selected ? 700 : 500 }}>
+                                            {ROLE_LABELS[role]}
+                                        </Typography>
+                                        {isBase && (
+                                            <Typography variant="caption" sx={{ color: 'var(--ink-muted)', fontSize: 10, fontWeight: 600 }}>
+                                                本来
+                                            </Typography>
+                                        )}
+                                    </Stack>
+                                )}
+                                secondary={(
+                                    <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)', fontSize: 11, display: 'block', lineHeight: 1.3 }}>
+                                        {ROLE_DESCRIPTIONS[role]}
+                                    </Typography>
+                                )}
+                            />
+                        </MenuItem>
+                    );
+                })}
+                <Divider sx={{ my: 0.5 }} />
                 <MenuItem onClick={() => { setAnchorEl(null); onLogout?.(); }} sx={{ borderRadius: 'var(--radius-md)' }}>
                     <Stack direction="row" alignItems="center" spacing={1}>
                         <LogoutRoundedIcon fontSize="small" sx={{ color: 'var(--ink-tertiary)' }} />

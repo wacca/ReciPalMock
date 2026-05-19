@@ -4,24 +4,30 @@ import { Box, Skeleton, Stack, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { Navigate, Route, Routes, useNavigate, useLocation } from 'react-router-dom';
 import AdminPanelSettingsRoundedIcon from '@mui/icons-material/AdminPanelSettingsRounded';
-import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
 import AccountTreeRoundedIcon from '@mui/icons-material/AccountTreeRounded';
+import BeenhereRoundedIcon from '@mui/icons-material/BeenhereRounded';
+import ContentPasteSearchRoundedIcon from '@mui/icons-material/ContentPasteSearchRounded';
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded';
 import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded';
 import EventNoteRoundedIcon from '@mui/icons-material/EventNoteRounded';
 import FactCheckRoundedIcon from '@mui/icons-material/FactCheckRounded';
 import HowToRegRoundedIcon from '@mui/icons-material/HowToRegRounded';
 import ManageAccountsRoundedIcon from '@mui/icons-material/ManageAccountsRounded';
+import ManageSearchRoundedIcon from '@mui/icons-material/ManageSearchRounded';
 import NotificationsActiveRoundedIcon from '@mui/icons-material/NotificationsActiveRounded';
 import PunchClockRoundedIcon from '@mui/icons-material/PunchClockRounded';
+import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded';
 import RequestQuoteRoundedIcon from '@mui/icons-material/RequestQuoteRounded';
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
+import WorkHistoryRoundedIcon from '@mui/icons-material/WorkHistoryRounded';
 
 import Login from './Login';
 import { SideRail } from './ui/SideRail.jsx';
 import { TopStrip } from './ui/TopStrip.jsx';
 import { CommandPalette, useCommandPalette } from './ui/CommandPalette.jsx';
 import { BottomNav } from './ui/BottomNav.jsx';
+import { PERMISSIONS, hasAnyPermission, hasPermission } from './permissions';
+import { getUserRole } from './userDirectory';
 
 const Dashboard = lazy(() => import('./Dashboard'));
 const ApplicationForm = lazy(() => import('./ApplicationForm'));
@@ -38,33 +44,46 @@ const AttendanceInput = lazy(() => import('./AttendanceInput'));
 const LeaveApprovalFlowSettings = lazy(() => import('./LeaveApprovalFlowSettings'));
 const FlowSettingsMenu = lazy(() => import('./FlowSettingsMenu'));
 const PermissionSettings = lazy(() => import('./PermissionSettings'));
+const ExpenseSearch = lazy(() => import('./ExpenseSearch'));
+const LeaveSearch = lazy(() => import('./LeaveSearch'));
+const AttendanceApprovals = lazy(() => import('./AttendanceApprovals'));
+const AttendanceManagement = lazy(() => import('./AttendanceManagement'));
 
 const menuGroups = [
     {
         title: 'ホーム',
         items: [
-            { label: 'ダッシュボード', path: '/dashboard', icon: <DashboardRoundedIcon />, subtitle: '業務の入口', keywords: 'home hub' },
+            { label: 'ダッシュボード', path: '/dashboard', icon: <DashboardRoundedIcon />, subtitle: '業務の入口', keywords: 'home hub', permissions: [PERMISSIONS.VIEW_DASHBOARD] },
         ],
     },
     {
-        title: '申請',
+        title: '自分の申請',
         items: [
-            { label: '経費申請', path: '/application', icon: <RequestQuoteRoundedIcon />, subtitle: '経費の作成・下書き', keywords: 'expense application form' },
-            { label: '経費申請済', path: '/submitted', icon: <AssignmentTurnedInRoundedIcon />, subtitle: '経費の履歴・状態確認', keywords: 'expense submitted history' },
-            { label: '経費承認', path: '/approvals', icon: <FactCheckRoundedIcon />, subtitle: '経費の承認/差戻し', keywords: 'expense approval' },
-            { label: '休暇申請', path: '/leave-application', icon: <EventAvailableRoundedIcon />, subtitle: '休暇・遅刻・早退の作成', keywords: 'leave application' },
-            { label: '休暇申請済', path: '/leave-submitted', icon: <EventNoteRoundedIcon />, subtitle: '休暇の履歴', keywords: 'leave history' },
-            { label: '休暇承認', path: '/leave-approvals', icon: <HowToRegRoundedIcon />, subtitle: '休暇の承認/差戻し', keywords: 'leave approval' },
+            { label: '経費申請', path: '/application', icon: <RequestQuoteRoundedIcon />, subtitle: '経費の作成・下書き', keywords: 'expense application form', permissions: [PERMISSIONS.APPLY_EXPENSE] },
+            { label: '経費履歴', path: '/submitted', icon: <ReceiptLongRoundedIcon />, subtitle: '自分の経費申請の履歴・状態確認', keywords: 'expense history submitted', permissions: [PERMISSIONS.APPLY_EXPENSE] },
+            { label: '休暇申請', path: '/leave-application', icon: <EventAvailableRoundedIcon />, subtitle: '休暇・遅刻・早退の作成', keywords: 'leave application', permissions: [PERMISSIONS.APPLY_LEAVE] },
+            { label: '休暇履歴', path: '/leave-submitted', icon: <EventNoteRoundedIcon />, subtitle: '自分の休暇申請の履歴', keywords: 'leave history submitted', permissions: [PERMISSIONS.APPLY_LEAVE] },
+            { label: '勤怠入力', path: '/attendance-input', icon: <PunchClockRoundedIcon />, subtitle: '月次タイムシート', keywords: 'attendance timesheet', permissions: [PERMISSIONS.APPLY_ATTENDANCE] },
         ],
     },
     {
-        title: '勤怠',
+        title: '承認業務',
         items: [
-            { label: '勤怠入力', path: '/attendance-input', icon: <PunchClockRoundedIcon />, subtitle: '月次タイムシート', keywords: 'attendance timesheet' },
+            { label: '経費承認', path: '/approvals', icon: <FactCheckRoundedIcon />, subtitle: '経費の承認/差戻し', keywords: 'expense approval', permissions: [PERMISSIONS.APPROVE_EXPENSE] },
+            { label: '休暇承認', path: '/leave-approvals', icon: <BeenhereRoundedIcon />, subtitle: '休暇の承認/差戻し', keywords: 'leave approval', permissions: [PERMISSIONS.APPROVE_LEAVE] },
+            { label: '勤怠承認', path: '/attendance-approvals', icon: <HowToRegRoundedIcon />, subtitle: '部下の月次勤怠を承認', keywords: 'attendance approval', permissions: [PERMISSIONS.APPROVE_ATTENDANCE] },
         ],
     },
     {
-        title: '管理',
+        title: '管理業務',
+        items: [
+            { label: '経費申請検索', path: '/expense-search', icon: <ManageSearchRoundedIcon />, subtitle: '経費の横断検索・外部 SaaS 連携', keywords: 'search expense history admin', permissions: [PERMISSIONS.MANAGE_EXPENSE] },
+            { label: '休暇申請検索', path: '/leave-search', icon: <ContentPasteSearchRoundedIcon />, subtitle: '休暇の横断検索・外部 SaaS 連携', keywords: 'search leave history admin', permissions: [PERMISSIONS.MANAGE_LEAVE] },
+            { label: '勤怠管理', path: '/attendance-management', icon: <WorkHistoryRoundedIcon />, subtitle: '全社の勤怠参照・締め状況確認', keywords: 'attendance management hr', permissions: [PERMISSIONS.MANAGE_ATTENDANCE] },
+        ],
+    },
+    {
+        title: 'システム設定',
         items: [
             {
                 label: '申請フロー設定',
@@ -73,11 +92,12 @@ const menuGroups = [
                 subtitle: '経費/休暇の承認経路',
                 matchPaths: ['/flow-settings-menu', '/approval-flow-settings', '/leave-approval-flow-settings'],
                 keywords: 'flow settings',
+                permissions: [PERMISSIONS.ADMIN_FLOW],
             },
-            { label: 'アラート設定', path: '/reminder-settings', icon: <NotificationsActiveRoundedIcon />, subtitle: '通知条件', keywords: 'alert reminder' },
-            { label: 'アカウント管理', path: '/account-management', icon: <ManageAccountsRoundedIcon />, subtitle: '利用者管理', keywords: 'account user' },
-            { label: 'マスタ管理', path: '/master-settings', icon: <TuneRoundedIcon />, subtitle: '部署/役職', keywords: 'master department position' },
-            { label: '権限設定', path: '/permission-settings', icon: <AdminPanelSettingsRoundedIcon />, subtitle: 'ロール管理', keywords: 'permission role' },
+            { label: 'アラート設定', path: '/reminder-settings', icon: <NotificationsActiveRoundedIcon />, subtitle: '通知条件', keywords: 'alert reminder', permissions: [PERMISSIONS.ADMIN_REMINDER] },
+            { label: 'アカウント管理', path: '/account-management', icon: <ManageAccountsRoundedIcon />, subtitle: '利用者管理', keywords: 'account user', permissions: [PERMISSIONS.ADMIN_ACCOUNT] },
+            { label: 'マスタ管理', path: '/master-settings', icon: <TuneRoundedIcon />, subtitle: '部署/役職', keywords: 'master department position', permissions: [PERMISSIONS.ADMIN_MASTER] },
+            { label: '権限設定', path: '/permission-settings', icon: <AdminPanelSettingsRoundedIcon />, subtitle: 'ロール管理', keywords: 'permission role', permissions: [PERMISSIONS.ADMIN_PERMISSION] },
         ],
     },
 ];
@@ -89,12 +109,17 @@ const matchesPath = (item, pathname) => {
     return matchPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 };
 
-const findActiveGroup = (item) => menuGroups.find((g) => g.items.includes(item));
+const findActiveGroup = (item, groups) => groups.find((g) => g.items.includes(item));
+
+const Guard = ({ role, permission, children }) => (
+    hasPermission(role, permission) ? children : <Navigate to="/dashboard" replace />
+);
 
 function App() {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [username, setUsername] = useState('');
     const [userId, setUserId] = useState('');
+    const [roleOverride, setRoleOverride] = useState(null);
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
     const { open: paletteOpen, setOpen: setPaletteOpen } = useCommandPalette();
     const navigate = useNavigate();
@@ -102,63 +127,87 @@ function App() {
     const theme = useTheme();
     const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
 
+    const baseRole = getUserRole(userId);
+    const effectiveRole = roleOverride || baseRole;
+
     const handleLogin = (name, id) => {
         setUsername(name);
         setUserId(id);
+        setRoleOverride(null);
         setIsLoggedIn(true);
         navigate('/dashboard', { replace: true });
     };
 
     const handleLogout = () => {
         setIsLoggedIn(false);
+        setRoleOverride(null);
     };
 
-    const activeItem = allMenuItems.find((item) => matchesPath(item, location.pathname)) || allMenuItems[0];
-    const activeGroup = findActiveGroup(activeItem);
+    const visibleMenuGroups = useMemo(() => (
+        menuGroups
+            .map((group) => ({
+                ...group,
+                items: group.items.filter((item) => hasAnyPermission(effectiveRole, item.permissions || [])),
+            }))
+            .filter((group) => group.items.length > 0)
+    ), [effectiveRole]);
+
+    const visibleMenuItems = visibleMenuGroups.flatMap((group) => group.items);
+
+    const activeItem = visibleMenuItems.find((item) => matchesPath(item, location.pathname))
+        || allMenuItems.find((item) => matchesPath(item, location.pathname))
+        || visibleMenuItems[0];
+    const activeGroup = activeItem ? findActiveGroup(activeItem, visibleMenuGroups) || findActiveGroup(activeItem, menuGroups) : null;
     const breadcrumb = activeGroup ? activeGroup.title : '';
 
     const commands = useMemo(
-        () =>
-            allMenuItems
-                .map((item) => ({
-                    id: item.path,
-                    kind: 'route',
-                    label: item.label,
-                    subtitle: item.subtitle,
-                    keywords: item.keywords,
-                    icon: () => item.icon,
-                    run: () => navigate(item.path),
-                }))
-                .concat([
-                    {
-                        id: 'action:new-expense',
-                        kind: 'action',
-                        label: '新規 経費申請を作成',
-                        subtitle: '経費申請画面で新しい下書きを開く',
-                        keywords: 'new create expense draft',
-                        icon: () => <RequestQuoteRoundedIcon />,
-                        run: () => navigate('/application', { state: { startNew: true } }),
-                    },
-                    {
-                        id: 'action:new-leave',
-                        kind: 'action',
-                        label: '新規 休暇申請を作成',
-                        subtitle: '休暇申請画面で新しい下書きを開く',
-                        keywords: 'new create leave draft',
-                        icon: () => <EventAvailableRoundedIcon />,
-                        run: () => navigate('/leave-application', { state: { startNew: true } }),
-                    },
-                    {
-                        id: 'action:attendance',
-                        kind: 'action',
-                        label: '今月の勤怠を入力',
-                        subtitle: '月次タイムシートを開く',
-                        keywords: 'attendance timesheet',
-                        icon: () => <PunchClockRoundedIcon />,
-                        run: () => navigate('/attendance-input'),
-                    },
-                ]),
-        [navigate],
+        () => {
+            const routeCmds = visibleMenuItems.map((item) => ({
+                id: item.path,
+                kind: 'route',
+                label: item.label,
+                subtitle: item.subtitle,
+                keywords: item.keywords,
+                icon: () => item.icon,
+                run: () => navigate(item.path),
+            }));
+            const actionCmds = [];
+            if (hasPermission(effectiveRole, PERMISSIONS.APPLY_EXPENSE)) {
+                actionCmds.push({
+                    id: 'action:new-expense',
+                    kind: 'action',
+                    label: '新規 経費申請を作成',
+                    subtitle: '経費申請画面で新しい下書きを開く',
+                    keywords: 'new create expense draft',
+                    icon: () => <RequestQuoteRoundedIcon />,
+                    run: () => navigate('/application', { state: { startNew: true } }),
+                });
+            }
+            if (hasPermission(effectiveRole, PERMISSIONS.APPLY_LEAVE)) {
+                actionCmds.push({
+                    id: 'action:new-leave',
+                    kind: 'action',
+                    label: '新規 休暇申請を作成',
+                    subtitle: '休暇申請画面で新しい下書きを開く',
+                    keywords: 'new create leave draft',
+                    icon: () => <EventAvailableRoundedIcon />,
+                    run: () => navigate('/leave-application', { state: { startNew: true } }),
+                });
+            }
+            if (hasPermission(effectiveRole, PERMISSIONS.APPLY_ATTENDANCE)) {
+                actionCmds.push({
+                    id: 'action:attendance',
+                    kind: 'action',
+                    label: '今月の勤怠を入力',
+                    subtitle: '月次タイムシートを開く',
+                    keywords: 'attendance timesheet',
+                    icon: () => <PunchClockRoundedIcon />,
+                    run: () => navigate('/attendance-input'),
+                });
+            }
+            return routeCmds.concat(actionCmds);
+        },
+        [effectiveRole, navigate, visibleMenuItems],
     );
 
     if (!isLoggedIn) {
@@ -168,7 +217,7 @@ function App() {
     return (
         <Box sx={{ display: 'flex', minHeight: '100vh', background: 'var(--surface-base)' }}>
             <SideRail
-                groups={menuGroups}
+                groups={visibleMenuGroups}
                 matchesPath={matchesPath}
                 mobileOpen={mobileNavOpen}
                 onMobileClose={() => setMobileNavOpen(false)}
@@ -184,6 +233,10 @@ function App() {
                     onOpenMobileNav={() => setMobileNavOpen(true)}
                     onOpenPalette={() => setPaletteOpen(true)}
                     isDesktop={isDesktop}
+                    baseRole={baseRole}
+                    effectiveRole={effectiveRole}
+                    onRoleChange={setRoleOverride}
+                    isRoleOverridden={Boolean(roleOverride) && roleOverride !== baseRole}
                 />
                 <Box
                     component="main"
@@ -200,21 +253,25 @@ function App() {
                     <Suspense fallback={<PageSkeleton />}>
                         <Routes>
                             <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                            <Route path="/dashboard" element={<Dashboard username={username} />} />
-                            <Route path="/application" element={<ApplicationForm />} />
-                            <Route path="/submitted" element={<SubmittedApplications />} />
-                            <Route path="/approvals" element={<Approvals />} />
-                            <Route path="/flow-settings-menu" element={<FlowSettingsMenu />} />
-                            <Route path="/approval-flow-settings" element={<ApprovalFlowSettings />} />
-                            <Route path="/leave-approval-flow-settings" element={<LeaveApprovalFlowSettings />} />
-                            <Route path="/reminder-settings" element={<ReminderSettings />} />
-                            <Route path="/account-management" element={<AccountManagement />} />
-                            <Route path="/master-settings" element={<MasterSettings />} />
-                            <Route path="/leave-application" element={<LeaveApplication />} />
-                            <Route path="/leave-submitted" element={<LeaveSubmitted />} />
-                            <Route path="/leave-approvals" element={<LeaveApprovals />} />
-                            <Route path="/attendance-input" element={<AttendanceInput username={username} userId={userId} />} />
-                            <Route path="/permission-settings" element={<PermissionSettings />} />
+                            <Route path="/dashboard" element={<Dashboard username={username} userId={userId} role={effectiveRole} />} />
+                            <Route path="/application" element={<Guard role={effectiveRole} permission={PERMISSIONS.APPLY_EXPENSE}><ApplicationForm userId={userId} /></Guard>} />
+                            <Route path="/submitted" element={<Guard role={effectiveRole} permission={PERMISSIONS.APPLY_EXPENSE}><SubmittedApplications userId={userId} /></Guard>} />
+                            <Route path="/approvals" element={<Guard role={effectiveRole} permission={PERMISSIONS.APPROVE_EXPENSE}><Approvals /></Guard>} />
+                            <Route path="/flow-settings-menu" element={<Guard role={effectiveRole} permission={PERMISSIONS.ADMIN_FLOW}><FlowSettingsMenu /></Guard>} />
+                            <Route path="/approval-flow-settings" element={<Guard role={effectiveRole} permission={PERMISSIONS.ADMIN_FLOW}><ApprovalFlowSettings /></Guard>} />
+                            <Route path="/leave-approval-flow-settings" element={<Guard role={effectiveRole} permission={PERMISSIONS.ADMIN_FLOW}><LeaveApprovalFlowSettings /></Guard>} />
+                            <Route path="/reminder-settings" element={<Guard role={effectiveRole} permission={PERMISSIONS.ADMIN_REMINDER}><ReminderSettings /></Guard>} />
+                            <Route path="/account-management" element={<Guard role={effectiveRole} permission={PERMISSIONS.ADMIN_ACCOUNT}><AccountManagement /></Guard>} />
+                            <Route path="/master-settings" element={<Guard role={effectiveRole} permission={PERMISSIONS.ADMIN_MASTER}><MasterSettings /></Guard>} />
+                            <Route path="/leave-application" element={<Guard role={effectiveRole} permission={PERMISSIONS.APPLY_LEAVE}><LeaveApplication userId={userId} /></Guard>} />
+                            <Route path="/leave-submitted" element={<Guard role={effectiveRole} permission={PERMISSIONS.APPLY_LEAVE}><LeaveSubmitted userId={userId} /></Guard>} />
+                            <Route path="/leave-approvals" element={<Guard role={effectiveRole} permission={PERMISSIONS.APPROVE_LEAVE}><LeaveApprovals /></Guard>} />
+                            <Route path="/attendance-input" element={<Guard role={effectiveRole} permission={PERMISSIONS.APPLY_ATTENDANCE}><AttendanceInput username={username} userId={userId} /></Guard>} />
+                            <Route path="/attendance-approvals" element={<Guard role={effectiveRole} permission={PERMISSIONS.APPROVE_ATTENDANCE}><AttendanceApprovals /></Guard>} />
+                            <Route path="/attendance-management" element={<Guard role={effectiveRole} permission={PERMISSIONS.MANAGE_ATTENDANCE}><AttendanceManagement userId={userId} /></Guard>} />
+                            <Route path="/permission-settings" element={<Guard role={effectiveRole} permission={PERMISSIONS.ADMIN_PERMISSION}><PermissionSettings /></Guard>} />
+                            <Route path="/expense-search" element={<Guard role={effectiveRole} permission={PERMISSIONS.MANAGE_EXPENSE}><ExpenseSearch userId={userId} /></Guard>} />
+                            <Route path="/leave-search" element={<Guard role={effectiveRole} permission={PERMISSIONS.MANAGE_LEAVE}><LeaveSearch userId={userId} /></Guard>} />
                             <Route path="*" element={<Navigate to="/dashboard" replace />} />
                         </Routes>
                     </Suspense>

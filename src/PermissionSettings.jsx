@@ -21,8 +21,8 @@ import StatusChip from './ui/StatusChip.jsx';
 const SCREEN_GROUPS = [
     { title: 'ホーム', screens: [{ key: 'dashboard', label: 'ダッシュボード' }] },
     { title: '申請', screens: [
-        { key: 'application', label: '経費申請' }, { key: 'submitted', label: '経費申請済' }, { key: 'approvals', label: '経費承認' },
-        { key: 'leave-application', label: '休暇申請' }, { key: 'leave-submitted', label: '休暇申請済' }, { key: 'leave-approvals', label: '休暇承認' },
+        { key: 'application', label: '経費申請' }, { key: 'submitted', label: '経費履歴' }, { key: 'approvals', label: '経費承認' },
+        { key: 'leave-application', label: '休暇申請' }, { key: 'leave-submitted', label: '休暇履歴' }, { key: 'leave-approvals', label: '休暇承認' },
     ] },
     { title: '勤怠', screens: [{ key: 'attendance-input', label: '勤怠入力' }] },
     { title: '管理', screens: [
