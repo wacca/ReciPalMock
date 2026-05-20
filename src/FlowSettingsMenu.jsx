@@ -17,8 +17,8 @@ const choices = [
         path: '/leave-approval-flow-settings',
         icon: <EventAvailableRoundedIcon />,
         tone: { bg: 'var(--accent-iris-soft)', fg: 'var(--accent-iris)' },
-        title: '休暇 承認フロー',
-        description: '休暇申請の承認者と順序を編集します。',
+        title: '勤怠申請 承認フロー',
+        description: '勤怠申請（休暇・時間休・遅刻・早退）の承認者と順序を編集します。',
     },
 ];
 

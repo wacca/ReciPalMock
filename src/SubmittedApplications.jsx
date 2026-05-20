@@ -4,6 +4,7 @@ import {
     MenuItem, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, Select,
 } from '@mui/material';
 import CancelRoundedIcon from '@mui/icons-material/CancelRounded';
+import RemoveCircleOutlineRoundedIcon from '@mui/icons-material/RemoveCircleOutlineRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import ReplayRoundedIcon from '@mui/icons-material/ReplayRounded';
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
@@ -286,29 +287,31 @@ function SubmittedApplications({ userId }) {
                                             </TableBody>
                                         </Table>
                                     </TableContainer>
-                                    <Stack direction="row" spacing={1} sx={{ mt: 2 }} justifyContent="flex-end">
-                                        <Tooltip title="変更（非承認の申請のみ）">
-                                            <span>
-                                                <IconButton color="primary" onClick={(e) => { e.stopPropagation(); handleEditGroup(group.applicationId); }} disabled={status !== '非承認'}>
-                                                    <EditRoundedIcon fontSize="small" />
-                                                </IconButton>
-                                            </span>
-                                        </Tooltip>
-                                        <Tooltip title="取消">
-                                            <span>
-                                                <IconButton color="error" onClick={(e) => { e.stopPropagation(); setCancelTargetId(group.applicationId); }} disabled={status !== '申請中'}>
-                                                    <CancelRoundedIcon fontSize="small" />
-                                                </IconButton>
-                                            </span>
-                                        </Tooltip>
-                                        {status === '非承認' && (
-                                            <Tooltip title="再申請">
-                                                <IconButton sx={{ color: 'var(--accent-leaf)' }} onClick={(e) => { e.stopPropagation(); handleResubmitGroup(group.applicationId); }}>
-                                                    <ReplayRoundedIcon fontSize="small" />
-                                                </IconButton>
-                                            </Tooltip>
-                                        )}
-                                    </Stack>
+                                    {(status === '申請中' || status === '非承認') && (
+                                        <Stack direction="row" spacing={0.5} sx={{ mt: 2 }} justifyContent="flex-end" alignItems="center">
+                                            {status === '申請中' && (
+                                                <Tooltip title="申請を取消">
+                                                    <IconButton color="error" size="small" onClick={(e) => { e.stopPropagation(); setCancelTargetId(group.applicationId); }}>
+                                                        <RemoveCircleOutlineRoundedIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            )}
+                                            {status === '非承認' && (
+                                                <>
+                                                    <Tooltip title="変更">
+                                                        <IconButton color="primary" size="small" onClick={(e) => { e.stopPropagation(); handleEditGroup(group.applicationId); }}>
+                                                            <EditRoundedIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip title="再申請">
+                                                        <IconButton size="small" sx={{ color: 'var(--accent-leaf)' }} onClick={(e) => { e.stopPropagation(); handleResubmitGroup(group.applicationId); }}>
+                                                            <ReplayRoundedIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                </>
+                                            )}
+                                        </Stack>
+                                    )}
                                 </Box>
                             )}
                         </ApplicationCard>

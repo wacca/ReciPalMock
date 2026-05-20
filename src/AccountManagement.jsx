@@ -4,7 +4,7 @@ import {
     Switch, Dialog, DialogTitle, DialogContent, DialogActions, InputAdornment, Tooltip, Typography, Stack,
 } from '@mui/material';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
-import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
+import PersonRemoveRoundedIcon from '@mui/icons-material/PersonRemoveRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
 import CancelRoundedIcon from '@mui/icons-material/CancelRounded';
@@ -208,7 +208,7 @@ function AccountManagement() {
                                         <TableCell align="right">
                                             <Stack direction="row" spacing={0.5} justifyContent="flex-end">
                                                 <Tooltip title="編集"><IconButton aria-label={`${acc.name}を編集`} onClick={() => handleEdit(idx)}><EditRoundedIcon fontSize="small" /></IconButton></Tooltip>
-                                                <Tooltip title="削除"><IconButton aria-label={`${acc.name}を削除`} color="error" onClick={() => setDeleteTarget({ idx, account: acc })}><DeleteRoundedIcon fontSize="small" /></IconButton></Tooltip>
+                                                <Tooltip title="削除"><IconButton aria-label={`${acc.name}を削除`} color="error" onClick={() => setDeleteTarget({ idx, account: acc })}><PersonRemoveRoundedIcon fontSize="small" /></IconButton></Tooltip>
                                             </Stack>
                                         </TableCell>
                                     </TableRow>

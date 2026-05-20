@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
     Box, TextField, Button, MenuItem, FormControl, InputLabel, Select, Snackbar, Alert, IconButton, Tooltip, Stack, Typography,
+    FormControlLabel, Switch, Chip,
 } from '@mui/material';
 import { useLocation } from 'react-router-dom';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
@@ -9,10 +10,19 @@ import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
 import SendRoundedIcon from '@mui/icons-material/SendRounded';
+import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded';
+import EventRoundedIcon from '@mui/icons-material/EventRounded';
 import {
+    ALWAYS_HOURLY_TYPES,
+    BUSINESS_END,
+    BUSINESS_START,
     LEAVE_TYPES,
+    RANGEABLE_LEAVE_TYPES,
     buildLeaveApplications,
     emptyLeaveRow,
+    formatLeavePeriod,
+    getLeaveDayCount,
+    getLeaveHours,
     loadLeaveApplications,
     loadLeaveDrafts,
     normalizeLeaveRow,
@@ -27,7 +37,11 @@ import { KeyHint } from './ui/KeyHint.jsx';
 
 const hasLeaveRowInput = (row = {}) =>
     row.leaveType !== emptyLeaveRow().leaveType ||
-    ['date', 'reason'].some((field) => String(row[field] ?? '').trim() !== '');
+    ['dateFrom', 'dateTo', 'reason'].some((field) => String(row[field] ?? '').trim() !== '') ||
+    Number(row.hours) > 0;
+
+const isRangeable = (leaveType) => RANGEABLE_LEAVE_TYPES.includes(leaveType);
+const isAlwaysHourly = (leaveType) => ALWAYS_HOURLY_TYPES.includes(leaveType);
 
 function LeaveApplication({ userId }) {
     const location = useLocation();
@@ -73,7 +87,41 @@ function LeaveApplication({ userId }) {
 
     const handleRowChange = (i, field, value) => {
         const next = [...leaveRows];
-        next[i] = { ...next[i], [field]: value };
+        const updated = { ...next[i], [field]: value };
+        // dateFrom を入れたとき、dateTo が空 or dateFrom より前なら同期する
+        if (field === 'dateFrom') {
+            if (!updated.dateTo || updated.dateTo < value) {
+                updated.dateTo = value;
+            }
+        }
+        if (field === 'leaveType') {
+            // 遅刻・早退は常に時間指定。dateTo を dateFrom に揃え、デフォルト時間数を設定
+            if (isAlwaysHourly(value)) {
+                updated.isHourly = true;
+                updated.dateTo = updated.dateFrom;
+                if (!Number(updated.hours)) updated.hours = 1;
+            } else if (!isRangeable(value)) {
+                updated.dateTo = updated.dateFrom;
+            }
+        }
+        if (field === 'isHourly') {
+            // 時間指定 ON で単日固定、時間数のデフォルトを当てる
+            if (value) {
+                updated.dateTo = updated.dateFrom;
+                if (!Number(updated.hours)) updated.hours = 1;
+            } else {
+                updated.hours = 0;
+            }
+        }
+        if (field === 'hours') {
+            const n = Number(value);
+            updated.hours = Number.isFinite(n) && n >= 0 ? n : 0;
+        }
+        // 時間指定中に dateFrom が変わったら dateTo も同期
+        if (field === 'dateFrom' && updated.isHourly) {
+            updated.dateTo = value;
+        }
+        next[i] = updated;
         setLeaveRows(next);
     };
 
@@ -105,13 +153,23 @@ function LeaveApplication({ userId }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        const dateInvalid = leaveRows.findIndex((r) => !r.isHourly && r.dateFrom && r.dateTo && r.dateTo < r.dateFrom);
+        if (dateInvalid >= 0) {
+            setSnackbar({ open: true, message: `#${dateInvalid + 1} の終了日が開始日より前です` });
+            return;
+        }
+        const hoursInvalid = leaveRows.findIndex((r) => r.isHourly && !(Number(r.hours) > 0));
+        if (hoursInvalid >= 0) {
+            setSnackbar({ open: true, message: `#${hoursInvalid + 1} の時間数を入力してください（0より大きい値）` });
+            return;
+        }
         const apps = buildLeaveApplications({ editId, rows: leaveRows, applicantId: userId });
         const prev = loadLeaveApplications();
         saveLeaveApplications([...apps, ...prev]);
         const next = leaveList.filter((d) => d.id !== editId);
         setLeaveList(next);
         saveLeaveDrafts(next);
-        setSnackbar({ open: true, message: `${apps.length}件の休暇申請を送信しました` });
+        setSnackbar({ open: true, message: `${apps.length}件の勤怠申請を送信しました` });
         resetForm();
         setMode('list');
     };
@@ -124,8 +182,8 @@ function LeaveApplication({ userId }) {
         return (
             <PageScaffold
                 eyebrow="申請"
-                title="休暇申請の下書き"
-                subtitle="作成中の下書きを編集・送信できます。送信後は休暇履歴画面に反映されます。"
+                title="勤怠申請の下書き"
+                subtitle="作成中の下書きを編集・送信できます。送信後は勤怠申請履歴画面に反映されます。"
                 actions={(
                     <Button variant="contained" color="primary" startIcon={<AddRoundedIcon />} onClick={handleNew}>
                         新規作成
@@ -142,7 +200,8 @@ function LeaveApplication({ userId }) {
                         <Stack spacing={1.25}>
                             {leaveList.map((draft) => {
                                 const first = draft.details?.[0] || emptyLeaveRow();
-                                const summary = `${first.date || '-'} / ${first.leaveType}${draft.details?.length > 1 ? ` ほか${draft.details.length - 1}件` : ''}`;
+                                const firstPeriod = formatLeavePeriod(first, { withDays: false }) || '-';
+                                const summary = `${firstPeriod} / ${first.leaveType}${draft.details?.length > 1 ? ` ほか${draft.details.length - 1}件` : ''}`;
                                 return (
                                     <Box
                                         key={draft.id}
@@ -183,7 +242,7 @@ function LeaveApplication({ userId }) {
                 <AdminConfirmDialog
                     open={Boolean(deleteTargetId)}
                     title="下書きを削除しますか？"
-                    message="選択した休暇申請の下書きを削除します。元に戻せません。"
+                    message="選択した勤怠申請の下書きを削除します。元に戻せません。"
                     confirmLabel="削除"
                     onCancel={() => setDeleteTargetId(null)}
                     onConfirm={handleDeleteConfirm}
@@ -195,8 +254,8 @@ function LeaveApplication({ userId }) {
     return (
         <PageScaffold
             eyebrow="申請"
-            title="休暇申請"
-            subtitle="日付・申請種別・理由をシンプルに。複数件まとめて送信できます。"
+            title="勤怠申請"
+            subtitle="休暇（期間／時間休）・遅刻・早退をまとめて送信できます。承認後は勤怠に自動反映されます。"
             actions={(
                 <>
                     <Button variant="text" startIcon={<ArrowBackRoundedIcon />} onClick={() => setMode('list')} sx={{ color: 'var(--ink-tertiary)' }}>
@@ -262,9 +321,19 @@ function LeaveApplication({ userId }) {
                                     {index + 1}
                                 </Box>
                                 <Typography variant="subtitle2" sx={{ fontWeight: 700, flex: 1 }}>
-                                    {row.leaveType || '休暇申請'}
+                                    {row.leaveType || '勤怠申請'}
                                     <Typography component="span" variant="caption" sx={{ color: 'var(--ink-tertiary)', ml: 1 }}>
-                                        {row.date || '日付未入力'}
+                                        {formatLeavePeriod(row, { withDays: false }) || '日付未入力'}
+                                        {row.isHourly && getLeaveHours(row) > 0 && (
+                                            <Typography component="span" variant="caption" sx={{ color: 'var(--accent-iris)', ml: 0.75, fontWeight: 700 }}>
+                                                ・{getLeaveHours(row)}時間
+                                            </Typography>
+                                        )}
+                                        {!row.isHourly && row.dateFrom && row.dateTo && row.dateFrom !== row.dateTo && (
+                                            <Typography component="span" variant="caption" sx={{ color: 'var(--accent-primary)', ml: 0.75, fontWeight: 700 }}>
+                                                ・{getLeaveDayCount(row)}日間
+                                            </Typography>
+                                        )}
                                     </Typography>
                                 </Typography>
                                 <Tooltip title="この行を削除">
@@ -273,38 +342,213 @@ function LeaveApplication({ userId }) {
                                     </IconButton>
                                 </Tooltip>
                             </Stack>
-                            <Box
-                                sx={{
-                                    display: 'grid',
-                                    gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 200px) minmax(0, 200px) minmax(0, 1fr)' },
-                                    gap: 1.5,
-                                }}
-                            >
-                                <FormControl fullWidth>
-                                    <InputLabel>申請種別</InputLabel>
-                                    <Select value={row.leaveType} label="申請種別" onChange={(e) => handleRowChange(index, 'leaveType', e.target.value)} required>
-                                        {LEAVE_TYPES.map((t) => <MenuItem key={t} value={t}>{t}</MenuItem>)}
-                                    </Select>
-                                </FormControl>
-                                <TextField
-                                    label="日付"
-                                    type="date"
-                                    InputLabelProps={{ shrink: true }}
-                                    value={row.date}
-                                    onChange={(e) => handleRowChange(index, 'date', e.target.value)}
-                                    required
-                                    fullWidth
-                                />
+                            <Stack spacing={2}>
+                                {/* A: 申請種別 + 時間指定モード */}
+                                <Stack
+                                    direction={{ xs: 'column', md: 'row' }}
+                                    spacing={1.5}
+                                    alignItems={{ xs: 'stretch', md: 'flex-start' }}
+                                >
+                                    <FormControl sx={{ width: { xs: '100%', md: 240 }, flexShrink: 0 }}>
+                                        <InputLabel>申請種別</InputLabel>
+                                        <Select
+                                            value={row.leaveType}
+                                            label="申請種別"
+                                            onChange={(e) => handleRowChange(index, 'leaveType', e.target.value)}
+                                            required
+                                        >
+                                            {LEAVE_TYPES.map((t) => <MenuItem key={t} value={t}>{t}</MenuItem>)}
+                                        </Select>
+                                    </FormControl>
+                                    <Box
+                                        sx={{
+                                            flex: 1,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            paddingInline: 1.75,
+                                            paddingBlock: 1,
+                                            borderRadius: 'var(--radius-md)',
+                                            background: 'var(--surface-sunken)',
+                                            minHeight: 56,
+                                        }}
+                                    >
+                                        {isAlwaysHourly(row.leaveType) ? (
+                                            <Chip
+                                                size="small"
+                                                icon={<AccessTimeRoundedIcon fontSize="small" />}
+                                                label={`${row.leaveType}は時間指定で申請します（自動）`}
+                                                sx={{
+                                                    background: 'var(--accent-iris-soft, rgba(99,102,241,0.12))',
+                                                    color: 'var(--accent-iris)',
+                                                    fontWeight: 600,
+                                                    '& .MuiChip-icon': { color: 'var(--accent-iris)' },
+                                                }}
+                                            />
+                                        ) : (
+                                            <FormControlLabel
+                                                control={(
+                                                    <Switch
+                                                        size="small"
+                                                        checked={row.isHourly}
+                                                        onChange={(e) => handleRowChange(index, 'isHourly', e.target.checked)}
+                                                    />
+                                                )}
+                                                label={(
+                                                    <Stack direction="row" spacing={0.75} alignItems="center">
+                                                        <AccessTimeRoundedIcon fontSize="small" sx={{ color: 'var(--ink-tertiary)' }} />
+                                                        <Typography variant="body2" sx={{ color: 'var(--ink-secondary)', fontWeight: 600 }}>
+                                                            時間休として取得
+                                                        </Typography>
+                                                    </Stack>
+                                                )}
+                                                sx={{ m: 0 }}
+                                            />
+                                        )}
+                                    </Box>
+                                </Stack>
+
+                                {/* B: 期間（時間休 or 全日）*/}
+                                <Box
+                                    sx={{
+                                        paddingInline: 1.75,
+                                        paddingBlock: 1.5,
+                                        borderRadius: 'var(--radius-md)',
+                                        background: 'var(--surface-sunken)',
+                                        border: '1px dashed var(--divider-soft, rgba(0,0,0,0.08))',
+                                    }}
+                                >
+                                    <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 1 }}>
+                                        {row.isHourly
+                                            ? <AccessTimeRoundedIcon fontSize="small" sx={{ color: 'var(--ink-tertiary)' }} />
+                                            : <EventRoundedIcon fontSize="small" sx={{ color: 'var(--ink-tertiary)' }} />}
+                                        <Typography variant="overline" sx={{ color: 'var(--ink-tertiary)', lineHeight: 1 }}>
+                                            {row.isHourly ? '日付 ・ 時間数' : '休暇期間'}
+                                        </Typography>
+                                    </Stack>
+                                    {row.isHourly ? (
+                                        <Stack
+                                            direction={{ xs: 'column', sm: 'row' }}
+                                            spacing={1.5}
+                                            alignItems={{ xs: 'stretch', sm: 'flex-start' }}
+                                        >
+                                            <TextField
+                                                label="日付"
+                                                type="date"
+                                                InputLabelProps={{ shrink: true }}
+                                                value={row.dateFrom}
+                                                onChange={(e) => handleRowChange(index, 'dateFrom', e.target.value)}
+                                                helperText=" "
+                                                required
+                                                sx={{ width: { xs: '100%', sm: 200 } }}
+                                            />
+                                            <TextField
+                                                label="時間数"
+                                                type="number"
+                                                InputLabelProps={{ shrink: true }}
+                                                value={row.hours || ''}
+                                                onChange={(e) => handleRowChange(index, 'hours', e.target.value)}
+                                                inputProps={{ step: 0.5, min: 0.5, max: 8, inputMode: 'decimal' }}
+                                                error={row.isHourly && !(Number(row.hours) > 0)}
+                                                helperText={row.isHourly && !(Number(row.hours) > 0) ? '0.5時間以上' : '0.5時間単位（例: 1, 1.5, 2）'}
+                                                required
+                                                InputProps={{ endAdornment: <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)', ml: 0.5 }}>時間</Typography> }}
+                                                sx={{ width: { xs: '100%', sm: 180 } }}
+                                            />
+                                            <Box
+                                                sx={{
+                                                    flex: 1,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    height: { sm: 43 },
+                                                    paddingInline: { sm: 1 },
+                                                    paddingBlock: { xs: 0.5, sm: 0 },
+                                                }}
+                                            >
+                                                <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)', lineHeight: 1.5 }}>
+                                                    {row.leaveType === '遅刻' && `始業 ${BUSINESS_START} から ${row.hours || '-'} 時間分遅刻として勤怠に反映`}
+                                                    {row.leaveType === '早退' && `終業 ${BUSINESS_END} の ${row.hours || '-'} 時間前に退社として勤怠に反映`}
+                                                    {!isAlwaysHourly(row.leaveType) && '具体的な時間帯は備考欄に記入できます'}
+                                                </Typography>
+                                            </Box>
+                                        </Stack>
+                                    ) : (
+                                        <Stack
+                                            direction={{ xs: 'column', sm: 'row' }}
+                                            spacing={1}
+                                            alignItems={{ xs: 'stretch', sm: 'flex-start' }}
+                                        >
+                                            <TextField
+                                                label="開始日"
+                                                type="date"
+                                                InputLabelProps={{ shrink: true }}
+                                                value={row.dateFrom}
+                                                onChange={(e) => handleRowChange(index, 'dateFrom', e.target.value)}
+                                                helperText=" "
+                                                required
+                                                sx={{ width: { xs: '100%', sm: 200 } }}
+                                            />
+                                            <Box
+                                                sx={{
+                                                    display: { xs: 'none', sm: 'flex' },
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    height: 43,
+                                                    minWidth: 24,
+                                                    flexShrink: 0,
+                                                }}
+                                            >
+                                                <Typography variant="body2" sx={{ color: 'var(--ink-tertiary)' }}>〜</Typography>
+                                            </Box>
+                                            <TextField
+                                                label="終了日"
+                                                type="date"
+                                                InputLabelProps={{ shrink: true }}
+                                                value={row.dateTo}
+                                                onChange={(e) => handleRowChange(index, 'dateTo', e.target.value)}
+                                                inputProps={{ min: row.dateFrom || undefined }}
+                                                error={Boolean(row.dateFrom && row.dateTo && row.dateTo < row.dateFrom)}
+                                                helperText={row.dateFrom && row.dateTo && row.dateTo < row.dateFrom ? '終了日は開始日以降を指定' : ' '}
+                                                required
+                                                sx={{ width: { xs: '100%', sm: 200 } }}
+                                            />
+                                            {row.dateFrom && row.dateTo && row.dateFrom !== row.dateTo && (
+                                                <Box
+                                                    sx={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        height: { sm: 43 },
+                                                        alignSelf: { xs: 'flex-start', sm: 'auto' },
+                                                    }}
+                                                >
+                                                    <Chip
+                                                        size="small"
+                                                        label={`${getLeaveDayCount(row)}日間`}
+                                                        sx={{
+                                                            background: 'var(--accent-primary-soft, rgba(34,197,94,0.12))',
+                                                            color: 'var(--accent-primary)',
+                                                            fontWeight: 700,
+                                                        }}
+                                                    />
+                                                </Box>
+                                            )}
+                                        </Stack>
+                                    )}
+                                </Box>
+
+                                {/* C: 理由・備考 */}
                                 <TextField
                                     label="理由・備考"
                                     multiline
-                                    minRows={1}
-                                    maxRows={4}
+                                    minRows={2}
+                                    maxRows={6}
                                     value={row.reason}
                                     onChange={(e) => handleRowChange(index, 'reason', e.target.value)}
                                     fullWidth
+                                    placeholder={row.isHourly
+                                        ? '例: 午前中の通院／14:00-16:00 の打合せのため'
+                                        : '例: 帰省／私用のため'}
                                 />
-                            </Box>
+                            </Stack>
                         </Section>
                     ))}
                 </Stack>

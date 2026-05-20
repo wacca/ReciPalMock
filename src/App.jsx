@@ -61,25 +61,25 @@ const menuGroups = [
         items: [
             { label: '経費申請', path: '/application', icon: <RequestQuoteRoundedIcon />, subtitle: '経費の作成・下書き', keywords: 'expense application form', permissions: [PERMISSIONS.APPLY_EXPENSE] },
             { label: '経費履歴', path: '/submitted', icon: <ReceiptLongRoundedIcon />, subtitle: '自分の経費申請の履歴・状態確認', keywords: 'expense history submitted', permissions: [PERMISSIONS.APPLY_EXPENSE] },
-            { label: '休暇申請', path: '/leave-application', icon: <EventAvailableRoundedIcon />, subtitle: '休暇・遅刻・早退の作成', keywords: 'leave application', permissions: [PERMISSIONS.APPLY_LEAVE] },
-            { label: '休暇履歴', path: '/leave-submitted', icon: <EventNoteRoundedIcon />, subtitle: '自分の休暇申請の履歴', keywords: 'leave history submitted', permissions: [PERMISSIONS.APPLY_LEAVE] },
-            { label: '勤怠入力', path: '/attendance-input', icon: <PunchClockRoundedIcon />, subtitle: '月次タイムシート', keywords: 'attendance timesheet', permissions: [PERMISSIONS.APPLY_ATTENDANCE] },
+            { label: '勤怠申請', path: '/leave-application', icon: <EventAvailableRoundedIcon />, subtitle: '休暇・時間休・遅刻・早退の作成', keywords: 'attendance leave application form', permissions: [PERMISSIONS.APPLY_LEAVE] },
+            { label: '勤怠申請履歴', path: '/leave-submitted', icon: <EventNoteRoundedIcon />, subtitle: '自分の勤怠申請の履歴', keywords: 'attendance leave history submitted', permissions: [PERMISSIONS.APPLY_LEAVE] },
+            { label: '月次勤怠入力', path: '/attendance-input', icon: <PunchClockRoundedIcon />, subtitle: '月次タイムシート（打刻・出退勤の入力）', keywords: 'attendance timesheet monthly', permissions: [PERMISSIONS.APPLY_ATTENDANCE] },
         ],
     },
     {
         title: '承認業務',
         items: [
             { label: '経費承認', path: '/approvals', icon: <FactCheckRoundedIcon />, subtitle: '経費の承認/差戻し', keywords: 'expense approval', permissions: [PERMISSIONS.APPROVE_EXPENSE] },
-            { label: '休暇承認', path: '/leave-approvals', icon: <BeenhereRoundedIcon />, subtitle: '休暇の承認/差戻し', keywords: 'leave approval', permissions: [PERMISSIONS.APPROVE_LEAVE] },
-            { label: '勤怠承認', path: '/attendance-approvals', icon: <HowToRegRoundedIcon />, subtitle: '部下の月次勤怠を承認', keywords: 'attendance approval', permissions: [PERMISSIONS.APPROVE_ATTENDANCE] },
+            { label: '勤怠申請承認', path: '/leave-approvals', icon: <BeenhereRoundedIcon />, subtitle: '休暇・時間休・遅刻・早退の承認/差戻し', keywords: 'attendance leave approval', permissions: [PERMISSIONS.APPROVE_LEAVE] },
+            { label: '月次勤怠承認', path: '/attendance-approvals', icon: <HowToRegRoundedIcon />, subtitle: '部下の月次タイムシートを承認', keywords: 'attendance monthly approval', permissions: [PERMISSIONS.APPROVE_ATTENDANCE] },
         ],
     },
     {
         title: '管理業務',
         items: [
             { label: '経費申請検索', path: '/expense-search', icon: <ManageSearchRoundedIcon />, subtitle: '経費の横断検索・外部 SaaS 連携', keywords: 'search expense history admin', permissions: [PERMISSIONS.MANAGE_EXPENSE] },
-            { label: '休暇申請検索', path: '/leave-search', icon: <ContentPasteSearchRoundedIcon />, subtitle: '休暇の横断検索・外部 SaaS 連携', keywords: 'search leave history admin', permissions: [PERMISSIONS.MANAGE_LEAVE] },
-            { label: '勤怠管理', path: '/attendance-management', icon: <WorkHistoryRoundedIcon />, subtitle: '全社の勤怠参照・締め状況確認', keywords: 'attendance management hr', permissions: [PERMISSIONS.MANAGE_ATTENDANCE] },
+            { label: '勤怠申請検索', path: '/leave-search', icon: <ContentPasteSearchRoundedIcon />, subtitle: '勤怠申請の横断検索・外部 SaaS 連携', keywords: 'search attendance leave history admin', permissions: [PERMISSIONS.MANAGE_LEAVE] },
+            { label: '月次勤怠管理', path: '/attendance-management', icon: <WorkHistoryRoundedIcon />, subtitle: '全社の月次タイムシート参照・締め状況確認', keywords: 'attendance management hr monthly', permissions: [PERMISSIONS.MANAGE_ATTENDANCE] },
         ],
     },
     {
@@ -187,8 +187,8 @@ function App() {
                 actionCmds.push({
                     id: 'action:new-leave',
                     kind: 'action',
-                    label: '新規 休暇申請を作成',
-                    subtitle: '休暇申請画面で新しい下書きを開く',
+                    label: '新規 勤怠申請を作成',
+                    subtitle: '勤怠申請画面で新しい下書きを開く',
                     keywords: 'new create leave draft',
                     icon: () => <EventAvailableRoundedIcon />,
                     run: () => navigate('/leave-application', { state: { startNew: true } }),

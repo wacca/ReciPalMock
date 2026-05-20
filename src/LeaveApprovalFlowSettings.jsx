@@ -14,8 +14,8 @@ const SAMPLE_FLOWS = [
 
 const PAGE = {
     eyebrow: '管理 ・ フロー',
-    title: '休暇 承認フロー設定',
-    subtitle: '個人または部署ごとに休暇申請の承認経路を設定します。',
+    title: '勤怠申請 承認フロー設定',
+    subtitle: '個人または部署ごとに勤怠申請（休暇・時間休・遅刻・早退）の承認経路を設定します。',
 };
 
 function LeaveApprovalFlowSettings() {

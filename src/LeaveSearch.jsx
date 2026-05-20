@@ -25,7 +25,7 @@ import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded';
 import CloudDoneRoundedIcon from '@mui/icons-material/CloudDoneRounded';
 import FileDownloadRoundedIcon from '@mui/icons-material/FileDownloadRounded';
-import { LEAVE_TYPES, getLeaveIntegrationStatus, loadLeaveApplications, saveLeaveApplications } from './leaveApplicationStore';
+import { LEAVE_TYPES, formatLeavePeriod, getLeaveDayCount, getLeaveHours, getLeaveIntegrationStatus, loadLeaveApplications, saveLeaveApplications } from './leaveApplicationStore';
 import { buildCsv, downloadCsv, todayStamp } from './csvHelpers.js';
 import AdminConfirmDialog from './components/AdminConfirmDialog';
 import PageScaffold from './ui/PageScaffold.jsx';
@@ -50,35 +50,38 @@ const toStatusKey = (s) => {
     return 'pending';
 };
 
-const inDateRange = (date, from, to) => {
-    if (!date) return !from && !to;
-    if (from && date < from) return false;
-    if (to && date > to) return false;
-    return true;
+const toRow = (app) => {
+    const dateFrom = app.dateFrom || app.date || '';
+    const dateTo = app.dateTo || dateFrom;
+    return {
+        key: app.id,
+        applicationId: app.id,
+        applicationDate: (app.submittedAt || '').slice(0, 10),
+        dateFrom,
+        dateTo,
+        targetDate: dateFrom,
+        periodLabel: formatLeavePeriod(app, { withDays: false }),
+        dayCount: getLeaveDayCount(app),
+        hourCount: getLeaveHours(app),
+        isHourly: Boolean(app.isHourly),
+        applicantId: app.applicantId,
+        applicantName: app.applicantName,
+        applicantDepartment: app.applicantDepartment,
+        leaveType: app.leaveType || '',
+        reason: app.reason || '',
+        status: app.status || '申請中',
+        statusKey: toStatusKey(app.status || '申請中'),
+        submittedAt: app.submittedAt,
+        approvedBy: app.approvedBy || '',
+        approvedAt: app.approvedAt || '',
+        remarks: app.remarks || '',
+        integrationStatus: getLeaveIntegrationStatus(app),
+        haystack: [app.id, app.applicantName, app.applicantDepartment, app.leaveType, app.reason, app.remarks]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase(),
+    };
 };
-
-const toRow = (app) => ({
-    key: app.id,
-    applicationId: app.id,
-    applicationDate: (app.submittedAt || '').slice(0, 10),
-    targetDate: app.date || '',
-    applicantId: app.applicantId,
-    applicantName: app.applicantName,
-    applicantDepartment: app.applicantDepartment,
-    leaveType: app.leaveType || '',
-    reason: app.reason || '',
-    status: app.status || '申請中',
-    statusKey: toStatusKey(app.status || '申請中'),
-    submittedAt: app.submittedAt,
-    approvedBy: app.approvedBy || '',
-    approvedAt: app.approvedAt || '',
-    remarks: app.remarks || '',
-    integrationStatus: getLeaveIntegrationStatus(app),
-    haystack: [app.id, app.applicantName, app.applicantDepartment, app.leaveType, app.reason, app.remarks]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase(),
-});
 
 function LeaveSearch({ userId }) {
     const profile = getUserProfile(userId);
@@ -112,13 +115,15 @@ function LeaveSearch({ userId }) {
                 if (leaveType !== 'all' && row.leaveType !== leaveType) return false;
                 if (integrationFilter !== 'all' && row.integrationStatus !== integrationFilter) return false;
                 if (dateFrom || dateTo) {
-                    const dates = [row.targetDate, row.applicationDate].filter(Boolean);
-                    if (!dates.some((d) => inDateRange(d, dateFrom, dateTo))) return false;
+                    // 休暇期間が指定範囲とオーバーラップするものをヒット
+                    if (dateFrom && row.dateTo && row.dateTo < dateFrom) return false;
+                    if (dateTo && row.dateFrom && row.dateFrom > dateTo) return false;
+                    if (!row.dateFrom) return false;
                 }
                 if (kw && !row.haystack.includes(kw)) return false;
                 return true;
             })
-            .sort((a, b) => (b.targetDate || '').localeCompare(a.targetDate || ''));
+            .sort((a, b) => (b.dateFrom || '').localeCompare(a.dateFrom || ''));
     }, [scopedRows, keyword, status, leaveType, integrationFilter, dateFrom, dateTo]);
 
     const handleReset = () => {
@@ -147,11 +152,15 @@ function LeaveSearch({ userId }) {
         }
         const columns = [
             { label: '申請ID', value: (r) => r.applicationId },
-            { label: '対象日', value: (r) => r.targetDate },
+            { label: '開始日', value: (r) => r.dateFrom },
+            { label: '終了日', value: (r) => r.dateTo },
+            { label: '日数', value: (r) => r.dayCount },
+            { label: '時間指定', value: (r) => (r.isHourly ? 'はい' : 'いいえ') },
+            { label: '時間数', value: (r) => r.hourCount },
             { label: '申請日', value: (r) => r.applicationDate },
             { label: '申請者', value: (r) => r.applicantName },
             { label: '部署', value: (r) => r.applicantDepartment },
-            { label: '休暇種別', value: (r) => r.leaveType },
+            { label: '申請種別', value: (r) => r.leaveType },
             { label: '理由', value: (r) => r.reason },
             { label: '状態', value: (r) => r.status },
             { label: '承認者', value: (r) => r.approvedBy },
@@ -184,7 +193,7 @@ function LeaveSearch({ userId }) {
     }, [filtered]);
 
     const scopeHint = scope === 'department'
-        ? `${profile.department} の申請を表示中（自分の申請は「休暇履歴」画面で確認できます）`
+        ? `${profile.department} の申請を表示中（自分の申請は「勤怠申請履歴」画面で確認できます）`
         : '全社の申請を表示中';
 
     const activeFilterCount = [
@@ -199,8 +208,8 @@ function LeaveSearch({ userId }) {
     return (
         <PageScaffold
             eyebrow="申請"
-            title="休暇申請検索"
-            subtitle="申請済みの休暇を横断検索します。スコープを切り替えて自分・部署・全社の申請を確認できます。"
+            title="勤怠申請検索"
+            subtitle="申請済みの勤怠申請（休暇・時間休・遅刻・早退）を横断検索します。スコープを切り替えて部署・全社の申請を確認できます。"
             actions={(
                 <>
                     <Button
@@ -315,7 +324,7 @@ function LeaveSearch({ userId }) {
                 <Section padded sx={{ textAlign: 'center', paddingBlock: 6 }}>
                     <SearchOffRoundedIcon sx={{ fontSize: 40, color: 'var(--ink-muted)' }} />
                     <Typography variant="body2" sx={{ color: 'var(--ink-tertiary)', mt: 1 }}>
-                        条件に一致する休暇申請はありません。
+                        条件に一致する勤怠申請はありません。
                     </Typography>
                 </Section>
             ) : (
@@ -324,7 +333,7 @@ function LeaveSearch({ userId }) {
                         <Table size="small">
                             <TableHead>
                                 <TableRow>
-                                    <TableCell sx={{ width: 120 }}>対象日</TableCell>
+                                    <TableCell sx={{ width: 200 }}>休暇期間</TableCell>
                                     <TableCell sx={{ width: 120 }}>申請日</TableCell>
                                     <TableCell sx={{ width: 200 }}>申請者 / 部署</TableCell>
                                     <TableCell sx={{ width: 130 }}>休暇種別</TableCell>
@@ -336,7 +345,23 @@ function LeaveSearch({ userId }) {
                             <TableBody>
                                 {filtered.map((row) => (
                                     <TableRow key={row.key} sx={{ '& td': { paddingBlock: 1.25 }, '&:hover': { background: 'var(--surface-sunken)' } }}>
-                                        <TableCell className="tabular-nums" sx={{ fontWeight: 600 }}>{row.targetDate || '-'}</TableCell>
+                                        <TableCell sx={{ fontWeight: 600 }}>
+                                            <Stack spacing={0.25}>
+                                                <Typography variant="body2" className="tabular-nums" sx={{ fontWeight: 600 }}>
+                                                    {row.periodLabel}
+                                                </Typography>
+                                                {row.isHourly && row.hourCount > 0 && (
+                                                    <Typography variant="caption" sx={{ color: 'var(--accent-iris)', fontWeight: 700 }}>
+                                                        時間休 {row.hourCount}h
+                                                    </Typography>
+                                                )}
+                                                {!row.isHourly && row.dayCount > 1 && (
+                                                    <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)' }}>
+                                                        {row.dayCount}日間
+                                                    </Typography>
+                                                )}
+                                            </Stack>
+                                        </TableCell>
                                         <TableCell className="tabular-nums" sx={{ color: 'var(--ink-secondary)' }}>{row.applicationDate || '-'}</TableCell>
                                         <TableCell>
                                             <Stack spacing={0.25}>

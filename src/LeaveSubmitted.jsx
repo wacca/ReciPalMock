@@ -3,7 +3,7 @@ import {
     Box, Button, Dialog, DialogContent, DialogTitle, DialogActions, Snackbar, Alert, IconButton, Tooltip, TextField, Stack, Typography,
     FormControl, InputLabel, Select, MenuItem,
 } from '@mui/material';
-import CancelRoundedIcon from '@mui/icons-material/CancelRounded';
+import RemoveCircleOutlineRoundedIcon from '@mui/icons-material/RemoveCircleOutlineRounded';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import ReplayRoundedIcon from '@mui/icons-material/ReplayRounded';
@@ -11,8 +11,8 @@ import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
 import EventNoteRoundedIcon from '@mui/icons-material/EventNoteRounded';
 import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 import SearchOffRoundedIcon from '@mui/icons-material/SearchOffRounded';
-import { loadLeaveApplications, saveLeaveApplications } from './leaveApplicationStore';
-import { getFiscalYearRange, inDateRange } from './dateRangeHelpers';
+import { formatLeavePeriod, loadLeaveApplications, saveLeaveApplications } from './leaveApplicationStore';
+import { getFiscalYearRange } from './dateRangeHelpers';
 import AdminConfirmDialog from './components/AdminConfirmDialog';
 import PageScaffold from './ui/PageScaffold.jsx';
 import Section from './ui/Section.jsx';
@@ -61,7 +61,12 @@ function LeaveSubmitted({ userId }) {
 
     const filtered = useMemo(() => (
         submitted.filter((row) => {
-            if (!inDateRange(row.date, dateFrom, dateTo)) return false;
+            const rowFrom = row.dateFrom || row.date || '';
+            const rowTo = row.dateTo || rowFrom;
+            // 期間が指定範囲とオーバーラップする申請をヒットさせる
+            if (dateFrom && rowTo && rowTo < dateFrom) return false;
+            if (dateTo && rowFrom && rowFrom > dateTo) return false;
+            if (!rowFrom && (dateFrom || dateTo)) return false;
             if (statusFilter !== 'all' && (row.status || '申請中') !== statusFilter) return false;
             return true;
         })
@@ -86,17 +91,17 @@ function LeaveSubmitted({ userId }) {
         if (!editTargetId) return;
         persist(submitted.map((r) => (r.id === editTargetId ? { ...r, reason: editReason } : r)));
         handleEditClose();
-        setSnackbar({ open: true, message: '休暇申請の理由・備考を保存しました' });
+        setSnackbar({ open: true, message: '勤怠申請の理由・備考を保存しました' });
     };
     const handleCancelConfirm = () => {
         if (!cancelTargetId) return;
         persist(submitted.map((r) => (r.id === cancelTargetId ? { ...r, status: '取消', remarks: '' } : r)));
         setCancelTargetId(null);
-        setSnackbar({ open: true, message: '休暇申請を取り消しました' });
+        setSnackbar({ open: true, message: '勤怠申請を取り消しました' });
     };
     const handleResubmit = (id) => {
         persist(submitted.map((r) => (r.id === id ? { ...r, status: '申請中', remarks: '', submittedAt: new Date().toISOString() } : r)));
-        setSnackbar({ open: true, message: '休暇申請を再申請しました' });
+        setSnackbar({ open: true, message: '勤怠申請を再申請しました' });
     };
 
     const counts = filtered.reduce((acc, row) => { const k = row.status || '申請中'; acc[k] = (acc[k] || 0) + 1; return acc; }, {});
@@ -104,8 +109,8 @@ function LeaveSubmitted({ userId }) {
     return (
         <PageScaffold
             eyebrow="申請"
-            title="休暇履歴"
-            subtitle="自分が申請した休暇の履歴です。期間・状態で絞り込み、申請中は取消、非承認は再申請できます。"
+            title="勤怠申請履歴"
+            subtitle="自分が出した勤怠申請（休暇・時間休・遅刻・早退）の履歴です。期間・状態で絞り込み、申請中は取消、非承認は再申請できます。"
             actions={(
                 <Button
                     variant="text"
@@ -200,13 +205,19 @@ function LeaveSubmitted({ userId }) {
                                     paddingLeft: { xs: 2.5, md: 3.5 },
                                     paddingBlock: 1.75,
                                     display: 'grid',
-                                    gridTemplateColumns: { xs: '1fr', md: '140px 140px 1fr minmax(110px, auto)' },
+                                    gridTemplateColumns: { xs: '1fr', md: 'minmax(190px, auto) 100px 1fr minmax(110px, auto)' },
                                     alignItems: 'center',
                                     gap: 2,
                                 }}
                             >
-                                <Typography variant="body2" sx={{ fontWeight: 600 }}>{row.date || '-'}</Typography>
-                                <Typography variant="body2" sx={{ color: 'var(--ink-secondary)' }}>{row.leaveType}</Typography>
+                                <Typography
+                                    variant="body2"
+                                    className="tabular-nums"
+                                    sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}
+                                >
+                                    {formatLeavePeriod(row, { withDays: false })}
+                                </Typography>
+                                <Typography variant="body2" sx={{ color: 'var(--ink-secondary)', whiteSpace: 'nowrap' }}>{row.leaveType}</Typography>
                                 <Typography variant="body2" sx={{
                                     color: 'var(--ink-primary)',
                                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -234,37 +245,79 @@ function LeaveSubmitted({ userId }) {
                             {expanded && (
                                 <Box sx={{ paddingInline: { xs: 2, md: 3 }, paddingBottom: 2.5, animation: 'recrovaFloatIn 200ms' }}>
                                     <Stack spacing={1.5}>
-                                        <KV label="申請日時" value={row.submittedAt ? new Date(row.submittedAt).toLocaleString() : '-'} />
-                                        <KV label="理由・備考" value={row.reason || '-'} />
+                                        <KV label="申請日時" value={row.submittedAt ? new Date(row.submittedAt).toLocaleString('ja-JP') : '-'} />
+                                        <KV label="理由・備考" value={row.reason || '理由は記入されていません'} />
+                                        {status === '承認済' && (
+                                            <>
+                                                <KV label="承認者" value={row.approvedBy || '-'} />
+                                                <KV label="承認日時" value={row.approvedAt ? new Date(row.approvedAt).toLocaleString('ja-JP') : '-'} />
+                                                {row.integrationStatus && row.integrationStatus !== 'not_applicable' && (
+                                                    <KV
+                                                        label="勤怠SaaS連携"
+                                                        value={
+                                                            row.integrationStatus === 'synced' && row.integrationSyncedAt
+                                                                ? `連携済（${new Date(row.integrationSyncedAt).toLocaleString('ja-JP')}）`
+                                                                : row.integrationStatus === 'error'
+                                                                    ? `連携エラー${row.integrationError ? `: ${row.integrationError}` : ''}`
+                                                                    : '連携待ち'
+                                                        }
+                                                    />
+                                                )}
+                                            </>
+                                        )}
                                         {status === '非承認' && row.remarks && (
                                             <Alert severity="warning" sx={{ borderRadius: 'var(--radius-md)' }}>
                                                 <Typography variant="caption" sx={{ fontWeight: 700, display: 'block' }}>承認者備考</Typography>
                                                 {row.remarks}
                                             </Alert>
                                         )}
-                                        <Stack direction="row" spacing={1} justifyContent="flex-end">
-                                            <Tooltip title="取消">
-                                                <span>
-                                                    <IconButton color="error" onClick={(e) => { e.stopPropagation(); setCancelTargetId(row.id); }} disabled={status !== '申請中'}>
-                                                        <CancelRoundedIcon fontSize="small" />
-                                                    </IconButton>
-                                                </span>
-                                            </Tooltip>
-                                            {status === '非承認' && (
-                                                <>
-                                                    <Tooltip title="編集">
-                                                        <IconButton color="primary" onClick={(e) => { e.stopPropagation(); handleEditOpen(row); }}>
-                                                            <EditRoundedIcon fontSize="small" />
+                                        {status === '取消' && (
+                                            <Alert severity="info" sx={{ borderRadius: 'var(--radius-md)' }}>
+                                                この申請は取り消されています。再度申請が必要な場合は「勤怠申請」画面から新規作成してください。
+                                            </Alert>
+                                        )}
+                                        {(status === '申請中' || status === '非承認') && (
+                                            <Stack
+                                                direction="row"
+                                                spacing={0.5}
+                                                justifyContent="flex-end"
+                                                alignItems="center"
+                                            >
+                                                {status === '申請中' && (
+                                                    <Tooltip title="申請を取消">
+                                                        <IconButton
+                                                            color="error"
+                                                            size="small"
+                                                            onClick={(e) => { e.stopPropagation(); setCancelTargetId(row.id); }}
+                                                        >
+                                                            <RemoveCircleOutlineRoundedIcon fontSize="small" />
                                                         </IconButton>
                                                     </Tooltip>
-                                                    <Tooltip title="再申請">
-                                                        <IconButton sx={{ color: 'var(--accent-leaf)' }} onClick={(e) => { e.stopPropagation(); handleResubmit(row.id); }}>
-                                                            <ReplayRoundedIcon fontSize="small" />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                </>
-                                            )}
-                                        </Stack>
+                                                )}
+                                                {status === '非承認' && (
+                                                    <>
+                                                        <Tooltip title="理由を編集">
+                                                            <IconButton
+                                                                color="primary"
+                                                                size="small"
+                                                                onClick={(e) => { e.stopPropagation(); handleEditOpen(row); }}
+                                                            >
+                                                                <EditRoundedIcon fontSize="small" />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                        <Tooltip title="再申請">
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={(e) => { e.stopPropagation(); handleResubmit(row.id); }}
+                                                                sx={{ color: 'var(--accent-leaf)' }}
+                                                            >
+                                                                <ReplayRoundedIcon fontSize="small" />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    </>
+                                                )}
+                                            </Stack>
+                                        )}
                                     </Stack>
                                 </Box>
                             )}
@@ -289,8 +342,8 @@ function LeaveSubmitted({ userId }) {
             </Snackbar>
             <AdminConfirmDialog
                 open={Boolean(cancelTargetId)}
-                title="休暇申請を取り消しますか？"
-                message="選択した休暇申請を取消状態にします。"
+                title="勤怠申請を取り消しますか？"
+                message="選択した勤怠申請を取消状態にします。"
                 confirmLabel="取消"
                 confirmColor="warning"
                 onCancel={() => setCancelTargetId(null)}

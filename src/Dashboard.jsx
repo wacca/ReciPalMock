@@ -24,8 +24,8 @@ import { PERMISSIONS, ROLE_LABELS, ROLES, hasPermission } from './permissions';
 
 const INTEGRATION_DOMAINS = [
     { key: 'expense',    label: '経費',  target: '経費 SaaS',    path: '/expense-search',        icon: <RequestQuoteRoundedIcon /> },
-    { key: 'leave',      label: '休暇',  target: '勤怠 SaaS',    path: '/leave-search',          icon: <EventAvailableRoundedIcon /> },
-    { key: 'attendance', label: '勤怠',  target: '給与 SaaS',    path: '/attendance-management', icon: <PunchClockRoundedIcon /> },
+    { key: 'leave',      label: '勤怠申請', target: '勤怠 SaaS',    path: '/leave-search',          icon: <EventAvailableRoundedIcon /> },
+    { key: 'attendance', label: '月次勤怠', target: '給与 SaaS',    path: '/attendance-management', icon: <PunchClockRoundedIcon /> },
 ];
 
 const INTEGRATION_DOMAIN_PERMS = {
@@ -124,7 +124,7 @@ const buildPrimaryActions = ({ role, counts }) => {
     }
     if (hasPermission(role, PERMISSIONS.APPLY_LEAVE)) {
         list.push({
-            title: '休暇を申請', description: '有給・遅刻・早退',
+            title: '勤怠を申請', description: '休暇・時間休・遅刻・早退',
             path: '/leave-application', state: { startNew: true }, icon: <EventAvailableRoundedIcon />, tone: 'amber',
         });
     }
@@ -137,7 +137,7 @@ const buildPrimaryActions = ({ role, counts }) => {
     }
     if (hasPermission(role, PERMISSIONS.APPROVE_LEAVE)) {
         list.push({
-            title: '休暇承認',
+            title: '勤怠申請承認',
             description: counts.leave > 0 ? `${counts.leave}件の承認待ち` : '承認待ちなし',
             path: '/leave-approvals', icon: <BeenhereRoundedIcon />, tone: 'leaf', badge: counts.leave,
         });
@@ -202,7 +202,7 @@ function Dashboard({ username = '', role = ROLES.EMPLOYEE }) {
             list.push({ label: '承認待ち 経費', value: counts.expense, unit: '件', tone: counts.expense ? 'amber' : 'leaf' });
         }
         if (hasPermission(role, PERMISSIONS.APPROVE_LEAVE)) {
-            list.push({ label: '承認待ち 休暇', value: counts.leave, unit: '件', tone: counts.leave ? 'amber' : 'leaf' });
+            list.push({ label: '承認待ち 勤怠申請', value: counts.leave, unit: '件', tone: counts.leave ? 'amber' : 'leaf' });
         }
         list.push({ label: '進行中 下書き', value: counts.drafts, unit: '件', tone: 'iris' });
         list.push({

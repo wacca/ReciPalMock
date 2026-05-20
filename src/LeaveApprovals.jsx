@@ -9,7 +9,8 @@ import HowToRegRoundedIcon from '@mui/icons-material/HowToRegRounded';
 import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded';
 import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 import SearchOffRoundedIcon from '@mui/icons-material/SearchOffRounded';
-import { loadLeaveApplications, saveLeaveApplications } from './leaveApplicationStore';
+import { formatLeavePeriod, loadLeaveApplications, saveLeaveApplications } from './leaveApplicationStore';
+import { applyLeaveToAttendance } from './attendanceStore';
 import { getLastNMonths, inDateRange } from './dateRangeHelpers';
 import PageScaffold from './ui/PageScaffold.jsx';
 import Section from './ui/Section.jsx';
@@ -49,25 +50,38 @@ function LeaveApprovals() {
     const currentApproverLabel = approvers.find((a) => a.value === selectedApprover)?.label || '';
 
     const handleStatus = (id, status) => {
+        const target = data.find((row) => row.id === id);
         const comment = (commentMap[id] || '').trim();
         if (status === '非承認' && !comment) {
             setShowRejectFor(id);
             return;
         }
-        const next = data.map((row) => (
-            row.id === id ? {
-                ...row,
-                status,
-                remarks: status === '非承認' ? comment : '',
-                approvedBy: currentApproverLabel,
-                approvedAt: new Date().toISOString(),
-                integrationStatus: status === '承認済' ? 'pending' : 'not_applicable',
-            } : row
-        ));
+        const approvedRow = target ? {
+            ...target,
+            status,
+            remarks: status === '非承認' ? comment : '',
+            approvedBy: currentApproverLabel,
+            approvedAt: new Date().toISOString(),
+            integrationStatus: status === '承認済' ? 'pending' : 'not_applicable',
+        } : null;
+        const next = data.map((row) => (row.id === id && approvedRow ? approvedRow : row));
         persist(next);
         setCommentMap({ ...commentMap, [id]: '' });
         setShowRejectFor(null);
-        setSnackbar({ open: true, message: status === '承認済' ? '休暇申請を承認しました' : '休暇申請を非承認にしました' });
+
+        let message = status === '承認済' ? '勤怠申請を承認しました' : '勤怠申請を差戻しました';
+        if (status === '承認済' && approvedRow) {
+            const r = applyLeaveToAttendance(approvedRow);
+            if (r.updated > 0) {
+                const unitLabel = approvedRow.isHourly ? '時間休 1 件' : `${r.updated} 日分`;
+                message = `勤怠申請を承認しました（勤怠に ${unitLabel} を反映）`;
+            } else if (r.skippedWeekend > 0 && r.updated === 0) {
+                message = '勤怠申請を承認しました（対象期間がすべて土日のため勤怠反映なし）';
+            } else if (r.skippedClosed > 0) {
+                message = `勤怠申請を承認しました（締め済の月 ${r.skippedClosed} 日分は勤怠反映スキップ）`;
+            }
+        }
+        setSnackbar({ open: true, message });
     };
 
     const approvalTargets = useMemo(() => (
@@ -100,8 +114,8 @@ function LeaveApprovals() {
     return (
         <PageScaffold
             eyebrow="承認"
-            title="休暇承認"
-            subtitle="申請中の承認、過去の承認履歴をタブで切り替えて確認できます。"
+            title="勤怠申請承認"
+            subtitle="申請中の承認、過去の承認履歴をタブで切り替えて確認できます。承認すると勤怠に自動反映されます。"
             actions={(
                 <FormControl size="small" sx={{ minWidth: 260 }}>
                     <Select value={selectedApprover} onChange={(e) => setSelectedApprover(e.target.value)}>
@@ -131,7 +145,7 @@ function LeaveApprovals() {
                 approvalTargets.length === 0 ? (
                     <Section padded sx={{ textAlign: 'center', paddingBlock: 6 }}>
                         <HowToRegRoundedIcon sx={{ fontSize: 40, color: 'var(--accent-leaf)' }} />
-                        <Typography variant="body2" sx={{ color: 'var(--ink-tertiary)', mt: 1, fontWeight: 600 }}>承認待ちの休暇申請はありません。</Typography>
+                        <Typography variant="body2" sx={{ color: 'var(--ink-tertiary)', mt: 1, fontWeight: 600 }}>承認待ちの勤怠申請はありません。</Typography>
                     </Section>
                 ) : (
                     <Stack spacing={1.25}>
@@ -145,7 +159,7 @@ function LeaveApprovals() {
                                             <Box>
                                                 <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
                                                     <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                                                        {row.leaveType} <Typography component="span" variant="body2" sx={{ color: 'var(--ink-tertiary)' }}>／ {row.date}</Typography>
+                                                        {row.leaveType} <Typography component="span" variant="body2" sx={{ color: 'var(--ink-tertiary)' }}>／ {formatLeavePeriod(row)}</Typography>
                                                     </Typography>
                                                     <StatusChip status="pending" />
                                                 </Stack>
@@ -286,7 +300,7 @@ function LeaveApprovals() {
                                                 <Box sx={{ minWidth: 0 }}>
                                                     <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
                                                         <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                                                            {row.leaveType} <Typography component="span" variant="body2" sx={{ color: 'var(--ink-tertiary)' }}>／ {row.date}</Typography>
+                                                            {row.leaveType} <Typography component="span" variant="body2" sx={{ color: 'var(--ink-tertiary)' }}>／ {formatLeavePeriod(row)}</Typography>
                                                         </Typography>
                                                         <StatusChip status={statusKey} size="sm" />
                                                         {row.status === '承認済' && (
