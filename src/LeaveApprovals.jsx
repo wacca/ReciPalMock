@@ -3,7 +3,7 @@ import {
     Box, Stack, Snackbar, Alert, TextField, FormControl, Select, MenuItem, Button, Typography, Tabs, Tab,
     InputLabel, ToggleButton, ToggleButtonGroup,
 } from '@mui/material';
-import CancelRoundedIcon from '@mui/icons-material/CancelRounded';
+import AssignmentReturnRoundedIcon from '@mui/icons-material/AssignmentReturnRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import HowToRegRoundedIcon from '@mui/icons-material/HowToRegRounded';
 import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded';
@@ -23,10 +23,10 @@ const approvers = [
     { value: 'user2', label: '由引 安人(ubiast@univa.tech)' },
 ];
 
-const HISTORY_STATUS_OPTIONS = ['承認済', '非承認'];
+const HISTORY_STATUS_OPTIONS = ['承認済', '差戻し'];
 
 const toStatusKey = (s) => (
-    s === '承認済' ? 'approved' : s === '非承認' ? 'rejected' : s === '取消' ? 'cancelled' : 'pending'
+    s === '承認済' ? 'approved' : s === '差戻し' ? 'rejected' : s === '取消' ? 'cancelled' : 'pending'
 );
 
 function LeaveApprovals() {
@@ -52,14 +52,14 @@ function LeaveApprovals() {
     const handleStatus = (id, status) => {
         const target = data.find((row) => row.id === id);
         const comment = (commentMap[id] || '').trim();
-        if (status === '非承認' && !comment) {
+        if (status === '差戻し' && !comment) {
             setShowRejectFor(id);
             return;
         }
         const approvedRow = target ? {
             ...target,
             status,
-            remarks: status === '非承認' ? comment : '',
+            remarks: status === '差戻し' ? comment : '',
             approvedBy: currentApproverLabel,
             approvedAt: new Date().toISOString(),
             integrationStatus: status === '承認済' ? 'pending' : 'not_applicable',
@@ -177,19 +177,19 @@ function LeaveApprovals() {
                                                 </Typography>
                                             </Box>
                                         </Stack>
-                                        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', md: 'center' }} sx={{ mt: 2 }}>
+                                        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', md: 'flex-start' }} sx={{ mt: 2 }}>
                                             <TextField
-                                                label="承認者備考（非承認時は必須）"
+                                                label="承認者備考（差戻し時は必須）"
                                                 size="small"
                                                 value={comment}
                                                 onChange={(e) => setCommentMap({ ...commentMap, [row.id]: e.target.value })}
                                                 sx={{ flex: 1 }}
                                                 error={showReject && !comment.trim()}
-                                                helperText={showReject && !comment.trim() ? '非承認には備考を入力してください' : ' '}
+                                                helperText={showReject && !comment.trim() ? '差戻しには備考を入力してください' : ' '}
                                             />
-                                            <Stack direction="row" spacing={1} justifyContent="flex-end">
-                                                <Button variant="outlined" color="error" startIcon={<CancelRoundedIcon />} onClick={() => handleStatus(row.id, '非承認')}>
-                                                    非承認
+                                            <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ pt: { md: '8px' } }}>
+                                                <Button variant="outlined" color="warning" startIcon={<AssignmentReturnRoundedIcon />} onClick={() => handleStatus(row.id, '差戻し')}>
+                                                    差戻す
                                                 </Button>
                                                 <Button variant="contained" color="primary" startIcon={<CheckCircleRoundedIcon />} onClick={() => handleStatus(row.id, '承認済')}>
                                                     承認する
@@ -324,7 +324,7 @@ function LeaveApprovals() {
                                                         承認: {row.approvedBy || '-'}
                                                         {row.approvedAt && ` ・ ${new Date(row.approvedAt).toLocaleString()}`}
                                                     </Typography>
-                                                    {row.status === '非承認' && row.remarks && (
+                                                    {row.status === '差戻し' && row.remarks && (
                                                         <Typography variant="caption" sx={{ color: 'var(--accent-rose)', display: 'block', mt: 0.25 }}>
                                                             備考: {row.remarks}
                                                         </Typography>

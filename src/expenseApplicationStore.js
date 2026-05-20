@@ -1,6 +1,6 @@
 import { DEFAULT_USER, getUserProfile } from './userDirectory';
 
-const STORAGE_KEY = 'expenseApplications_v4';
+const STORAGE_KEY = 'expenseApplications_v5';
 
 export const EXPENSE_CATEGORIES = [
     '旅費交通費',
@@ -12,12 +12,21 @@ export const EXPENSE_CATEGORIES = [
     'その他',
 ];
 
+export const PAYMENT_METHODS = [
+    '個人立替払用',
+    '法人カード経費分',
+    '仮払金精算',
+    '振込払い',
+    'その他',
+];
+
 export const emptyExpenseRow = () => ({
     date: '',
     description: '',
     destination: '',
     category: '',
     amount: '',
+    paymentMethod: '個人立替払用',
     receiptName: '',
     receiptPreview: '',
 });
@@ -29,11 +38,10 @@ const SAMPLE_APPLICATIONS = [
         applicantId: 'univatech@univa.tech',
         applicantName: '由仁場 技朗',
         applicantDepartment: '営業部',
-        paymentType: '個人立替払用',
         integrationStatus: 'not_applicable',
         details: [
-            { date: '2026-05-13', description: '出張電車代', destination: '東京-新大阪', category: '旅費交通費', amount: 13870, status: '申請中' },
-            { date: '2026-05-13', description: '〇〇（店名）', destination: '××社××様 会食', category: '接待交際費', amount: 19440, status: '申請中' },
+            { date: '2026-05-13', description: '出張電車代', destination: '東京-新大阪', category: '旅費交通費', amount: 13870, paymentMethod: '個人立替払用', status: '申請中' },
+            { date: '2026-05-13', description: '〇〇（店名）', destination: '××社××様 会食', category: '接待交際費', amount: 19440, paymentMethod: '個人立替払用', status: '申請中' },
         ],
     },
     {
@@ -42,12 +50,11 @@ const SAMPLE_APPLICATIONS = [
         applicantId: 'univatech@univa.tech',
         applicantName: '由仁場 技朗',
         applicantDepartment: '営業部',
-        paymentType: '法人カード経費分',
         integrationStatus: 'not_applicable',
         details: [
-            { date: '2026-05-10', description: 'Amazon', destination: '業務PC用 ケーブル', category: '消耗品※事務用品含', amount: 970, status: '非承認' },
+            { date: '2026-05-10', description: 'Amazon', destination: '業務PC用 ケーブル', category: '消耗品※事務用品含', amount: 970, paymentMethod: '法人カード経費分', status: '差戻し' },
         ],
-        remarks: '予算オーバーのため非承認',
+        remarks: '予算オーバーのため差戻し',
     },
     {
         applicationId: 'A20260508001',
@@ -55,13 +62,12 @@ const SAMPLE_APPLICATIONS = [
         applicantId: 'ubiast@univa.tech',
         applicantName: '由引 安人',
         applicantDepartment: '営業部',
-        paymentType: '個人立替払用',
         integrationStatus: 'error',
         integrationError: '経費 SaaS API 認証エラー',
         approvedBy: '油ニ 和平(univapay@univa.tech)',
         approvedAt: '2026-05-09T10:30:00.000Z',
         details: [
-            { date: '2026-05-06', description: 'タクシー', destination: '羽田-渋谷', category: '旅費交通費', amount: 7820, status: '承認済' },
+            { date: '2026-05-06', description: 'タクシー', destination: '羽田-渋谷', category: '旅費交通費', amount: 7820, paymentMethod: '個人立替払用', status: '承認済' },
         ],
     },
     {
@@ -70,10 +76,9 @@ const SAMPLE_APPLICATIONS = [
         applicantId: 'univapay@univa.tech',
         applicantName: '油ニ 和平',
         applicantDepartment: '経理部',
-        paymentType: '個人立替払用',
         integrationStatus: 'not_applicable',
         details: [
-            { date: '2026-04-24', description: '書籍購入', destination: '会計実務本 2冊', category: '新聞図書費', amount: 6600, status: '申請中' },
+            { date: '2026-04-24', description: '書籍購入', destination: '会計実務本 2冊', category: '新聞図書費', amount: 6600, paymentMethod: '個人立替払用', status: '申請中' },
         ],
     },
     {
@@ -82,14 +87,13 @@ const SAMPLE_APPLICATIONS = [
         applicantId: 'kamiya@univa.tech',
         applicantName: '紙谷 風花',
         applicantDepartment: '開発部',
-        paymentType: '法人カード経費分',
         integrationStatus: 'synced',
         integrationSyncedAt: '2026-04-12T03:15:00.000Z',
         approvedBy: '由引 安人(ubiast@univa.tech)',
         approvedAt: '2026-04-11T09:00:00.000Z',
         details: [
-            { date: '2026-04-08', description: 'AWS 利用料', destination: '開発検証用', category: 'その他', amount: 24500, status: '承認済' },
-            { date: '2026-04-09', description: 'GitHub Copilot', destination: '開発チーム5名分', category: 'その他', amount: 5500, status: '承認済' },
+            { date: '2026-04-08', description: 'AWS 利用料', destination: '開発検証用', category: 'その他', amount: 24500, paymentMethod: '法人カード経費分', status: '承認済' },
+            { date: '2026-04-09', description: 'GitHub Copilot', destination: '開発チーム5名分', category: 'その他', amount: 5500, paymentMethod: '法人カード経費分', status: '承認済' },
         ],
     },
     {
@@ -98,10 +102,9 @@ const SAMPLE_APPLICATIONS = [
         applicantId: 'tachibana@univa.tech',
         applicantName: '立花 蓮',
         applicantDepartment: '開発部',
-        paymentType: '個人立替払用',
         integrationStatus: 'not_applicable',
         details: [
-            { date: '2026-03-20', description: '勉強会参加費', destination: 'React Tokyo Conference', category: 'その他', amount: 15000, status: '申請中' },
+            { date: '2026-03-20', description: '勉強会参加費', destination: 'React Tokyo Conference', category: 'その他', amount: 15000, paymentMethod: '個人立替払用', status: '申請中' },
         ],
     },
     {
@@ -110,15 +113,30 @@ const SAMPLE_APPLICATIONS = [
         applicantId: 'kamiya@univa.tech',
         applicantName: '紙谷 風花',
         applicantDepartment: '開発部',
-        paymentType: '個人立替払用',
         integrationStatus: 'pending',
         approvedBy: '油ニ 和平(univapay@univa.tech)',
         approvedAt: '2026-05-15T08:00:00.000Z',
         details: [
-            { date: '2026-03-15', description: 'クライアント打合せ往復', destination: '横浜', category: '旅費交通費', amount: 2840, status: '承認済' },
+            { date: '2026-03-15', description: 'クライアント打合せ往復', destination: '横浜', category: '旅費交通費', amount: 2840, paymentMethod: '個人立替払用', status: '承認済' },
         ],
     },
+    {
+        applicationId: 'A20260518001',
+        applicationDate: '2026-05-18',
+        applicantId: 'univatech@univa.tech',
+        applicantName: '由仁場 技朗',
+        applicantDepartment: '営業部',
+        integrationStatus: 'not_applicable',
+        details: [
+            { date: '2026-05-17', description: 'タクシー', destination: '羽田-取引先', category: '旅費交通費', amount: 5240, paymentMethod: '個人立替払用', status: '申請中' },
+            { date: '2026-05-17', description: '会食(△△レストラン)', destination: '◇◇商事 営業部長 接待', category: '接待交際費', amount: 28600, paymentMethod: '法人カード経費分', status: '申請中' },
+        ],
+        remarks: '出張1回分で立替とカード払いが混在',
+    },
 ];
+
+// 旧データ互換: 「非承認」を「差戻し」に正規化
+const migrateExpenseStatus = (status) => (status === '非承認' ? '差戻し' : status);
 
 export const normalizeExpenseRow = (row) => ({
     date: row.date || '',
@@ -126,10 +144,15 @@ export const normalizeExpenseRow = (row) => ({
     destination: row.destination || '',
     category: row.category || '',
     amount: Number(row.amount || 0),
+    paymentMethod: row.paymentMethod || '個人立替払用',
     receiptName: row.receiptName || '',
     receiptPreview: row.receiptPreview || '',
-    status: row.status || '申請中',
+    status: migrateExpenseStatus(row.status || '申請中'),
 });
+
+export const getApplicationPaymentMethods = (app) => (
+    Array.from(new Set((app?.details || []).map((d) => d.paymentMethod).filter(Boolean)))
+);
 
 const normalizeExpenseApplication = (app) => ({
     ...app,
@@ -165,7 +188,7 @@ export const saveExpenseApplications = (applications) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(applications));
 };
 
-export const buildExpenseApplication = ({ rows, paymentType, draftId, applicantId }) => {
+export const buildExpenseApplication = ({ rows, draftId, applicantId }) => {
     const profile = getUserProfile(applicantId);
     return {
         applicationId: `A${new Date().toISOString().replace(/\D/g, '').slice(0, 14)}`,
@@ -174,7 +197,6 @@ export const buildExpenseApplication = ({ rows, paymentType, draftId, applicantI
         applicantId: profile.id,
         applicantName: profile.name,
         applicantDepartment: profile.department,
-        paymentType,
         integrationStatus: 'not_applicable',
         details: rows.map((row) => normalizeExpenseRow({ ...row, status: '申請中' })),
     };
@@ -184,7 +206,7 @@ export const getExpenseApplicationStatus = (application) => {
     const statuses = application.details.map((row) => row.status);
     if (statuses.length === 0) return '明細なし';
     if (statuses.every((status) => status === '承認済')) return '承認済';
-    if (statuses.every((status) => status === '非承認')) return '非承認';
+    if (statuses.every((status) => status === '差戻し')) return '差戻し';
     if (statuses.every((status) => status === '取消')) return '取消';
     return '申請中';
 };

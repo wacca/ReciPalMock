@@ -1,6 +1,6 @@
 import { Box, Stack, Typography } from '@mui/material';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
-import CancelRoundedIcon from '@mui/icons-material/CancelRounded';
+import AssignmentReturnRoundedIcon from '@mui/icons-material/AssignmentReturnRounded';
 import HourglassTopRoundedIcon from '@mui/icons-material/HourglassTopRounded';
 import RemoveCircleOutlineRoundedIcon from '@mui/icons-material/RemoveCircleOutlineRounded';
 import DraftsRoundedIcon from '@mui/icons-material/DraftsRounded';
@@ -8,7 +8,7 @@ import DraftsRoundedIcon from '@mui/icons-material/DraftsRounded';
 const statusMap = {
     pending:   { label: '申請中',   bg: 'var(--accent-iris-soft)',   fg: 'var(--accent-iris)',   icon: HourglassTopRoundedIcon },
     approved:  { label: '承認済',   bg: 'var(--accent-leaf-soft)',   fg: 'var(--accent-leaf)',   icon: CheckCircleRoundedIcon },
-    rejected:  { label: '非承認',   bg: 'var(--accent-rose-soft)',   fg: 'var(--accent-rose)',   icon: CancelRoundedIcon },
+    rejected:  { label: '差戻し',   bg: 'var(--accent-rose-soft)',   fg: 'var(--accent-rose)',   icon: AssignmentReturnRoundedIcon },
     cancelled: { label: '取消',     bg: 'var(--accent-slate-soft)',  fg: 'var(--accent-slate)',  icon: RemoveCircleOutlineRoundedIcon },
     draft:     { label: '下書き',   bg: 'var(--surface-sunken)',     fg: 'var(--ink-tertiary)',  icon: DraftsRoundedIcon },
     active:    { label: '有効',     bg: 'var(--accent-primary-soft)',fg: 'var(--accent-primary)',icon: CheckCircleRoundedIcon },
@@ -16,7 +16,7 @@ const statusMap = {
 };
 
 const aliasMap = {
-    '申請中': 'pending', '承認済': 'approved', '非承認': 'rejected', '却下': 'rejected',
+    '申請中': 'pending', '承認済': 'approved', '差戻し': 'rejected', '非承認': 'rejected', '却下': 'rejected',
     '取消': 'cancelled', '取り消し': 'cancelled', '下書き': 'draft',
     '有効': 'active', '無効': 'inactive',
 };

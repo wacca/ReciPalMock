@@ -65,7 +65,7 @@ const SAMPLE_APPLICATIONS = [
         isHourly: true,
         hours: 1.5,
         reason: '家庭の事情',
-        status: '非承認',
+        status: '差戻し',
         submittedAt: '2026-04-20T11:00:00.000Z',
         remarks: '理由の補足が必要です',
     },
@@ -228,6 +228,9 @@ export const normalizeLeaveDraft = (draft = {}) => {
     };
 };
 
+// 旧データ互換: 「非承認」を「差戻し」に正規化
+const migrateLeaveStatus = (status) => (status === '非承認' ? '差戻し' : status);
+
 export const normalizeLeaveApplication = (application) => {
     const dateFrom = application.dateFrom || application.date || '';
     const dateTo = application.dateTo || application.date || dateFrom;
@@ -245,7 +248,7 @@ export const normalizeLeaveApplication = (application) => {
         isHourly,
         hours,
         reason: application.reason || '',
-        status: application.status || '申請中',
+        status: migrateLeaveStatus(application.status || '申請中'),
         submittedAt: application.submittedAt || new Date().toISOString(),
         updated: application.updated,
         remarks: application.remarks || '',

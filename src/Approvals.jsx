@@ -3,7 +3,7 @@ import {
     Box, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, MenuItem, Select, FormControl,
     TextField, Snackbar, Alert, Button, Typography, Tabs, Tab, InputLabel, ToggleButton, ToggleButtonGroup,
 } from '@mui/material';
-import CancelRoundedIcon from '@mui/icons-material/CancelRounded';
+import AssignmentReturnRoundedIcon from '@mui/icons-material/AssignmentReturnRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import FactCheckRoundedIcon from '@mui/icons-material/FactCheckRounded';
 import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded';
@@ -11,6 +11,7 @@ import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 import SearchOffRoundedIcon from '@mui/icons-material/SearchOffRounded';
 import {
     formatYen,
+    getApplicationPaymentMethods,
     getExpenseApplicationStatus,
     getExpenseApplicationTotal,
     loadExpenseApplications,
@@ -28,10 +29,10 @@ const approvers = [
     { value: 'user2', label: '油ニ 和平(univapay@univa.tech)' },
 ];
 
-const HISTORY_STATUS_OPTIONS = ['承認済', '非承認'];
+const HISTORY_STATUS_OPTIONS = ['承認済', '差戻し'];
 
 const toStatusKey = (s) => (
-    s === '承認済' ? 'approved' : s === '非承認' ? 'rejected' : s === '取消' ? 'cancelled' : 'pending'
+    s === '承認済' ? 'approved' : s === '差戻し' ? 'rejected' : s === '取消' ? 'cancelled' : 'pending'
 );
 
 function Approvals() {
@@ -58,7 +59,7 @@ function Approvals() {
         const target = data.find((g) => g.applicationId === groupId);
         if (!target) return;
         const comment = (commentMap[target.applicationId] || '').trim();
-        if (newStatus === '非承認' && !comment) {
+        if (newStatus === '差戻し' && !comment) {
             setShowRejectFor(target.applicationId);
             return;
         }
@@ -66,7 +67,7 @@ function Approvals() {
             g.applicationId === groupId
                 ? {
                     ...g,
-                    remarks: newStatus === '非承認' ? comment : '',
+                    remarks: newStatus === '差戻し' ? comment : '',
                     approvedBy: currentApproverLabel,
                     approvedAt: new Date().toISOString(),
                     integrationStatus: newStatus === '承認済' ? 'pending' : 'not_applicable',
@@ -76,7 +77,7 @@ function Approvals() {
         )));
         setCommentMap({ ...commentMap, [target.applicationId]: '' });
         setShowRejectFor(null);
-        setSnackbar({ open: true, message: newStatus === '承認済' ? '申請を承認しました' : '申請を非承認にしました' });
+        setSnackbar({ open: true, message: newStatus === '承認済' ? '申請を承認しました' : '申請を差戻しました' });
     };
 
     const approvalTargets = useMemo(() => (
@@ -162,7 +163,7 @@ function Approvals() {
                                                     <StatusChip status="pending" />
                                                 </Stack>
                                                 <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)', display: 'block' }}>
-                                                    申請日 {group.applicationDate} ・ {group.paymentType || '-'}
+                                                    申請日 {group.applicationDate} ・ {getApplicationPaymentMethods(group).join(' / ') || '-'}
                                                 </Typography>
                                                 <Typography variant="body2" sx={{ color: 'var(--ink-secondary)', mt: 0.5, fontWeight: 600 }}>
                                                     {group.applicantName || '-'}
@@ -182,7 +183,8 @@ function Approvals() {
                                                         <TableCell sx={{ width: 130 }}>日付</TableCell>
                                                         <TableCell sx={{ width: 220 }}>内容</TableCell>
                                                         <TableCell>用途・行き先</TableCell>
-                                                        <TableCell sx={{ width: 180 }}>費目</TableCell>
+                                                        <TableCell sx={{ width: 160 }}>費目</TableCell>
+                                                        <TableCell sx={{ width: 150 }}>支払方法</TableCell>
                                                         <TableCell sx={{ width: 140 }} align="right">金額</TableCell>
                                                     </TableRow>
                                                 </TableHead>
@@ -193,6 +195,7 @@ function Approvals() {
                                                             <TableCell sx={{ fontWeight: 500 }}>{row.description}</TableCell>
                                                             <TableCell>{row.destination}</TableCell>
                                                             <TableCell>{row.category}</TableCell>
+                                                            <TableCell sx={{ color: 'var(--ink-secondary)' }}>{row.paymentMethod || '-'}</TableCell>
                                                             <TableCell align="right" className="tabular-nums" sx={{ fontWeight: 600 }}>{formatYen(row.amount)}</TableCell>
                                                         </TableRow>
                                                     ))}
@@ -202,26 +205,26 @@ function Approvals() {
                                         <Stack
                                             direction={{ xs: 'column', md: 'row' }}
                                             spacing={1.5}
-                                            alignItems={{ xs: 'stretch', md: 'center' }}
+                                            alignItems={{ xs: 'stretch', md: 'flex-start' }}
                                             sx={{ mt: 2 }}
                                         >
                                             <TextField
-                                                label="承認者備考（非承認時は必須）"
+                                                label="承認者備考（差戻し時は必須）"
                                                 size="small"
                                                 value={comment}
                                                 onChange={(e) => setCommentMap({ ...commentMap, [group.applicationId]: e.target.value })}
                                                 sx={{ flex: 1 }}
                                                 error={showReject && !comment.trim()}
-                                                helperText={showReject && !comment.trim() ? '非承認には備考を入力してください' : ' '}
+                                                helperText={showReject && !comment.trim() ? '差戻しには備考を入力してください' : ' '}
                                             />
-                                            <Stack direction="row" spacing={1} justifyContent="flex-end">
+                                            <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ pt: { md: '8px' } }}>
                                                 <Button
                                                     variant="outlined"
-                                                    color="error"
-                                                    startIcon={<CancelRoundedIcon />}
-                                                    onClick={() => handleStatus(group.applicationId, '非承認')}
+                                                    color="warning"
+                                                    startIcon={<AssignmentReturnRoundedIcon />}
+                                                    onClick={() => handleStatus(group.applicationId, '差戻し')}
                                                 >
-                                                    非承認
+                                                    差戻す
                                                 </Button>
                                                 <Button
                                                     variant="contained"
@@ -350,7 +353,7 @@ function Approvals() {
                                                         )}
                                                     </Stack>
                                                     <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)', display: 'block' }}>
-                                                        申請日 {group.applicationDate} ・ {group.paymentType || '-'}
+                                                        申請日 {group.applicationDate} ・ {getApplicationPaymentMethods(group).join(' / ') || '-'}
                                                     </Typography>
                                                     <Typography variant="body2" sx={{ color: 'var(--ink-secondary)', mt: 0.5, fontWeight: 600 }}>
                                                         申請者: {group.applicantName || '-'}
@@ -362,7 +365,7 @@ function Approvals() {
                                                         承認: {group.approvedBy || '-'}
                                                         {group.approvedAt && ` ・ ${new Date(group.approvedAt).toLocaleString()}`}
                                                     </Typography>
-                                                    {group._status === '非承認' && group.remarks && (
+                                                    {group._status === '差戻し' && group.remarks && (
                                                         <Typography variant="caption" sx={{ color: 'var(--accent-rose)', display: 'block', mt: 0.25 }}>
                                                             備考: {group.remarks}
                                                         </Typography>

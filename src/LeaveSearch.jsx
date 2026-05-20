@@ -35,7 +35,7 @@ import ScopeSelector, { SCOPE_OPTIONS, filterByScope } from './ui/ScopeSelector.
 import IntegrationStatusChip from './ui/IntegrationStatusChip.jsx';
 import { getUserProfile } from './userDirectory';
 
-const STATUS_OPTIONS = ['申請中', '承認済', '非承認', '取消'];
+const STATUS_OPTIONS = ['申請中', '承認済', '差戻し', '取消'];
 const INTEGRATION_FILTER_OPTIONS = [
     { value: 'pending', label: '連携待ち' },
     { value: 'synced', label: '連携済' },
@@ -45,7 +45,7 @@ const ADMIN_SCOPE_OPTIONS = SCOPE_OPTIONS.filter((o) => o.value !== 'self');
 
 const toStatusKey = (s) => {
     if (s === '承認済') return 'approved';
-    if (s === '非承認') return 'rejected';
+    if (s === '差戻し') return 'rejected';
     if (s === '取消') return 'cancelled';
     return 'pending';
 };
@@ -316,7 +316,7 @@ function LeaveSearch({ userId }) {
                     <Stat label="申請者数" value={summary.applicantCount} unit="名" tone="iris" />
                     <Stat label="申請中" value={summary.counts['申請中'] || 0} unit="件" tone="iris" />
                     <Stat label="承認済" value={summary.counts['承認済'] || 0} unit="件" tone="leaf" />
-                    <Stat label="非承認" value={summary.counts['非承認'] || 0} unit="件" tone="amber" />
+                    <Stat label="差戻し" value={summary.counts['差戻し'] || 0} unit="件" tone="amber" />
                 </Stack>
             </Section>
 
@@ -389,7 +389,7 @@ function LeaveSearch({ userId }) {
                                             }}>
                                                 {row.reason || '(理由なし)'}
                                             </Typography>
-                                            {row.status === '非承認' && row.remarks && (
+                                            {row.status === '差戻し' && row.remarks && (
                                                 <Typography variant="caption" sx={{ color: 'var(--accent-rose)', display: 'block', mt: 0.25 }}>
                                                     承認者備考: {row.remarks}
                                                 </Typography>

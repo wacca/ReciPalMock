@@ -86,7 +86,7 @@ const calculateWorkTimes = (clockIn, clockOut) => {
 };
 
 const toApprovalStatusKey = (s) => (
-    s === '承認済' ? 'approved' : s === '非承認' ? 'rejected' : s === '取消' ? 'cancelled' : s === '下書き' ? 'draft' : 'pending'
+    s === '承認済' ? 'approved' : s === '差戻し' ? 'rejected' : s === '取消' ? 'cancelled' : s === '下書き' ? 'draft' : 'pending'
 );
 
 function AttendanceInput({ username = '', userId = '' }) {
@@ -108,7 +108,7 @@ function AttendanceInput({ username = '', userId = '' }) {
 
     const currentSnapshot = useMemo(() => buildSnapshot(record.entries), [record.entries]);
     const hasUnsavedChanges = currentSnapshot !== lastSavedSnapshot;
-    const isEditable = record.approvalStatus === '下書き' || record.approvalStatus === '非承認';
+    const isEditable = record.approvalStatus === '下書き' || record.approvalStatus === '差戻し';
     const isLocked = !isEditable;
 
     useEffect(() => {
@@ -224,7 +224,7 @@ function AttendanceInput({ username = '', userId = '' }) {
             setSnackbar({ open: true, message: '保存前に入力エラーを修正してください', severity: 'warning' });
             return;
         }
-        const updated = { ...record, approvalStatus: record.approvalStatus === '非承認' ? '下書き' : record.approvalStatus };
+        const updated = { ...record, approvalStatus: record.approvalStatus === '差戻し' ? '下書き' : record.approvalStatus };
         persist(updated);
         setRecord(updated);
         setLastSavedSnapshot(buildSnapshot(updated.entries));
@@ -342,7 +342,7 @@ function AttendanceInput({ username = '', userId = '' }) {
                         </Typography>
                     )}
                 </Stack>
-                {record.approvalStatus === '非承認' && record.remarks && (
+                {record.approvalStatus === '差戻し' && record.remarks && (
                     <Alert severity="warning" sx={{ mt: 1.5, borderRadius: 'var(--radius-md)' }}>
                         <Typography variant="caption" sx={{ fontWeight: 700, display: 'block' }}>承認者備考</Typography>
                         {record.remarks}

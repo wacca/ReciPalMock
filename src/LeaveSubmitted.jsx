@@ -20,11 +20,11 @@ import StatusChip from './ui/StatusChip.jsx';
 import ApplicationCard from './ui/ApplicationCard.jsx';
 import IntegrationStatusChip from './ui/IntegrationStatusChip.jsx';
 
-const STATUS_OPTIONS = ['申請中', '承認済', '非承認', '取消'];
+const STATUS_OPTIONS = ['申請中', '承認済', '差戻し', '取消'];
 
 const toStatusKey = (s) => {
     if (s === '承認済') return 'approved';
-    if (s === '非承認') return 'rejected';
+    if (s === '差戻し') return 'rejected';
     if (s === '取消') return 'cancelled';
     return 'pending';
 };
@@ -110,7 +110,7 @@ function LeaveSubmitted({ userId }) {
         <PageScaffold
             eyebrow="申請"
             title="勤怠申請履歴"
-            subtitle="自分が出した勤怠申請（休暇・時間休・遅刻・早退）の履歴です。期間・状態で絞り込み、申請中は取消、非承認は再申請できます。"
+            subtitle="自分が出した勤怠申請（休暇・時間休・遅刻・早退）の履歴です。期間・状態で絞り込み、申請中は取消、差戻しは修正のうえ再申請または取下げできます。"
             actions={(
                 <Button
                     variant="text"
@@ -170,7 +170,7 @@ function LeaveSubmitted({ userId }) {
                     <Stat label="該当件数" value={filtered.length} tone="primary" suffix={`件 / 全 ${submitted.length} 件`} />
                     <Stat label="申請中" value={counts['申請中'] || 0} tone="iris" />
                     <Stat label="承認済" value={counts['承認済'] || 0} tone="leaf" />
-                    <Stat label="非承認" value={counts['非承認'] || 0} tone="rose" />
+                    <Stat label="差戻し" value={counts['差戻し'] || 0} tone="rose" />
                 </Stack>
             </Section>
 
@@ -265,7 +265,7 @@ function LeaveSubmitted({ userId }) {
                                                 )}
                                             </>
                                         )}
-                                        {status === '非承認' && row.remarks && (
+                                        {status === '差戻し' && row.remarks && (
                                             <Alert severity="warning" sx={{ borderRadius: 'var(--radius-md)' }}>
                                                 <Typography variant="caption" sx={{ fontWeight: 700, display: 'block' }}>承認者備考</Typography>
                                                 {row.remarks}
@@ -276,7 +276,7 @@ function LeaveSubmitted({ userId }) {
                                                 この申請は取り消されています。再度申請が必要な場合は「勤怠申請」画面から新規作成してください。
                                             </Alert>
                                         )}
-                                        {(status === '申請中' || status === '非承認') && (
+                                        {(status === '申請中' || status === '差戻し') && (
                                             <Stack
                                                 direction="row"
                                                 spacing={0.5}
@@ -294,7 +294,7 @@ function LeaveSubmitted({ userId }) {
                                                         </IconButton>
                                                     </Tooltip>
                                                 )}
-                                                {status === '非承認' && (
+                                                {status === '差戻し' && (
                                                     <>
                                                         <Tooltip title="理由を編集">
                                                             <IconButton
@@ -312,6 +312,15 @@ function LeaveSubmitted({ userId }) {
                                                                 sx={{ color: 'var(--accent-leaf)' }}
                                                             >
                                                                 <ReplayRoundedIcon fontSize="small" />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                        <Tooltip title="申請を取下げ">
+                                                            <IconButton
+                                                                color="error"
+                                                                size="small"
+                                                                onClick={(e) => { e.stopPropagation(); setCancelTargetId(row.id); }}
+                                                            >
+                                                                <RemoveCircleOutlineRoundedIcon fontSize="small" />
                                                             </IconButton>
                                                         </Tooltip>
                                                     </>

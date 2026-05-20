@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-    TextField, Button, Typography, Box, MenuItem, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio,
+    TextField, Button, Typography, Box, MenuItem,
     Dialog, DialogContent, Snackbar, Alert, IconButton, Tooltip, Stack,
 } from '@mui/material';
 import { useLocation } from 'react-router-dom';
@@ -14,6 +14,7 @@ import UploadFileRoundedIcon from '@mui/icons-material/UploadFileRounded';
 import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded';
 import {
     EXPENSE_CATEGORIES,
+    PAYMENT_METHODS,
     buildExpenseApplication,
     emptyExpenseRow,
     formatYen,
@@ -34,7 +35,6 @@ const hasExpenseRowInput = (row = {}) =>
 function ApplicationForm({ userId }) {
     const location = useLocation();
     const [formDataList, setFormDataList] = useState([emptyExpenseRow()]);
-    const [paymentType, setPaymentType] = useState('個人立替払用');
     const [openDialog, setOpenDialog] = useState(false);
     const [selectedReceipt, setSelectedReceipt] = useState(null);
     const [drafts, setDrafts] = useState([]);
@@ -52,7 +52,6 @@ function ApplicationForm({ userId }) {
         if (!location.state?.startNew) return;
         setSelectedDraftId('new');
         setFormDataList([emptyExpenseRow()]);
-        setPaymentType('個人立替払用');
         setMode('edit');
     }, [location.state]);
 
@@ -90,7 +89,7 @@ function ApplicationForm({ userId }) {
 
     const handleSaveDraft = () => {
         const id = selectedDraftId === 'new' ? `draft_${Date.now()}` : selectedDraftId;
-        const newDraft = { id, formDataList: formDataList.map(normalizeExpenseRow), paymentType, updated: new Date().toISOString() };
+        const newDraft = { id, formDataList: formDataList.map(normalizeExpenseRow), updated: new Date().toISOString() };
         const next = selectedDraftId === 'new' ? [...drafts, newDraft] : drafts.map((d) => (d.id === id ? newDraft : d));
         setDrafts(next);
         localStorage.setItem('expenseDrafts', JSON.stringify(next));
@@ -100,7 +99,7 @@ function ApplicationForm({ userId }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        const app = buildExpenseApplication({ rows: formDataList, paymentType, draftId: selectedDraftId, applicantId: userId });
+        const app = buildExpenseApplication({ rows: formDataList, draftId: selectedDraftId, applicantId: userId });
         const apps = loadExpenseApplications();
         saveExpenseApplications([app, ...apps]);
         if (selectedDraftId !== 'new') {
@@ -119,16 +118,24 @@ function ApplicationForm({ userId }) {
         setMode('edit');
         const draft = drafts.find((d) => d.id === id);
         if (draft) {
-            setFormDataList(draft.formDataList.map((r) => ({ ...emptyExpenseRow(), ...r })));
-            setPaymentType(draft.paymentType);
+            setFormDataList(draft.formDataList.map((r) => ({
+                ...emptyExpenseRow(),
+                ...r,
+                paymentMethod: r.paymentMethod || draft.paymentType || '個人立替払用',
+            })));
         }
     };
 
     const handleNew = () => {
         setSelectedDraftId('new');
         setFormDataList([emptyExpenseRow()]);
-        setPaymentType('個人立替払用');
         setMode('edit');
+    };
+
+    const handleAddRow = () => {
+        const last = formDataList[formDataList.length - 1];
+        const inheritedPaymentMethod = last?.paymentMethod || '個人立替払用';
+        setFormDataList([...formDataList, { ...emptyExpenseRow(), paymentMethod: inheritedPaymentMethod }]);
     };
 
     const currentTotal = getExpenseApplicationTotal({ details: formDataList });
@@ -177,7 +184,9 @@ function ApplicationForm({ userId }) {
                                             {draft.updated ? new Date(draft.updated).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
                                         </Typography>
                                     </Stack>
-                                    <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)' }}>{draft.paymentType}</Typography>
+                                    <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)' }}>
+                                        {Array.from(new Set((draft.formDataList || []).map((r) => r.paymentMethod).filter(Boolean))).join(' / ') || draft.paymentType || '-'}
+                                    </Typography>
                                     <Typography variant="body2" sx={{ color: 'var(--ink-primary)' }}>
                                         {draft.formDataList?.[0]?.description || '(内容未入力)'}
                                     </Typography>
@@ -241,18 +250,6 @@ function ApplicationForm({ userId }) {
                 </Stack>
             </Box>
 
-            <Section padded>
-                <FormControl component="fieldset">
-                    <FormLabel component="legend" sx={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-tertiary)', letterSpacing: 0.5 }}>
-                        支払種別
-                    </FormLabel>
-                    <RadioGroup row name="paymentType" value={paymentType} onChange={(e) => setPaymentType(e.target.value)}>
-                        <FormControlLabel value="個人立替払用" control={<Radio />} label="個人立替払用" />
-                        <FormControlLabel value="法人カード経費分" control={<Radio />} label="法人カード経費分" />
-                    </RadioGroup>
-                </FormControl>
-            </Section>
-
             <Box component="form" id="expense-form" onSubmit={handleSubmit}>
                 <Stack spacing={1.5}>
                     {formDataList.map((formData, index) => (
@@ -291,6 +288,21 @@ function ApplicationForm({ userId }) {
                                         {formatYen(formData.amount)}
                                     </Typography>
                                 )}
+                                <TextField
+                                    select
+                                    label="支払方法"
+                                    name="paymentMethod"
+                                    value={formData.paymentMethod || '個人立替払用'}
+                                    onChange={(e) => handleChange(index, e)}
+                                    size="small"
+                                    sx={{ minWidth: 180 }}
+                                >
+                                    {PAYMENT_METHODS.map((method) => (
+                                        <MenuItem key={method} value={method}>
+                                            {method}
+                                        </MenuItem>
+                                    ))}
+                                </TextField>
                                 <Tooltip title="この行を削除">
                                     <IconButton color="error" size="small" onClick={() => handleDeleteFields(index)}>
                                         <DeleteOutlineRoundedIcon fontSize="small" />
@@ -372,7 +384,7 @@ function ApplicationForm({ userId }) {
                 <Button
                     variant="outlined"
                     startIcon={<AddRoundedIcon />}
-                    onClick={() => setFormDataList([...formDataList, emptyExpenseRow()])}
+                    onClick={handleAddRow}
                     sx={{ borderStyle: 'dashed', width: '100%', paddingBlock: 1.5, mt: 2, color: 'var(--ink-tertiary)' }}
                 >
                     明細行を追加

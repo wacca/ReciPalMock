@@ -28,9 +28,8 @@ import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 import RequestQuoteRoundedIcon from '@mui/icons-material/RequestQuoteRounded';
 import {
     EXPENSE_CATEGORIES,
+    PAYMENT_METHODS,
     formatYen,
-    getExpenseApplicationStatus,
-    getExpenseApplicationTotal,
     getExpenseIntegrationStatus,
     loadExpenseApplications,
     saveExpenseApplications,
@@ -44,8 +43,7 @@ import ScopeSelector, { SCOPE_OPTIONS, filterByScope } from './ui/ScopeSelector.
 import IntegrationStatusChip from './ui/IntegrationStatusChip.jsx';
 import { getUserProfile } from './userDirectory';
 
-const STATUS_OPTIONS = ['申請中', '承認済', '非承認', '取消'];
-const PAYMENT_TYPES = ['個人立替払用', '法人カード経費分'];
+const STATUS_OPTIONS = ['申請中', '承認済', '差戻し', '取消'];
 const INTEGRATION_FILTER_OPTIONS = [
     { value: 'pending', label: '連携待ち' },
     { value: 'synced', label: '連携済' },
@@ -55,7 +53,7 @@ const ADMIN_SCOPE_OPTIONS = SCOPE_OPTIONS.filter((o) => o.value !== 'self');
 
 const toStatusKey = (s) => {
     if (s === '承認済') return 'approved';
-    if (s === '非承認') return 'rejected';
+    if (s === '差戻し') return 'rejected';
     if (s === '取消') return 'cancelled';
     return 'pending';
 };
@@ -67,45 +65,64 @@ const inDateRange = (date, from, to) => {
     return true;
 };
 
-const toRow = (app) => {
-    const status = getExpenseApplicationStatus(app);
-    const total = getExpenseApplicationTotal(app);
-    const categories = Array.from(new Set(app.details.map((d) => d.category).filter(Boolean)));
-    const descriptions = app.details.map((d) => d.description).filter(Boolean).join(' / ');
-    const destinations = app.details.map((d) => d.destination).filter(Boolean).join(' / ');
-    const detailDates = app.details.map((d) => d.date).filter(Boolean);
-    return {
-        key: app.applicationId,
+const toDetailRows = (app) => {
+    const integrationStatus = getExpenseIntegrationStatus(app);
+    const details = app.details || [];
+    if (details.length === 0) {
+        return [{
+            key: `${app.applicationId}#empty`,
+            applicationId: app.applicationId,
+            applicationDate: app.applicationDate,
+            applicantId: app.applicantId,
+            applicantName: app.applicantName,
+            applicantDepartment: app.applicantDepartment,
+            detailIndex: 0,
+            date: '',
+            description: '(明細なし)',
+            destination: '',
+            category: '',
+            paymentMethod: '',
+            amount: 0,
+            status: '明細なし',
+            statusKey: 'pending',
+            remarks: app.remarks || '',
+            integrationStatus,
+            haystack: [app.applicationId, app.applicantName, app.applicantDepartment, app.remarks]
+                .filter(Boolean).join(' ').toLowerCase(),
+        }];
+    }
+    return details.map((detail, index) => ({
+        key: `${app.applicationId}#${index}`,
         applicationId: app.applicationId,
         applicationDate: app.applicationDate,
-        targetDate: detailDates[0] || app.applicationDate,
-        allDates: [app.applicationDate, ...detailDates],
         applicantId: app.applicantId,
         applicantName: app.applicantName,
         applicantDepartment: app.applicantDepartment,
-        status,
-        statusKey: toStatusKey(status),
-        paymentType: app.paymentType || '',
-        descriptions: descriptions || '(明細なし)',
-        destinations,
-        categories,
-        amount: total,
+        detailIndex: index,
+        date: detail.date || '',
+        description: detail.description || '',
+        destination: detail.destination || '',
+        category: detail.category || '',
+        paymentMethod: detail.paymentMethod || '',
+        amount: Number(detail.amount || 0),
+        status: detail.status || '申請中',
+        statusKey: toStatusKey(detail.status || '申請中'),
         remarks: app.remarks || '',
-        integrationStatus: getExpenseIntegrationStatus(app),
+        integrationStatus,
         haystack: [
             app.applicationId,
             app.applicantName,
             app.applicantDepartment,
-            app.paymentType,
-            descriptions,
-            destinations,
+            detail.paymentMethod,
+            detail.description,
+            detail.destination,
+            detail.category,
             app.remarks,
-            categories.join(' '),
         ]
             .filter(Boolean)
             .join(' ')
             .toLowerCase(),
-    };
+    }));
 };
 
 function ExpenseSearch({ userId }) {
@@ -128,7 +145,7 @@ function ExpenseSearch({ userId }) {
         setApps(loadExpenseApplications());
     }, []);
 
-    const allRows = useMemo(() => apps.map(toRow), [apps]);
+    const allRows = useMemo(() => apps.flatMap(toDetailRows), [apps]);
 
     const scopedRows = useMemo(
         () => filterByScope(allRows, { scope, userId: profile.id, department: profile.department }),
@@ -143,18 +160,25 @@ function ExpenseSearch({ userId }) {
         return scopedRows
             .filter((row) => {
                 if (status !== 'all' && row.status !== status) return false;
-                if (category !== 'all' && !row.categories.includes(category)) return false;
-                if (paymentType !== 'all' && row.paymentType !== paymentType) return false;
+                if (category !== 'all' && row.category !== category) return false;
+                if (paymentType !== 'all' && row.paymentMethod !== paymentType) return false;
                 if (integrationFilter !== 'all' && row.integrationStatus !== integrationFilter) return false;
                 if (dateFrom || dateTo) {
-                    if (!row.allDates.some((d) => inDateRange(d, dateFrom, dateTo))) return false;
+                    const targetDate = row.date || row.applicationDate;
+                    if (!inDateRange(targetDate, dateFrom, dateTo)) return false;
                 }
                 if (min !== null && row.amount < min) return false;
                 if (max !== null && row.amount > max) return false;
                 if (kw && !row.haystack.includes(kw)) return false;
                 return true;
             })
-            .sort((a, b) => (b.applicationDate || '').localeCompare(a.applicationDate || ''));
+            .sort((a, b) => {
+                const byAppDate = (b.applicationDate || '').localeCompare(a.applicationDate || '');
+                if (byAppDate !== 0) return byAppDate;
+                const byAppId = (b.applicationId || '').localeCompare(a.applicationId || '');
+                if (byAppId !== 0) return byAppId;
+                return a.detailIndex - b.detailIndex;
+            });
     }, [scopedRows, keyword, status, category, paymentType, integrationFilter, dateFrom, dateTo, amountMin, amountMax]);
 
     const handleReset = () => {
@@ -169,10 +193,17 @@ function ExpenseSearch({ userId }) {
         setAmountMax('');
     };
 
-    const syncableTargets = useMemo(
-        () => filtered.filter((r) => r.integrationStatus === 'pending' || r.integrationStatus === 'error'),
-        [filtered],
-    );
+    const syncableTargets = useMemo(() => {
+        const seen = new Set();
+        const list = [];
+        for (const row of filtered) {
+            if (row.integrationStatus !== 'pending' && row.integrationStatus !== 'error') continue;
+            if (seen.has(row.applicationId)) continue;
+            seen.add(row.applicationId);
+            list.push(row);
+        }
+        return list;
+    }, [filtered]);
 
     const persistAndReload = (next) => {
         saveExpenseApplications(next);
@@ -185,22 +216,23 @@ function ExpenseSearch({ userId }) {
             return;
         }
         const columns = [
-            { label: '申請ID', value: (r) => r.applicationId },
-            { label: '申請日', value: (r) => r.applicationDate },
-            { label: '申請者', value: (r) => r.applicantName },
-            { label: '部署', value: (r) => r.applicantDepartment },
-            { label: '支払区分', value: (r) => r.paymentType },
-            { label: '費目', value: (r) => r.categories.join(' / ') },
-            { label: '内容', value: (r) => r.descriptions },
-            { label: '行き先', value: (r) => r.destinations },
-            { label: '金額', value: (r) => r.amount },
-            { label: '状態', value: (r) => r.status },
-            { label: '備考', value: (r) => r.remarks },
-            { label: '連携状況', value: (r) => r.integrationStatus },
+            { label: '申請ID', value: (row) => row.applicationId },
+            { label: '申請日', value: (row) => row.applicationDate },
+            { label: '申請者', value: (row) => row.applicantName },
+            { label: '部署', value: (row) => row.applicantDepartment },
+            { label: '明細日付', value: (row) => row.date },
+            { label: '内容', value: (row) => row.description },
+            { label: '行き先', value: (row) => row.destination },
+            { label: '費目', value: (row) => row.category },
+            { label: '支払方法', value: (row) => row.paymentMethod },
+            { label: '金額', value: (row) => row.amount },
+            { label: '明細状態', value: (row) => row.status },
+            { label: '備考', value: (row) => row.remarks },
+            { label: '連携状況', value: (row) => row.integrationStatus },
         ];
         const csv = buildCsv(filtered, columns);
         downloadCsv(csv, `expense-search-${todayStamp()}.csv`);
-        setSnackbar({ open: true, message: `${filtered.length} 件を CSV 出力しました`, severity: 'success' });
+        setSnackbar({ open: true, message: `${filtered.length} 明細を CSV 出力しました`, severity: 'success' });
     };
 
     const handleMarkSynced = () => {
@@ -220,7 +252,12 @@ function ExpenseSearch({ userId }) {
     const summary = useMemo(() => {
         const counts = filtered.reduce((acc, r) => { acc[r.status] = (acc[r.status] || 0) + 1; return acc; }, {});
         const total = filtered.reduce((sum, r) => sum + (r.amount || 0), 0);
-        return { total, counts, applicantCount: new Set(filtered.map((r) => r.applicantId)).size };
+        return {
+            total,
+            counts,
+            applicationCount: new Set(filtered.map((r) => r.applicationId)).size,
+            applicantCount: new Set(filtered.map((r) => r.applicantId)).size,
+        };
     }, [filtered]);
 
     const scopeHint = scope === 'department'
@@ -243,7 +280,7 @@ function ExpenseSearch({ userId }) {
         <PageScaffold
             eyebrow="申請"
             title="経費申請検索"
-            subtitle="申請済みの経費を横断検索します。スコープを切り替えて自分・部署・全社の申請を確認できます。"
+            subtitle="申請済みの経費を明細単位で横断検索します。スコープを切り替えて部署・全社の明細を確認できます。"
             actions={(
                 <>
                     <Button
@@ -321,10 +358,10 @@ function ExpenseSearch({ userId }) {
                             </Select>
                         </FormControl>
                         <FormControl size="small">
-                            <InputLabel>支払区分</InputLabel>
-                            <Select label="支払区分" value={paymentType} onChange={(e) => setPaymentType(e.target.value)}>
+                            <InputLabel>支払方法</InputLabel>
+                            <Select label="支払方法" value={paymentType} onChange={(e) => setPaymentType(e.target.value)}>
                                 <MenuItem value="all">すべて</MenuItem>
-                                {PAYMENT_TYPES.map((p) => <MenuItem key={p} value={p}>{p}</MenuItem>)}
+                                {PAYMENT_METHODS.map((p) => <MenuItem key={p} value={p}>{p}</MenuItem>)}
                             </Select>
                         </FormControl>
                         <FormControl size="small">
@@ -352,7 +389,8 @@ function ExpenseSearch({ userId }) {
 
             <Section tone="sunken" elevation={0}>
                 <Stack direction="row" spacing={4} flexWrap="wrap" alignItems="center">
-                    <Stat label="該当件数" value={filtered.length} unit="件" tone="primary" />
+                    <Stat label="明細件数" value={filtered.length} unit="件" tone="primary" />
+                    <Stat label="申請数" value={summary.applicationCount} unit="件" tone="primary" />
                     <Stat label="申請者数" value={summary.applicantCount} unit="名" tone="iris" />
                     <Stat label="申請中" value={summary.counts['申請中'] || 0} unit="件" tone="iris" />
                     <Stat label="承認済" value={summary.counts['承認済'] || 0} unit="件" tone="leaf" />
@@ -373,21 +411,31 @@ function ExpenseSearch({ userId }) {
                         <Table size="small">
                             <TableHead>
                                 <TableRow>
-                                    <TableCell sx={{ width: 120 }}>申請日</TableCell>
-                                    <TableCell sx={{ width: 160 }}>申請ID</TableCell>
-                                    <TableCell sx={{ width: 200 }}>申請者 / 部署</TableCell>
-                                    <TableCell sx={{ width: 140 }}>支払区分</TableCell>
-                                    <TableCell>内容</TableCell>
-                                    <TableCell sx={{ width: 140 }} align="right">金額</TableCell>
-                                    <TableCell sx={{ width: 110 }}>状態</TableCell>
-                                    <TableCell sx={{ width: 140 }}>連携状況</TableCell>
+                                    <TableCell sx={{ width: 120 }}>明細日付</TableCell>
+                                    <TableCell sx={{ width: 160 }}>申請ID / 申請日</TableCell>
+                                    <TableCell sx={{ width: 180 }}>申請者 / 部署</TableCell>
+                                    <TableCell sx={{ width: 140 }}>費目</TableCell>
+                                    <TableCell>内容 / 行き先</TableCell>
+                                    <TableCell sx={{ width: 140 }}>支払方法</TableCell>
+                                    <TableCell sx={{ width: 130 }} align="right">金額</TableCell>
+                                    <TableCell sx={{ width: 110 }}>明細状態</TableCell>
+                                    <TableCell sx={{ width: 130 }}>連携状況</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
                                 {filtered.map((row) => (
                                     <TableRow key={row.key} sx={{ '& td': { paddingBlock: 1.25 }, '&:hover': { background: 'var(--surface-sunken)' } }}>
-                                        <TableCell className="tabular-nums" sx={{ color: 'var(--ink-secondary)' }}>{row.applicationDate || '-'}</TableCell>
-                                        <TableCell sx={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 12.5 }}>{row.applicationId}</TableCell>
+                                        <TableCell className="tabular-nums" sx={{ color: 'var(--ink-secondary)' }}>{row.date || '-'}</TableCell>
+                                        <TableCell>
+                                            <Stack spacing={0.25}>
+                                                <Typography variant="body2" sx={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 12.5, color: 'var(--ink-primary)' }}>
+                                                    {row.applicationId}
+                                                </Typography>
+                                                <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)' }}>
+                                                    {row.applicationDate || '-'}
+                                                </Typography>
+                                            </Stack>
+                                        </TableCell>
                                         <TableCell>
                                             <Stack spacing={0.25}>
                                                 <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--ink-primary)' }}>
@@ -398,42 +446,35 @@ function ExpenseSearch({ userId }) {
                                                 </Typography>
                                             </Stack>
                                         </TableCell>
-                                        <TableCell sx={{ color: 'var(--ink-secondary)' }}>{row.paymentType || '-'}</TableCell>
+                                        <TableCell>
+                                            {row.category ? (
+                                                <Chip
+                                                    label={row.category}
+                                                    size="small"
+                                                    sx={{
+                                                        height: 22,
+                                                        fontSize: 11.5,
+                                                        background: 'var(--surface-sunken)',
+                                                        color: 'var(--ink-secondary)',
+                                                    }}
+                                                />
+                                            ) : (
+                                                <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)' }}>-</Typography>
+                                            )}
+                                        </TableCell>
                                         <TableCell>
                                             <Stack spacing={0.25}>
-                                                <Typography variant="body2" sx={{
-                                                    color: 'var(--ink-primary)',
-                                                    display: '-webkit-box',
-                                                    WebkitLineClamp: 2,
-                                                    WebkitBoxOrient: 'vertical',
-                                                    overflow: 'hidden',
-                                                }}>
-                                                    {row.descriptions}
-                                                    {row.destinations && (
-                                                        <Typography component="span" variant="caption" sx={{ color: 'var(--ink-tertiary)', ml: 0.5 }}>
-                                                            / {row.destinations}
-                                                        </Typography>
-                                                    )}
+                                                <Typography variant="body2" sx={{ color: 'var(--ink-primary)' }}>
+                                                    {row.description || '-'}
                                                 </Typography>
-                                                {row.categories.length > 0 && (
-                                                    <Stack direction="row" spacing={0.5} flexWrap="wrap">
-                                                        {row.categories.map((c) => (
-                                                            <Chip
-                                                                key={c}
-                                                                label={c}
-                                                                size="small"
-                                                                sx={{
-                                                                    height: 18,
-                                                                    fontSize: 11,
-                                                                    background: 'var(--surface-sunken)',
-                                                                    color: 'var(--ink-tertiary)',
-                                                                }}
-                                                            />
-                                                        ))}
-                                                    </Stack>
+                                                {row.destination && (
+                                                    <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)' }}>
+                                                        {row.destination}
+                                                    </Typography>
                                                 )}
                                             </Stack>
                                         </TableCell>
+                                        <TableCell sx={{ color: 'var(--ink-secondary)' }}>{row.paymentMethod || '-'}</TableCell>
                                         <TableCell align="right" className="tabular-nums" sx={{ fontWeight: 600, color: 'var(--accent-iris)' }}>
                                             {formatYen(row.amount)}
                                         </TableCell>

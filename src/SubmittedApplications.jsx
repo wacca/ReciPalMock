@@ -14,6 +14,7 @@ import SearchOffRoundedIcon from '@mui/icons-material/SearchOffRounded';
 import {
     EXPENSE_CATEGORIES,
     formatYen,
+    getApplicationPaymentMethods,
     getExpenseApplicationStatus,
     getExpenseApplicationTotal,
     loadExpenseApplications,
@@ -27,10 +28,10 @@ import StatusChip from './ui/StatusChip.jsx';
 import ApplicationCard from './ui/ApplicationCard.jsx';
 import IntegrationStatusChip from './ui/IntegrationStatusChip.jsx';
 
-const STATUS_OPTIONS = ['申請中', '承認済', '非承認', '取消'];
+const STATUS_OPTIONS = ['申請中', '承認済', '差戻し', '取消'];
 
 const toStatusKey = (s) => (
-    s === '承認済' ? 'approved' : s === '非承認' ? 'rejected' : s === '取消' ? 'cancelled' : 'pending'
+    s === '承認済' ? 'approved' : s === '差戻し' ? 'rejected' : s === '取消' ? 'cancelled' : 'pending'
 );
 
 function SubmittedApplications({ userId }) {
@@ -125,7 +126,7 @@ function SubmittedApplications({ userId }) {
         <PageScaffold
             eyebrow="申請"
             title="経費履歴"
-            subtitle="自分が申請した経費の履歴です。期間・状態で絞り込み、非承認のものは編集後に再申請できます。"
+            subtitle="自分が申請した経費の履歴です。期間・状態で絞り込み、差戻しのものは編集後に再申請または取下げできます。"
             actions={(
                 <Button
                     variant="text"
@@ -221,7 +222,7 @@ function SubmittedApplications({ userId }) {
                                     paddingBlock: 2,
                                     paddingLeft: { xs: 2.5, md: 3.5 },
                                     display: 'grid',
-                                    gridTemplateColumns: { xs: '1fr', md: '120px 1fr 180px 140px minmax(100px, auto)' },
+                                    gridTemplateColumns: { xs: '1fr', md: '120px 1fr 200px 140px minmax(100px, auto)' },
                                     gap: 2,
                                     alignItems: 'center',
                                 }}
@@ -234,7 +235,7 @@ function SubmittedApplications({ userId }) {
                                     <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)' }}>申請ID</Typography>
                                     <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--ink-primary)' }}>{group.applicationId}</Typography>
                                 </Box>
-                                <Typography variant="body2" sx={{ color: 'var(--ink-secondary)' }}>{group.paymentType || '-'}</Typography>
+                                <Typography variant="body2" sx={{ color: 'var(--ink-secondary)' }}>{getApplicationPaymentMethods(group).join(' / ') || '-'}</Typography>
                                 <Typography sx={{ fontWeight: 700, fontSize: 18, color: 'var(--accent-iris)' }} className="tabular-nums">
                                     {formatYen(total)}
                                 </Typography>
@@ -255,7 +256,7 @@ function SubmittedApplications({ userId }) {
                                     )}
                                 </Stack>
                             </Box>
-                            {status === '非承認' && group.remarks && (
+                            {status === '差戻し' && group.remarks && (
                                 <Alert severity="warning" sx={{ mx: { xs: 2, md: 3 }, mb: 1.5, borderRadius: 'var(--radius-md)' }}>
                                     <Typography variant="caption" sx={{ fontWeight: 700, display: 'block' }}>承認者備考</Typography>
                                     {group.remarks}
@@ -287,7 +288,7 @@ function SubmittedApplications({ userId }) {
                                             </TableBody>
                                         </Table>
                                     </TableContainer>
-                                    {(status === '申請中' || status === '非承認') && (
+                                    {(status === '申請中' || status === '差戻し') && (
                                         <Stack direction="row" spacing={0.5} sx={{ mt: 2 }} justifyContent="flex-end" alignItems="center">
                                             {status === '申請中' && (
                                                 <Tooltip title="申請を取消">
@@ -296,7 +297,7 @@ function SubmittedApplications({ userId }) {
                                                     </IconButton>
                                                 </Tooltip>
                                             )}
-                                            {status === '非承認' && (
+                                            {status === '差戻し' && (
                                                 <>
                                                     <Tooltip title="変更">
                                                         <IconButton color="primary" size="small" onClick={(e) => { e.stopPropagation(); handleEditGroup(group.applicationId); }}>
@@ -306,6 +307,11 @@ function SubmittedApplications({ userId }) {
                                                     <Tooltip title="再申請">
                                                         <IconButton size="small" sx={{ color: 'var(--accent-leaf)' }} onClick={(e) => { e.stopPropagation(); handleResubmitGroup(group.applicationId); }}>
                                                             <ReplayRoundedIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip title="申請を取下げ">
+                                                        <IconButton color="error" size="small" onClick={(e) => { e.stopPropagation(); setCancelTargetId(group.applicationId); }}>
+                                                            <RemoveCircleOutlineRoundedIcon fontSize="small" />
                                                         </IconButton>
                                                     </Tooltip>
                                                 </>
@@ -329,7 +335,8 @@ function SubmittedApplications({ userId }) {
                                     <TableCell sx={{ width: 150 }}>日付</TableCell>
                                     <TableCell sx={{ width: 220 }}>内容</TableCell>
                                     <TableCell>用途・行き先</TableCell>
-                                    <TableCell sx={{ width: 180 }}>費目</TableCell>
+                                    <TableCell sx={{ width: 160 }}>費目</TableCell>
+                                    <TableCell sx={{ width: 150 }}>支払方法</TableCell>
                                     <TableCell sx={{ width: 140 }}>金額</TableCell>
                                 </TableRow>
                             </TableHead>
@@ -340,6 +347,7 @@ function SubmittedApplications({ userId }) {
                                         <TableCell><TextField size="small" fullWidth value={row.description || ''} onChange={(e) => handleEditGroupRowChange(idx, 'description', e.target.value)} /></TableCell>
                                         <TableCell><TextField size="small" fullWidth value={row.destination || ''} onChange={(e) => handleEditGroupRowChange(idx, 'destination', e.target.value)} /></TableCell>
                                         <TableCell><TextField select size="small" fullWidth value={row.category || ''} onChange={(e) => handleEditGroupRowChange(idx, 'category', e.target.value)}>{EXPENSE_CATEGORIES.map((c) => <MenuItem key={c} value={c}>{c}</MenuItem>)}</TextField></TableCell>
+                                        <TableCell sx={{ color: 'var(--ink-secondary)' }}>{row.paymentMethod || '-'}</TableCell>
                                         <TableCell><TextField type="number" size="small" value={row.amount || ''} onChange={(e) => handleEditGroupRowChange(idx, 'amount', e.target.value)} InputProps={{ sx: { fontVariantNumeric: 'tabular-nums' } }} /></TableCell>
                                     </TableRow>
                                 ))}

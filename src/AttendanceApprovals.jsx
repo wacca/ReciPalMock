@@ -3,7 +3,7 @@ import {
     Box, Stack, Snackbar, Alert, TextField, FormControl, Select, MenuItem, Button, Typography, Tabs, Tab,
     InputLabel, ToggleButton, ToggleButtonGroup, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
 } from '@mui/material';
-import CancelRoundedIcon from '@mui/icons-material/CancelRounded';
+import AssignmentReturnRoundedIcon from '@mui/icons-material/AssignmentReturnRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import HowToRegRoundedIcon from '@mui/icons-material/HowToRegRounded';
 import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded';
@@ -24,10 +24,10 @@ const approvers = [
     { value: 'user2', label: '由引 安人(ubiast@univa.tech)' },
 ];
 
-const HISTORY_STATUS_OPTIONS = ['承認済', '非承認'];
+const HISTORY_STATUS_OPTIONS = ['承認済', '差戻し'];
 
 const toStatusKey = (s) => (
-    s === '承認済' ? 'approved' : s === '非承認' ? 'rejected' : s === '取消' ? 'cancelled' : 'pending'
+    s === '承認済' ? 'approved' : s === '差戻し' ? 'rejected' : s === '取消' ? 'cancelled' : 'pending'
 );
 
 const pad2 = (v) => String(v).padStart(2, '0');
@@ -97,7 +97,7 @@ function AttendanceApprovals() {
         const target = records.find((r) => r.id === id);
         if (!target) return;
         const comment = (commentMap[id] || '').trim();
-        if (newStatus === '非承認' && !comment) {
+        if (newStatus === '差戻し' && !comment) {
             setShowRejectFor(id);
             return;
         }
@@ -106,7 +106,7 @@ function AttendanceApprovals() {
             approvalStatus: newStatus,
             approvedBy: currentApproverLabel,
             approvedAt: new Date().toISOString(),
-            remarks: newStatus === '非承認' ? comment : '',
+            remarks: newStatus === '差戻し' ? comment : '',
             integrationStatus: newStatus === '承認済' ? 'pending' : 'not_applicable',
         };
         persist(upsertAttendance(records, updated));
@@ -218,7 +218,7 @@ function AttendanceApprovals() {
                                                 </TableBody>
                                             </Table>
                                         </TableContainer>
-                                        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', md: 'center' }} sx={{ mt: 2 }}>
+                                        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', md: 'flex-start' }} sx={{ mt: 2 }}>
                                             <TextField
                                                 label="承認者備考（差戻し時は必須）"
                                                 size="small"
@@ -228,9 +228,9 @@ function AttendanceApprovals() {
                                                 error={showReject && !comment.trim()}
                                                 helperText={showReject && !comment.trim() ? '差戻しには備考を入力してください' : ' '}
                                             />
-                                            <Stack direction="row" spacing={1} justifyContent="flex-end">
-                                                <Button variant="outlined" color="error" startIcon={<CancelRoundedIcon />} onClick={() => handleStatus(rec.id, '非承認')}>
-                                                    差戻し
+                                            <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ pt: { md: '8px' } }}>
+                                                <Button variant="outlined" color="warning" startIcon={<AssignmentReturnRoundedIcon />} onClick={() => handleStatus(rec.id, '差戻し')}>
+                                                    差戻す
                                                 </Button>
                                                 <Button variant="contained" color="primary" startIcon={<CheckCircleRoundedIcon />} onClick={() => handleStatus(rec.id, '承認済')}>
                                                     承認する
@@ -342,7 +342,7 @@ function AttendanceApprovals() {
                                                         承認: {rec.approvedBy || '-'}
                                                         {rec.approvedAt && ` ・ ${new Date(rec.approvedAt).toLocaleString()}`}
                                                     </Typography>
-                                                    {rec.approvalStatus === '非承認' && rec.remarks && (
+                                                    {rec.approvalStatus === '差戻し' && rec.remarks && (
                                                         <Typography variant="caption" sx={{ color: 'var(--accent-rose)', display: 'block', mt: 0.25 }}>
                                                             備考: {rec.remarks}
                                                         </Typography>

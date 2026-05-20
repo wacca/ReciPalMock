@@ -19,7 +19,7 @@ import StatusChip, { statusBarColor } from './ui/StatusChip.jsx';
 import ScopeSelector, { SCOPE_OPTIONS, filterByScope } from './ui/ScopeSelector.jsx';
 import IntegrationStatusChip from './ui/IntegrationStatusChip.jsx';
 
-const STATUS_OPTIONS = ['下書き', '申請中', '承認済', '非承認', '取消'];
+const STATUS_OPTIONS = ['下書き', '申請中', '承認済', '差戻し', '取消'];
 const INTEGRATION_FILTER_OPTIONS = [
     { value: 'pending', label: '連携待ち' },
     { value: 'synced', label: '連携済' },
@@ -32,7 +32,7 @@ const CLOSING_OPTIONS = [
 const ADMIN_SCOPE_OPTIONS = SCOPE_OPTIONS.filter((o) => o.value !== 'self');
 
 const toStatusKey = (s) => (
-    s === '承認済' ? 'approved' : s === '非承認' ? 'rejected' : s === '取消' ? 'cancelled' : s === '下書き' ? 'draft' : 'pending'
+    s === '承認済' ? 'approved' : s === '差戻し' ? 'rejected' : s === '取消' ? 'cancelled' : s === '下書き' ? 'draft' : 'pending'
 );
 
 const pad2 = (v) => String(v).padStart(2, '0');

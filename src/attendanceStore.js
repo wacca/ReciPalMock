@@ -2,7 +2,10 @@ import { DEFAULT_USER, getUserProfile } from './userDirectory';
 
 const STORAGE_KEY = 'attendanceTimesheets_v1';
 
-export const ATTENDANCE_APPROVAL_STATUSES = ['下書き', '申請中', '承認済', '非承認', '取消'];
+export const ATTENDANCE_APPROVAL_STATUSES = ['下書き', '申請中', '承認済', '差戻し', '取消'];
+
+// 旧データ互換: 「非承認」を「差戻し」に正規化
+const migrateApprovalStatus = (status) => (status === '非承認' ? '差戻し' : status);
 
 const sampleWeekdayEntries = (year, month, baseDay = 1) => {
     const entries = {};
@@ -94,7 +97,7 @@ const SAMPLE_TIMESHEETS = [
         userId: 'tachibana@univa.tech', userName: '立花 蓮', department: '開発部',
         year: 2026, month: 4,
         entries: sampleWeekdayEntries(2026, 4),
-        approvalStatus: '非承認',
+        approvalStatus: '差戻し',
         submittedAt: '2026-05-01T22:00:00.000Z',
         approvedBy: '由引 安人(ubiast@univa.tech)',
         approvedAt: '2026-05-02T10:00:00.000Z',
@@ -139,7 +142,7 @@ export const normalizeAttendanceTimesheet = (record = {}) => ({
     year: Number(record.year || new Date().getFullYear()),
     month: Number(record.month || new Date().getMonth() + 1),
     entries: record.entries && typeof record.entries === 'object' ? record.entries : {},
-    approvalStatus: record.approvalStatus || '下書き',
+    approvalStatus: migrateApprovalStatus(record.approvalStatus || '下書き'),
     submittedAt: record.submittedAt || '',
     approvedBy: record.approvedBy || '',
     approvedAt: record.approvedAt || '',
