@@ -187,7 +187,7 @@ function LeaveApprovals() {
                                                 error={showReject && !comment.trim()}
                                                 helperText={showReject && !comment.trim() ? '差戻しには備考を入力してください' : ' '}
                                             />
-                                            <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ pt: { md: '8px' } }}>
+                                            <Stack direction="row" spacing={1} justifyContent="flex-end" alignItems="center" sx={{ minHeight: { md: 48 }, alignSelf: { md: 'flex-start' }, transform: { md: 'translateY(-5px)' } }}>
                                                 <Button variant="outlined" color="warning" startIcon={<AssignmentReturnRoundedIcon />} onClick={() => handleStatus(row.id, '差戻し')}>
                                                     差戻す
                                                 </Button>
