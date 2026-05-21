@@ -1,5 +1,6 @@
 import { Box, Button, Stack, Typography } from '@mui/material';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
+import { useUiPreferences } from './UiPreferencesContext.jsx';
 
 export const FocusCard = ({
     eyebrow = '今フォーカスすると効率的',
@@ -11,6 +12,11 @@ export const FocusCard = ({
     accent = 'primary',
     secondaryActions,
 }) => {
+    const { prefs } = useUiPreferences();
+    const isCompact = prefs?.density === 'compact';
+    const showEyebrow = !isCompact && Boolean(eyebrow);
+    const showDescription = !isCompact && Boolean(description);
+
     const tone = accent === 'iris'
         ? { soft: 'var(--accent-iris-soft)', solid: 'var(--accent-iris)', ink: 'var(--accent-iris)' }
         : accent === 'amber'
@@ -25,7 +31,7 @@ export const FocusCard = ({
                 borderRadius: 'var(--radius-xl)',
                 background: `linear-gradient(135deg, ${tone.soft} 0%, var(--surface-raised) 70%)`,
                 boxShadow: 'var(--shadow-2)',
-                padding: { xs: 3, md: 4 },
+                padding: isCompact ? { xs: 2.25, md: 2.75 } : { xs: 3, md: 4 },
             }}
         >
             <Box
@@ -40,6 +46,8 @@ export const FocusCard = ({
                     background: tone.solid,
                     opacity: 0.10,
                     filter: 'blur(8px)',
+                    transform: 'translateZ(0)',
+                    willChange: 'filter',
                 }}
             />
             <Box
@@ -54,6 +62,8 @@ export const FocusCard = ({
                     background: tone.solid,
                     opacity: 0.06,
                     filter: 'blur(6px)',
+                    transform: 'translateZ(0)',
+                    willChange: 'filter',
                 }}
             />
             <Stack
@@ -67,8 +77,8 @@ export const FocusCard = ({
                     {icon && (
                         <Box
                             sx={{
-                                width: 56,
-                                height: 56,
+                                width: isCompact ? 44 : 56,
+                                height: isCompact ? 44 : 56,
                                 borderRadius: 'var(--radius-lg)',
                                 display: 'grid',
                                 placeItems: 'center',
@@ -76,19 +86,21 @@ export const FocusCard = ({
                                 color: tone.solid,
                                 boxShadow: 'var(--shadow-1)',
                                 flexShrink: 0,
-                                '& svg': { fontSize: 30 },
+                                '& svg': { fontSize: isCompact ? 24 : 30 },
                             }}
                         >
                             {icon}
                         </Box>
                     )}
                     <Box sx={{ minWidth: 0 }}>
-                        <Typography
-                            variant="overline"
-                            sx={{ color: tone.ink, fontWeight: 700, letterSpacing: 1.2 }}
-                        >
-                            {eyebrow}
-                        </Typography>
+                        {showEyebrow && (
+                            <Typography
+                                variant="overline"
+                                sx={{ color: tone.ink, fontWeight: 700, letterSpacing: 1.2 }}
+                            >
+                                {eyebrow}
+                            </Typography>
+                        )}
                         <Typography
                             component="h2"
                             variant="h5"
@@ -96,15 +108,15 @@ export const FocusCard = ({
                                 fontWeight: 700,
                                 lineHeight: 1.2,
                                 color: 'var(--ink-primary)',
-                                mt: 0.5,
+                                mt: showEyebrow ? 0.5 : 0,
                                 m: 0,
-                                fontSize: { xs: 20, md: 24 },
+                                fontSize: isCompact ? { xs: 17, md: 19 } : { xs: 20, md: 24 },
                             }}
                         >
                             {title}
                         </Typography>
-                        {description && (
-                            <Typography variant="body2" sx={{ color: 'var(--ink-secondary)', mt: 0.75, maxWidth: 540 }}>
+                        {showDescription && (
+                            <Typography variant="body2" sx={{ color: 'var(--ink-secondary)', mt: 0.75, maxWidth: 720 }}>
                                 {description}
                             </Typography>
                         )}

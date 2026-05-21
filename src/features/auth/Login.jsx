@@ -144,7 +144,9 @@ function Login({ onLogin }) {
                             paddingBlock: 1.4,
                             fontSize: 16,
                             borderRadius: 'var(--radius-pill)',
-                            boxShadow: 'var(--shadow-glow)',
+                            boxShadow: 'var(--shadow-2)',
+                            '&:hover': { boxShadow: 'var(--shadow-2)' },
+                            '&:focus-visible': { boxShadow: 'var(--shadow-glow)' },
                         }}
                     >
                         ログイン

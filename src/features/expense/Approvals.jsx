@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
     Box, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, MenuItem, Select, FormControl,
     TextField, Snackbar, Alert, Button, Typography, Tabs, Tab, InputLabel, ToggleButton, ToggleButtonGroup,
@@ -9,6 +9,9 @@ import FactCheckRoundedIcon from '@mui/icons-material/FactCheckRounded';
 import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded';
 import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 import SearchOffRoundedIcon from '@mui/icons-material/SearchOffRounded';
+import KeyboardCommandKeyRoundedIcon from '@mui/icons-material/KeyboardCommandKeyRounded';
+import UndoRoundedIcon from '@mui/icons-material/UndoRounded';
+import { KeyHint } from '../../shared/ui/KeyHint.jsx';
 import {
     formatYen,
     getApplicationPaymentMethods,
@@ -35,13 +38,24 @@ const toStatusKey = (s) => (
     s === '承認済' ? 'approved' : s === '差戻し' ? 'rejected' : s === '取消' ? 'cancelled' : 'pending'
 );
 
+const isTypingTarget = (el) => {
+    if (!el) return false;
+    const tag = el.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+    if (el.isContentEditable) return true;
+    return false;
+};
+
 function Approvals() {
     const [data, setData] = useState([]);
     const [commentMap, setCommentMap] = useState({});
     const [selectedApprover, setSelectedApprover] = useState('user1');
-    const [snackbar, setSnackbar] = useState({ open: false, message: '' });
+    const [snackbar, setSnackbar] = useState({ open: false, message: '', undoSnapshot: null });
     const [showRejectFor, setShowRejectFor] = useState(null);
     const [tab, setTab] = useState('pending');
+    const [focusedIdx, setFocusedIdx] = useState(0);
+    const rowRefs = useRef({});
+    const commentRefs = useRef({});
 
     const defaultRange = useMemo(() => getLastNMonths(3), []);
     const [historyFrom, setHistoryFrom] = useState(defaultRange.from);
@@ -61,8 +75,14 @@ function Approvals() {
         const comment = (commentMap[target.applicationId] || '').trim();
         if (newStatus === '差戻し' && !comment) {
             setShowRejectFor(target.applicationId);
+            // 差戻し時はコメント欄にフォーカスを移して気付かせる
+            setTimeout(() => {
+                const node = commentRefs.current[target.applicationId];
+                node?.focus?.();
+            }, 0);
             return;
         }
+        const snapshot = data;
         persist(data.map((g) => (
             g.applicationId === groupId
                 ? {
@@ -77,12 +97,83 @@ function Approvals() {
         )));
         setCommentMap({ ...commentMap, [target.applicationId]: '' });
         setShowRejectFor(null);
-        setSnackbar({ open: true, message: newStatus === '承認済' ? '申請を承認しました' : '申請を差戻しました' });
+        setSnackbar({
+            open: true,
+            message: newStatus === '承認済' ? '申請を承認しました' : '申請を差戻しました',
+            undoSnapshot: snapshot,
+        });
+    };
+
+    const handleUndo = () => {
+        const snap = snackbar.undoSnapshot;
+        if (!snap) return;
+        persist(snap);
+        setSnackbar({ open: false, message: '', undoSnapshot: null });
     };
 
     const approvalTargets = useMemo(() => (
         data.filter((a) => getExpenseApplicationStatus(a) === '申請中')
     ), [data]);
+
+    // approvalTargets が変わったら focus index を範囲内にクランプ
+    useEffect(() => {
+        if (approvalTargets.length === 0) {
+            setFocusedIdx(0);
+            return;
+        }
+        setFocusedIdx((i) => Math.min(i, approvalTargets.length - 1));
+    }, [approvalTargets.length]);
+
+    const scrollFocusedIntoView = useCallback((idx) => {
+        const target = approvalTargets[idx];
+        if (!target) return;
+        const node = rowRefs.current[target.applicationId];
+        node?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
+    }, [approvalTargets]);
+
+    useEffect(() => {
+        if (tab !== 'pending') return;
+        const handler = (e) => {
+            if (e.metaKey || e.ctrlKey || e.altKey) return;
+            if (isTypingTarget(e.target)) return;
+            if (approvalTargets.length === 0) return;
+
+            const key = e.key;
+            if (key === 'j' || key === 'ArrowDown') {
+                e.preventDefault();
+                setFocusedIdx((i) => {
+                    const next = Math.min(approvalTargets.length - 1, i + 1);
+                    scrollFocusedIntoView(next);
+                    return next;
+                });
+            } else if (key === 'k' || key === 'ArrowUp') {
+                e.preventDefault();
+                setFocusedIdx((i) => {
+                    const next = Math.max(0, i - 1);
+                    scrollFocusedIntoView(next);
+                    return next;
+                });
+            } else if (key === 'a' || key === 'A') {
+                e.preventDefault();
+                const target = approvalTargets[focusedIdx];
+                if (target) handleStatus(target.applicationId, '承認済');
+            } else if (key === 'r' || key === 'R') {
+                e.preventDefault();
+                const target = approvalTargets[focusedIdx];
+                if (!target) return;
+                const comment = (commentMap[target.applicationId] || '').trim();
+                if (!comment) {
+                    setShowRejectFor(target.applicationId);
+                    const node = commentRefs.current[target.applicationId];
+                    node?.focus?.();
+                    return;
+                }
+                handleStatus(target.applicationId, '差戻し');
+            }
+        };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, [tab, approvalTargets, focusedIdx, commentMap, scrollFocusedIntoView]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const historyRows = useMemo(() => (
         data
@@ -147,12 +238,50 @@ function Approvals() {
                     </Section>
                 ) : (
                     <Stack spacing={1.5}>
-                        {approvalTargets.map((group) => {
+                        <Box
+                            role="note"
+                            sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1,
+                                flexWrap: 'wrap',
+                                paddingInline: 1.5,
+                                paddingBlock: 0.75,
+                                borderRadius: 'var(--radius-pill)',
+                                background: 'var(--surface-sunken)',
+                                color: 'var(--ink-tertiary)',
+                                fontSize: 12,
+                                fontWeight: 600,
+                                alignSelf: 'flex-start',
+                            }}
+                        >
+                            <KeyboardCommandKeyRoundedIcon sx={{ fontSize: 14 }} />
+                            キーボード操作:
+                            <KeyHint keys={['J']} /> / <KeyHint keys={['K']} />
+                            <Box component="span" sx={{ color: 'var(--ink-muted)' }}>移動</Box>
+                            <KeyHint keys={['A']} />
+                            <Box component="span" sx={{ color: 'var(--ink-muted)' }}>承認</Box>
+                            <KeyHint keys={['R']} />
+                            <Box component="span" sx={{ color: 'var(--ink-muted)' }}>差戻</Box>
+                        </Box>
+                        {approvalTargets.map((group, idx) => {
                             const comment = commentMap[group.applicationId] || '';
                             const total = getExpenseApplicationTotal(group);
                             const showReject = showRejectFor === group.applicationId;
+                            const isFocused = idx === focusedIdx;
                             return (
-                                <ApplicationCard key={group.applicationId} statusKey="pending">
+                                <Box
+                                    key={group.applicationId}
+                                    ref={(el) => { rowRefs.current[group.applicationId] = el; }}
+                                    onClick={() => setFocusedIdx(idx)}
+                                    sx={{
+                                        borderRadius: 'var(--radius-lg)',
+                                        outline: isFocused ? '2px solid var(--accent-primary)' : '2px solid transparent',
+                                        outlineOffset: 2,
+                                        transition: 'var(--motion-fast)',
+                                    }}
+                                >
+                                <ApplicationCard statusKey="pending">
                                     <Box sx={{ paddingInline: { xs: 2, md: 3 }, paddingLeft: { xs: 2.5, md: 3.5 }, paddingBlock: 2 }}>
                                         <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'center' }} spacing={1.5}>
                                             <Box>
@@ -216,6 +345,7 @@ function Approvals() {
                                                 sx={{ flex: 1 }}
                                                 error={showReject && !comment.trim()}
                                                 helperText={showReject && !comment.trim() ? '差戻しには備考を入力してください' : null}
+                                                inputRef={(el) => { commentRefs.current[group.applicationId] = el; }}
                                             />
                                             <Stack direction="row" spacing={1} justifyContent="flex-end" alignItems="center" flexShrink={0}>
                                                 <Button
@@ -238,6 +368,7 @@ function Approvals() {
                                         </Stack>
                                     </Box>
                                 </ApplicationCard>
+                                </Box>
                             );
                         })}
                     </Stack>
@@ -384,8 +515,29 @@ function Approvals() {
                 </>
             )}
 
-            <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ open: false, message: '' })}>
-                <Alert severity="success" sx={{ width: '100%' }}>{snackbar.message}</Alert>
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={5000}
+                onClose={() => setSnackbar({ open: false, message: '', undoSnapshot: null })}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+                <Alert
+                    severity="success"
+                    sx={{ width: '100%' }}
+                    action={snackbar.undoSnapshot ? (
+                        <Button
+                            color="inherit"
+                            size="small"
+                            startIcon={<UndoRoundedIcon />}
+                            onClick={handleUndo}
+                            sx={{ fontWeight: 700 }}
+                        >
+                            元に戻す
+                        </Button>
+                    ) : null}
+                >
+                    {snackbar.message}
+                </Alert>
             </Snackbar>
         </PageScaffold>
     );

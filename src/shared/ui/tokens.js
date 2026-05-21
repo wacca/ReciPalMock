@@ -62,7 +62,8 @@ export const ink = {
     light: {
         primary: '#0F172A',
         secondary: '#475569',
-        tertiary: '#64748B',
+        // tertiary は 11–13px caption で多用されるため、F7F9FC 上で 5.9:1 を確保（WCAG AA / 旧値 #64748B は 4.5:1 境界だった）
+        tertiary: '#525E73',
         muted: '#94A3B8',
         invert: '#FFFFFF',
         line: 'rgba(15,23,42,0.08)',
@@ -198,5 +199,8 @@ export const buildCssVars = (mode) => {
 
         '--top-strip-h': '64px',
         '--page-max-w': '1280px',
+
+        '--font-sans': '"Inter", "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", "Meiryo UI", "Meiryo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+        '--font-mono': '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
     };
 };

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
     Box, Stack, Snackbar, Alert, TextField, FormControl, Select, MenuItem, Button, Typography, Tabs, Tab,
     InputLabel, ToggleButton, ToggleButtonGroup,
@@ -9,6 +9,9 @@ import HowToRegRoundedIcon from '@mui/icons-material/HowToRegRounded';
 import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded';
 import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 import SearchOffRoundedIcon from '@mui/icons-material/SearchOffRounded';
+import KeyboardCommandKeyRoundedIcon from '@mui/icons-material/KeyboardCommandKeyRounded';
+import UndoRoundedIcon from '@mui/icons-material/UndoRounded';
+import { KeyHint } from '../../shared/ui/KeyHint.jsx';
 import { formatLeavePeriod, loadLeaveApplications, saveLeaveApplications } from './leaveApplicationStore';
 import { applyLeaveToAttendance } from '../attendance/attendanceStore';
 import { getLastNMonths, inDateRange } from '../../shared/utils/dateRangeHelpers';
@@ -29,13 +32,24 @@ const toStatusKey = (s) => (
     s === '承認済' ? 'approved' : s === '差戻し' ? 'rejected' : s === '取消' ? 'cancelled' : 'pending'
 );
 
+const isTypingTarget = (el) => {
+    if (!el) return false;
+    const tag = el.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+    if (el.isContentEditable) return true;
+    return false;
+};
+
 function LeaveApprovals() {
     const [data, setData] = useState([]);
     const [commentMap, setCommentMap] = useState({});
     const [selectedApprover, setSelectedApprover] = useState('user1');
-    const [snackbar, setSnackbar] = useState({ open: false, message: '' });
+    const [snackbar, setSnackbar] = useState({ open: false, message: '', undoSnapshot: null });
     const [showRejectFor, setShowRejectFor] = useState(null);
     const [tab, setTab] = useState('pending');
+    const [focusedIdx, setFocusedIdx] = useState(0);
+    const rowRefs = useRef({});
+    const commentRefs = useRef({});
 
     const defaultRange = useMemo(() => getLastNMonths(3), []);
     const [historyFrom, setHistoryFrom] = useState(defaultRange.from);
@@ -54,8 +68,13 @@ function LeaveApprovals() {
         const comment = (commentMap[id] || '').trim();
         if (status === '差戻し' && !comment) {
             setShowRejectFor(id);
+            setTimeout(() => {
+                const node = commentRefs.current[id];
+                node?.focus?.();
+            }, 0);
             return;
         }
+        const snapshot = data;
         const approvedRow = target ? {
             ...target,
             status,
@@ -81,12 +100,78 @@ function LeaveApprovals() {
                 message = `勤怠申請を承認しました（締め済の月 ${r.skippedClosed} 日分は勤怠反映スキップ）`;
             }
         }
-        setSnackbar({ open: true, message });
+        setSnackbar({ open: true, message, undoSnapshot: snapshot });
+    };
+
+    const handleUndo = () => {
+        const snap = snackbar.undoSnapshot;
+        if (!snap) return;
+        persist(snap);
+        setSnackbar({ open: false, message: '', undoSnapshot: null });
     };
 
     const approvalTargets = useMemo(() => (
         data.filter((row) => (row.status || '申請中') === '申請中')
     ), [data]);
+
+    useEffect(() => {
+        if (approvalTargets.length === 0) {
+            setFocusedIdx(0);
+            return;
+        }
+        setFocusedIdx((i) => Math.min(i, approvalTargets.length - 1));
+    }, [approvalTargets.length]);
+
+    const scrollFocusedIntoView = useCallback((idx) => {
+        const target = approvalTargets[idx];
+        if (!target) return;
+        const node = rowRefs.current[target.id];
+        node?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
+    }, [approvalTargets]);
+
+    useEffect(() => {
+        if (tab !== 'pending') return;
+        const handler = (e) => {
+            if (e.metaKey || e.ctrlKey || e.altKey) return;
+            if (isTypingTarget(e.target)) return;
+            if (approvalTargets.length === 0) return;
+
+            const key = e.key;
+            if (key === 'j' || key === 'ArrowDown') {
+                e.preventDefault();
+                setFocusedIdx((i) => {
+                    const next = Math.min(approvalTargets.length - 1, i + 1);
+                    scrollFocusedIntoView(next);
+                    return next;
+                });
+            } else if (key === 'k' || key === 'ArrowUp') {
+                e.preventDefault();
+                setFocusedIdx((i) => {
+                    const next = Math.max(0, i - 1);
+                    scrollFocusedIntoView(next);
+                    return next;
+                });
+            } else if (key === 'a' || key === 'A') {
+                e.preventDefault();
+                const target = approvalTargets[focusedIdx];
+                if (target) handleStatus(target.id, '承認済');
+            } else if (key === 'r' || key === 'R') {
+                e.preventDefault();
+                const target = approvalTargets[focusedIdx];
+                if (!target) return;
+                const comment = (commentMap[target.id] || '').trim();
+                if (!comment) {
+                    setShowRejectFor(target.id);
+                    const node = commentRefs.current[target.id];
+                    node?.focus?.();
+                    return;
+                }
+                handleStatus(target.id, '差戻し');
+            }
+        };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, [tab, approvalTargets, focusedIdx, commentMap, scrollFocusedIntoView]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const historyRows = useMemo(() => (
         data
@@ -149,11 +234,49 @@ function LeaveApprovals() {
                     </Section>
                 ) : (
                     <Stack spacing={1.25}>
-                        {approvalTargets.map((row) => {
+                        <Box
+                            role="note"
+                            sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1,
+                                flexWrap: 'wrap',
+                                paddingInline: 1.5,
+                                paddingBlock: 0.75,
+                                borderRadius: 'var(--radius-pill)',
+                                background: 'var(--surface-sunken)',
+                                color: 'var(--ink-tertiary)',
+                                fontSize: 12,
+                                fontWeight: 600,
+                                alignSelf: 'flex-start',
+                            }}
+                        >
+                            <KeyboardCommandKeyRoundedIcon sx={{ fontSize: 14 }} />
+                            キーボード操作:
+                            <KeyHint keys={['J']} /> / <KeyHint keys={['K']} />
+                            <Box component="span" sx={{ color: 'var(--ink-muted)' }}>移動</Box>
+                            <KeyHint keys={['A']} />
+                            <Box component="span" sx={{ color: 'var(--ink-muted)' }}>承認</Box>
+                            <KeyHint keys={['R']} />
+                            <Box component="span" sx={{ color: 'var(--ink-muted)' }}>差戻</Box>
+                        </Box>
+                        {approvalTargets.map((row, idx) => {
                             const comment = commentMap[row.id] || '';
                             const showReject = showRejectFor === row.id;
+                            const isFocused = idx === focusedIdx;
                             return (
-                                <ApplicationCard key={row.id} statusKey="pending">
+                                <Box
+                                    key={row.id}
+                                    ref={(el) => { rowRefs.current[row.id] = el; }}
+                                    onClick={() => setFocusedIdx(idx)}
+                                    sx={{
+                                        borderRadius: 'var(--radius-lg)',
+                                        outline: isFocused ? '2px solid var(--accent-primary)' : '2px solid transparent',
+                                        outlineOffset: 2,
+                                        transition: 'var(--motion-fast)',
+                                    }}
+                                >
+                                <ApplicationCard statusKey="pending">
                                     <Box sx={{ paddingInline: { xs: 2, md: 3 }, paddingLeft: { xs: 2.5, md: 3.5 }, paddingBlock: 2 }}>
                                         <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'center' }} spacing={1.5}>
                                             <Box>
@@ -186,6 +309,7 @@ function LeaveApprovals() {
                                                 sx={{ flex: 1 }}
                                                 error={showReject && !comment.trim()}
                                                 helperText={showReject && !comment.trim() ? '差戻しには備考を入力してください' : null}
+                                                inputRef={(el) => { commentRefs.current[row.id] = el; }}
                                             />
                                             <Stack direction="row" spacing={1} justifyContent="flex-end" alignItems="center" flexShrink={0}>
                                                 <Button variant="outlined" color="warning" startIcon={<AssignmentReturnRoundedIcon />} onClick={() => handleStatus(row.id, '差戻し')}>
@@ -198,6 +322,7 @@ function LeaveApprovals() {
                                         </Stack>
                                     </Box>
                                 </ApplicationCard>
+                                </Box>
                             );
                         })}
                     </Stack>
@@ -340,8 +465,29 @@ function LeaveApprovals() {
                 </>
             )}
 
-            <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ open: false, message: '' })}>
-                <Alert severity="success" sx={{ width: '100%' }}>{snackbar.message}</Alert>
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={5000}
+                onClose={() => setSnackbar({ open: false, message: '', undoSnapshot: null })}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+                <Alert
+                    severity="success"
+                    sx={{ width: '100%' }}
+                    action={snackbar.undoSnapshot ? (
+                        <Button
+                            color="inherit"
+                            size="small"
+                            startIcon={<UndoRoundedIcon />}
+                            onClick={handleUndo}
+                            sx={{ fontWeight: 700 }}
+                        >
+                            元に戻す
+                        </Button>
+                    ) : null}
+                >
+                    {snackbar.message}
+                </Alert>
             </Snackbar>
         </PageScaffold>
     );

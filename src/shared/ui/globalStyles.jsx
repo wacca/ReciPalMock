@@ -15,7 +15,11 @@ export const AppGlobalStyles = ({ mode = 'light' }) => {
                     color: 'var(--ink-primary)',
                     margin: 0,
                     minWidth: 320,
+                    fontFamily: 'var(--font-sans)',
                     fontFeatureSettings: '"cv11", "ss01", "ss03"',
+                    textRendering: 'optimizeLegibility',
+                    WebkitFontSmoothing: 'antialiased',
+                    MozOsxFontSmoothing: 'grayscale',
                 },
                 '*': { boxSizing: 'border-box' },
                 a: { color: 'inherit', textDecoration: 'none' },
@@ -53,6 +57,14 @@ export const AppGlobalStyles = ({ mode = 'light' }) => {
                 '@keyframes recrovaShimmer': {
                     '0%': { backgroundPosition: '-200% 0' },
                     '100%': { backgroundPosition: '200% 0' },
+                },
+                '@media (prefers-reduced-motion: reduce)': {
+                    '*, *::before, *::after': {
+                        animationDuration: '0.001ms !important',
+                        animationIterationCount: '1 !important',
+                        transitionDuration: '0.001ms !important',
+                        scrollBehavior: 'auto !important',
+                    },
                 },
             }}
         />

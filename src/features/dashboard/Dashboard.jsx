@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Box, Button, Stack, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded';
@@ -11,6 +11,9 @@ import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import CloudSyncRoundedIcon from '@mui/icons-material/CloudSyncRounded';
 import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded';
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
+import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
+import ExpandLessRoundedIcon from '@mui/icons-material/ExpandLessRounded';
 
 import PageScaffold from '../../shared/ui/PageScaffold.jsx';
 import Section from '../../shared/ui/Section.jsx';
@@ -166,9 +169,12 @@ const tones = {
     leaf:    { bg: 'var(--accent-leaf-soft)',    fg: 'var(--accent-leaf)' },
 };
 
+const PRIMARY_ACTIONS_INITIAL = 3;
+
 function Dashboard({ username = '', role = ROLES.EMPLOYEE }) {
     const navigate = useNavigate();
     const counts = usePendingCounts();
+    const [actionsExpanded, setActionsExpanded] = useState(false);
 
     const focus = useMemo(() => focusCandidate({ counts, role }), [counts, role]);
 
@@ -210,20 +216,44 @@ function Dashboard({ username = '', role = ROLES.EMPLOYEE }) {
             list.push({ label: '承認待ち 勤怠申請', value: counts.leave, unit: '件', tone: metricTone(counts.leave) });
         }
         list.push({ label: '進行中 下書き', value: counts.drafts, unit: '件', tone: 'iris' });
-        list.push({
-            label: '本日',
-            value: new Date().toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', weekday: 'short' }),
-            unit: '',
-            tone: 'primary',
-        });
         return list;
     }, [role, counts]);
 
+    const todayLabel = useMemo(
+        () => new Date().toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', weekday: 'short' }),
+        [],
+    );
+    const todayChip = (
+        <Box
+            aria-label={`本日 ${todayLabel}`}
+            sx={{
+                display: 'inline-flex',
+                alignItems: 'baseline',
+                gap: 0.5,
+                paddingInline: 1.25,
+                paddingBlock: 0.5,
+                borderRadius: 'var(--radius-pill)',
+                background: 'var(--surface-raised)',
+                boxShadow: 'var(--shadow-1)',
+                color: 'var(--ink-secondary)',
+                fontSize: 12,
+                fontWeight: 700,
+                whiteSpace: 'nowrap',
+                fontVariantNumeric: 'tabular-nums',
+            }}
+        >
+            <Box component="span" sx={{ color: 'var(--ink-tertiary)', fontWeight: 600, letterSpacing: 0.4 }}>本日</Box>
+            <Box component="span" sx={{ color: 'var(--ink-primary)' }}>{todayLabel}</Box>
+        </Box>
+    );
+
     return (
         <PageScaffold
-            eyebrow={`${greetingByHour()} ・ ${ROLE_LABELS[role]}`}
-            title={username ? `${username}さん、おかえりなさい` : 'おかえりなさい'}
-            subtitle="今日の業務の入口です。承認待ち・進行中の状況をひと目で確認できます。"
+            headline={
+                username
+                    ? `${greetingByHour()}、${username}さん（${ROLE_LABELS[role]}）`
+                    : `${greetingByHour()}（${ROLE_LABELS[role]}）`
+            }
         >
             <FocusCard
                 eyebrow={focus.eyebrow}
@@ -233,6 +263,7 @@ function Dashboard({ username = '', role = ROLES.EMPLOYEE }) {
                 icon={focus.icon}
                 accent={focus.accent}
                 onAction={focus.path ? () => navigate(focus.path, focus.state ? { state: focus.state } : undefined) : undefined}
+                secondaryActions={todayChip}
             />
 
             <Box
@@ -294,14 +325,32 @@ function Dashboard({ username = '', role = ROLES.EMPLOYEE }) {
                 })}
             </Box>
 
-            {showIntegrationSection && (
+            {showIntegrationSection && totalPending + totalErrors === 0 && (
+                <Box
+                    sx={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        alignSelf: 'flex-start',
+                        paddingInline: 1.5,
+                        paddingBlock: 0.75,
+                        borderRadius: 'var(--radius-pill)',
+                        background: 'var(--accent-leaf-soft)',
+                        color: 'var(--accent-leaf)',
+                        fontSize: 12,
+                        fontWeight: 700,
+                    }}
+                    aria-label="外部SaaS連携 すべて連携済"
+                >
+                    <CheckCircleRoundedIcon sx={{ fontSize: 16 }} />
+                    外部 SaaS 連携 — すべて連携済
+                </Box>
+            )}
+
+            {showIntegrationSection && totalPending + totalErrors > 0 && (
                 <Section
                     title="外部 SaaS 連携状況"
-                    subtitle={
-                        totalPending + totalErrors === 0
-                            ? 'すべて連携済です。'
-                            : `連携待ち ${totalPending} 件 / 連携エラー ${totalErrors} 件 — 該当する画面で「CSV 出力」「連携済にマーク」を実行できます。`
-                    }
+                    subtitle={`連携待ち ${totalPending} 件 / 連携エラー ${totalErrors} 件 — 該当する画面で「CSV 出力」「連携済にマーク」を実行できます。`}
                     icon={<CloudSyncRoundedIcon />}
                 >
                     <Box
@@ -404,10 +453,15 @@ function Dashboard({ username = '', role = ROLES.EMPLOYEE }) {
                     gap: 3,
                 }}
             >
-                {primaryActions.length > 0 && (
+                {primaryActions.length > 0 && (() => {
+                    const visibleActions = actionsExpanded
+                        ? primaryActions
+                        : primaryActions.slice(0, PRIMARY_ACTIONS_INITIAL);
+                    const hiddenCount = primaryActions.length - PRIMARY_ACTIONS_INITIAL;
+                    return (
                     <Section
                         title="主要アクション"
-                        subtitle="よく使う操作。Ctrl/⌘+K でも開けます。"
+                        subtitle="次にやるなら、この中から。Ctrl/⌘+K でも開けます。"
                         actions={<KeyHint keys={['Mod', 'K']} />}
                     >
                         <Box
@@ -417,7 +471,7 @@ function Dashboard({ username = '', role = ROLES.EMPLOYEE }) {
                                 gap: 1.5,
                             }}
                         >
-                            {primaryActions.map((action, idx) => {
+                            {visibleActions.map((action, idx) => {
                                 const tone = tones[action.tone];
                                 const badge = action.badge;
                                 return (
@@ -527,8 +581,26 @@ function Dashboard({ username = '', role = ROLES.EMPLOYEE }) {
                                 );
                             })}
                         </Box>
+                        {hiddenCount > 0 && (
+                            <Box sx={{ mt: 1.5, textAlign: 'center' }}>
+                                <Button
+                                    variant="text"
+                                    onClick={() => setActionsExpanded((v) => !v)}
+                                    endIcon={actionsExpanded ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
+                                    sx={{
+                                        color: 'var(--ink-secondary)',
+                                        fontWeight: 600,
+                                        textTransform: 'none',
+                                        '&:hover': { color: 'var(--accent-primary)', background: 'var(--accent-primary-soft)' },
+                                    }}
+                                >
+                                    {actionsExpanded ? '閉じる' : `他${hiddenCount}件を見る`}
+                                </Button>
+                            </Box>
+                        )}
                     </Section>
-                )}
+                    );
+                })()}
 
                 {showAdminSection && (
                     <Section

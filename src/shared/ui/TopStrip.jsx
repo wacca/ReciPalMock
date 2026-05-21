@@ -144,6 +144,8 @@ export const TopStrip = ({
                 background: 'var(--surface-rail-top)',
                 backdropFilter: 'blur(16px) saturate(140%)',
                 WebkitBackdropFilter: 'blur(16px) saturate(140%)',
+                willChange: 'backdrop-filter',
+                transform: 'translateZ(0)',
                 borderBottom: '1px solid var(--ink-line)',
                 display: 'flex',
                 alignItems: 'center',
