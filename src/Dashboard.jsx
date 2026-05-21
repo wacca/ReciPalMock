@@ -233,7 +233,7 @@ function Dashboard({ username = '', role = ROLES.EMPLOYEE }) {
             <Box
                 sx={{
                     display: 'grid',
-                    gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: `repeat(${Math.min(4, metrics.length)}, minmax(0, 1fr))` },
+                    gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(auto-fit, minmax(180px, 1fr))' },
                     gap: 2,
                 }}
             >
@@ -302,7 +302,7 @@ function Dashboard({ username = '', role = ROLES.EMPLOYEE }) {
                     <Box
                         sx={{
                             display: 'grid',
-                            gridTemplateColumns: { xs: '1fr', sm: `repeat(${Math.min(3, visibleIntegrationDomains.length)}, minmax(0, 1fr))` },
+                            gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fit, minmax(240px, 1fr))' },
                             gap: 1.5,
                         }}
                     >

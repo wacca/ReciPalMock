@@ -205,7 +205,7 @@ function LeaveSubmitted({ userId }) {
                                     paddingLeft: { xs: 2.5, md: 3.5 },
                                     paddingBlock: 1.75,
                                     display: 'grid',
-                                    gridTemplateColumns: { xs: '1fr', md: 'minmax(190px, auto) 100px 1fr minmax(110px, auto)' },
+                                    gridTemplateColumns: { xs: '1fr', md: '220px 110px minmax(0, 1fr) auto' },
                                     alignItems: 'center',
                                     gap: 2,
                                 }}

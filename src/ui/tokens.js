@@ -195,5 +195,8 @@ export const buildCssVars = (mode) => {
         '--motion-base': motion.base,
         '--motion-slow': motion.slow,
         '--motion-spring': motion.spring,
+
+        '--top-strip-h': '64px',
+        '--page-max-w': '1280px',
     };
 };

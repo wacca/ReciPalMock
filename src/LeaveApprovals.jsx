@@ -177,7 +177,7 @@ function LeaveApprovals() {
                                                 </Typography>
                                             </Box>
                                         </Stack>
-                                        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', md: 'flex-start' }} sx={{ mt: 2 }}>
+                                        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', md: 'center' }} sx={{ mt: 2 }}>
                                             <TextField
                                                 label="承認者備考（差戻し時は必須）"
                                                 size="small"
@@ -185,9 +185,9 @@ function LeaveApprovals() {
                                                 onChange={(e) => setCommentMap({ ...commentMap, [row.id]: e.target.value })}
                                                 sx={{ flex: 1 }}
                                                 error={showReject && !comment.trim()}
-                                                helperText={showReject && !comment.trim() ? '差戻しには備考を入力してください' : ' '}
+                                                helperText={showReject && !comment.trim() ? '差戻しには備考を入力してください' : null}
                                             />
-                                            <Stack direction="row" spacing={1} justifyContent="flex-end" alignItems="center" sx={{ minHeight: { md: 48 }, alignSelf: { md: 'flex-start' }, transform: { md: 'translateY(-5px)' } }}>
+                                            <Stack direction="row" spacing={1} justifyContent="flex-end" alignItems="center" flexShrink={0}>
                                                 <Button variant="outlined" color="warning" startIcon={<AssignmentReturnRoundedIcon />} onClick={() => handleStatus(row.id, '差戻し')}>
                                                     差戻す
                                                 </Button>

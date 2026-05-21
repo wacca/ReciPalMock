@@ -223,7 +223,7 @@ function AttendanceManagement({ userId }) {
                 <Box sx={{
                     display: 'grid',
                     gap: 2,
-                    gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(6, 1fr)' },
+                    gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(3, 1fr)', lg: 'repeat(6, minmax(140px, 1fr))' },
                 }}>
                     <TextField size="small" type="number" label="年" value={year} onChange={(e) => setYear(Number(e.target.value))} inputProps={{ min: 2020, max: 2100 }} />
                     <TextField size="small" type="number" label="月" value={month} onChange={(e) => setMonth(Math.min(12, Math.max(1, Number(e.target.value))))} inputProps={{ min: 1, max: 12 }} />

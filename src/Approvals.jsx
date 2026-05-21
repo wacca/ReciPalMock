@@ -205,7 +205,7 @@ function Approvals() {
                                         <Stack
                                             direction={{ xs: 'column', md: 'row' }}
                                             spacing={1.5}
-                                            alignItems={{ xs: 'stretch', md: 'flex-start' }}
+                                            alignItems={{ xs: 'stretch', md: 'center' }}
                                             sx={{ mt: 2 }}
                                         >
                                             <TextField
@@ -215,9 +215,9 @@ function Approvals() {
                                                 onChange={(e) => setCommentMap({ ...commentMap, [group.applicationId]: e.target.value })}
                                                 sx={{ flex: 1 }}
                                                 error={showReject && !comment.trim()}
-                                                helperText={showReject && !comment.trim() ? '差戻しには備考を入力してください' : ' '}
+                                                helperText={showReject && !comment.trim() ? '差戻しには備考を入力してください' : null}
                                             />
-                                            <Stack direction="row" spacing={1} justifyContent="flex-end" alignItems="center" sx={{ minHeight: { md: 48 }, alignSelf: { md: 'flex-start' }, transform: { md: 'translateY(-5px)' } }}>
+                                            <Stack direction="row" spacing={1} justifyContent="flex-end" alignItems="center" flexShrink={0}>
                                                 <Button
                                                     variant="outlined"
                                                     color="warning"

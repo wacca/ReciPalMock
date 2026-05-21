@@ -361,7 +361,7 @@ function AttendanceInput({ username = '', userId = '' }) {
                     <Box
                         sx={{
                             display: 'grid',
-                            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(180px, 1fr))', lg: '120px 120px repeat(3, minmax(180px, 1fr))' },
+                            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(180px, 1fr))', md: '120px 120px repeat(3, minmax(180px, 1fr))' },
                             gap: 2,
                         }}
                     >
@@ -379,7 +379,7 @@ function AttendanceInput({ username = '', userId = '' }) {
                     <Box
                         sx={{
                             display: 'grid',
-                            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(180px, 1fr))', lg: '140px 160px 140px 140px 200px auto' },
+                            gridTemplateColumns: { xs: '1fr', md: 'minmax(160px, 200px) 1fr 1fr 1fr 1fr auto' },
                             gap: 2,
                             alignItems: 'center',
                             padding: 2,
@@ -389,7 +389,7 @@ function AttendanceInput({ username = '', userId = '' }) {
                             pointerEvents: isLocked ? 'none' : 'auto',
                         }}
                     >
-                        <Box sx={{ gridColumn: { xs: '1', sm: '1 / -1', lg: 'auto' } }}>
+                        <Box sx={{ gridColumn: { xs: '1', md: 'auto' } }}>
                             <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'var(--accent-iris)' }}>
                                 型を流す
                             </Typography>
@@ -428,7 +428,7 @@ function AttendanceInput({ username = '', userId = '' }) {
                     <Box
                         sx={{
                             display: 'grid',
-                            gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(7, minmax(0, 1fr))' },
+                            gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(auto-fit, minmax(110px, 1fr))' },
                             gap: 1,
                         }}
                     >

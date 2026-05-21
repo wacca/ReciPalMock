@@ -273,7 +273,7 @@ function LeaveApplication({ userId }) {
             <Box
                 sx={{
                     position: 'sticky',
-                    top: 60,
+                    top: 'var(--top-strip-h)',
                     zIndex: 5,
                     paddingInline: 2,
                     paddingBlock: 1.25,

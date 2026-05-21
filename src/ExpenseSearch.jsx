@@ -340,7 +340,7 @@ function ExpenseSearch({ userId }) {
                         sx={{
                             display: 'grid',
                             gap: 2,
-                            gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' },
+                            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, minmax(140px, 1fr))' },
                         }}
                     >
                         <FormControl size="small">
@@ -376,7 +376,7 @@ function ExpenseSearch({ userId }) {
                         sx={{
                             display: 'grid',
                             gap: 2,
-                            gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' },
+                            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, minmax(140px, 1fr))' },
                         }}
                     >
                         <TextField size="small" type="date" label="期間（開始）" InputLabelProps={{ shrink: true }} value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />

@@ -229,7 +229,7 @@ function ApplicationForm({ userId }) {
             <Box
                 sx={{
                     position: 'sticky',
-                    top: 60,
+                    top: 'var(--top-strip-h)',
                     zIndex: 5,
                     paddingInline: 2,
                     paddingBlock: 1.25,
@@ -349,7 +349,7 @@ function ApplicationForm({ userId }) {
                                 </Box>
                                 <Box sx={{ gridColumn: { md: 'span 4' } }}>
                                     <Stack direction="row" spacing={1.5} alignItems="center">
-                                        <Button variant="outlined" component="label" startIcon={<UploadFileRoundedIcon />} sx={{ borderStyle: 'dashed', flex: 1 }}>
+                                        <Button variant="outlined" component="label" startIcon={<UploadFileRoundedIcon />} sx={{ borderStyle: 'dashed', maxWidth: 360, width: '100%' }}>
                                             {formData.receiptName ? '領収書を変更' : '領収書をアップロード'}
                                             <input type="file" hidden onChange={(e) => handleReceiptUpload(index, e)} />
                                         </Button>

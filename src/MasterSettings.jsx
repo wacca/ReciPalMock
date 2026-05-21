@@ -204,7 +204,7 @@ function MasterSettings() {
             <Box
                 sx={{
                     display: 'grid',
-                    gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 320px) minmax(0, 1fr)' },
+                    gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 260px) minmax(0, 1fr)', lg: 'minmax(0, 320px) minmax(0, 1fr)' },
                     gap: 2.5,
                     alignItems: 'flex-start',
                 }}

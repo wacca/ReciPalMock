@@ -108,7 +108,7 @@ export const TopStrip = ({
                 top: 0,
                 zIndex: 10,
                 paddingInline: { xs: 1.5, md: 3 },
-                paddingBlock: 1.25,
+                paddingBlock: 1,
                 background: 'var(--surface-rail-top)',
                 backdropFilter: 'blur(16px) saturate(140%)',
                 WebkitBackdropFilter: 'blur(16px) saturate(140%)',
@@ -116,7 +116,8 @@ export const TopStrip = ({
                 display: 'flex',
                 alignItems: 'center',
                 gap: 1.5,
-                minHeight: 60,
+                minHeight: 'var(--top-strip-h)',
+                height: 'var(--top-strip-h)',
             }}
         >
             {!isDesktop && (

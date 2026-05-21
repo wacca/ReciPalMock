@@ -13,6 +13,9 @@ export const PageScaffold = ({
             display: 'flex',
             flexDirection: 'column',
             gap: 3,
+            width: '100%',
+            maxWidth: 'var(--page-max-w)',
+            marginInline: 'auto',
             animation: 'recrovaFloatIn 220ms cubic-bezier(.2,.8,.2,1)',
             ...sx,
         }}

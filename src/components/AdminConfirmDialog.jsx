@@ -28,9 +28,8 @@ function AdminConfirmDialog({
             onClose={onCancel}
             maxWidth="xs"
             fullWidth
-            PaperProps={{ sx: { padding: 1 } }}
         >
-            <DialogTitle sx={{ pb: 0.5 }}>
+            <DialogTitle sx={{ pb: 1 }}>
                 <Stack direction="row" alignItems="center" spacing={1.5}>
                     <Box
                         sx={{
@@ -51,7 +50,7 @@ function AdminConfirmDialog({
                     </Typography>
                 </Stack>
             </DialogTitle>
-            <DialogContent>
+            <DialogContent sx={{ pt: 0 }}>
                 <Typography variant="body2" sx={{ color: 'var(--ink-secondary)', lineHeight: 1.6 }}>
                     {message}
                 </Typography>
