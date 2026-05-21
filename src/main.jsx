@@ -4,9 +4,9 @@ import { BrowserRouter } from 'react-router-dom';
 import { CssBaseline, ThemeProvider } from '@mui/material';
 import './index.css';
 import App from './App.jsx';
-import { UiPreferencesProvider, useUiPreferences } from './ui/UiPreferencesContext.jsx';
-import { createAppTheme } from './ui/createAppTheme.js';
-import { AppGlobalStyles } from './ui/globalStyles.jsx';
+import { UiPreferencesProvider, useUiPreferences } from './shared/ui/UiPreferencesContext.jsx';
+import { createAppTheme } from './shared/ui/createAppTheme.js';
+import { AppGlobalStyles } from './shared/ui/globalStyles.jsx';
 
 function ThemedApp() {
     const { resolvedMode, prefs } = useUiPreferences();
