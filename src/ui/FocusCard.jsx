@@ -90,12 +90,14 @@ export const FocusCard = ({
                             {eyebrow}
                         </Typography>
                         <Typography
+                            component="h2"
                             variant="h5"
                             sx={{
                                 fontWeight: 700,
                                 lineHeight: 1.2,
                                 color: 'var(--ink-primary)',
                                 mt: 0.5,
+                                m: 0,
                                 fontSize: { xs: 20, md: 24 },
                             }}
                         >

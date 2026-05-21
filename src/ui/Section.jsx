@@ -74,7 +74,7 @@ export const Section = ({
                         )}
                         <Box sx={{ minWidth: 0 }}>
                             {title && (
-                                <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'var(--ink-primary)' }}>
+                                <Typography component="h2" variant="subtitle1" sx={{ fontWeight: 700, color: 'var(--ink-primary)', m: 0 }}>
                                     {title}
                                 </Typography>
                             )}

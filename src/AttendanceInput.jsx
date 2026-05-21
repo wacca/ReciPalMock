@@ -516,7 +516,7 @@ function AttendanceInput({ username = '', userId = '' }) {
                                 </TableCell>
                                 <TableCell>
                                     <Select size="small" value={row.entry.type} displayEmpty fullWidth disabled={isLocked} onChange={handleEntryChange(row.dateKey, 'type')}>
-                                        <MenuItem value=""><span style={{ color: 'var(--ink-muted)' }}>未選択</span></MenuItem>
+                                        <MenuItem value=""><span style={{ color: 'var(--ink-tertiary)' }}>未選択</span></MenuItem>
                                         {ATTENDANCE_TYPES.map((t) => <MenuItem key={t} value={t}>{t}</MenuItem>)}
                                     </Select>
                                 </TableCell>

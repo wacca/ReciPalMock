@@ -1,6 +1,6 @@
-import { Box, Drawer, Stack, Tooltip, Typography } from '@mui/material';
+import { Box, Drawer, Stack, Typography } from '@mui/material';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { usePendingCounts } from './PendingPulse.jsx';
+import { usePendingCounts, tonePending } from './PendingPulse.jsx';
 import { useUiPreferences } from './UiPreferencesContext.jsx';
 
 export const SideRailLogo = () => (
@@ -57,7 +57,7 @@ export const SideRailContent = ({ groups, matchesPath, onNavigate, location }) =
                         variant="caption"
                         sx={{
                             paddingInline: 1.5,
-                            color: 'var(--ink-muted)',
+                            color: 'var(--ink-tertiary)',
                             fontWeight: 700,
                             letterSpacing: 1.4,
                             textTransform: 'uppercase',
@@ -72,10 +72,11 @@ export const SideRailContent = ({ groups, matchesPath, onNavigate, location }) =
                             const isActive = matchesPath(item, location.pathname);
                             const badge = badgeFor(item.path);
                             return (
-                                <Tooltip key={item.path} title={item.subtitle || ''} placement="right" arrow>
                                     <Box
+                                        key={item.path}
                                         component="button"
                                         onClick={() => onNavigate(item.path)}
+                                        aria-label={item.subtitle ? `${item.label} — ${item.subtitle}` : item.label}
                                         sx={{
                                             all: 'unset',
                                             cursor: 'pointer',
@@ -95,6 +96,11 @@ export const SideRailContent = ({ groups, matchesPath, onNavigate, location }) =
                                             '&:hover': {
                                                 background: isActive ? 'var(--accent-primary-soft)' : 'var(--surface-raised)',
                                                 color: 'var(--ink-primary)',
+                                            },
+                                            '&:focus-visible': {
+                                                outline: 'none',
+                                                boxShadow: 'var(--shadow-glow)',
+                                                background: isActive ? 'var(--accent-primary-soft)' : 'var(--surface-raised)',
                                             },
                                             '&::before': isActive
                                                 ? {
@@ -143,27 +149,29 @@ export const SideRailContent = ({ groups, matchesPath, onNavigate, location }) =
                                                 {item.label}
                                             </Typography>
                                         </Box>
-                                        {badge > 0 && (
-                                            <Box
-                                                aria-label={`${badge}件の承認待ち`}
-                                                sx={{
-                                                    minWidth: 22,
-                                                    height: 22,
-                                                    paddingInline: 0.75,
-                                                    borderRadius: 'var(--radius-pill)',
-                                                    background: 'var(--accent-amber)',
-                                                    color: '#fff',
-                                                    display: 'grid',
-                                                    placeItems: 'center',
-                                                    fontSize: 11,
-                                                    fontWeight: 700,
-                                                }}
-                                            >
-                                                {badge}
-                                            </Box>
-                                        )}
+                                        {badge > 0 && (() => {
+                                            const t = tonePending(badge);
+                                            return (
+                                                <Box
+                                                    aria-label={`${badge}件の承認待ち`}
+                                                    sx={{
+                                                        minWidth: 22,
+                                                        height: 22,
+                                                        paddingInline: 0.75,
+                                                        borderRadius: 'var(--radius-pill)',
+                                                        background: t.solid,
+                                                        color: '#fff',
+                                                        display: 'grid',
+                                                        placeItems: 'center',
+                                                        fontSize: 11,
+                                                        fontWeight: 700,
+                                                    }}
+                                                >
+                                                    {badge}
+                                                </Box>
+                                            );
+                                        })()}
                                     </Box>
-                                </Tooltip>
                             );
                         })}
                     </Stack>

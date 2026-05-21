@@ -6,7 +6,7 @@ import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded';
 import LockRoundedIcon from '@mui/icons-material/LockRounded';
 
 export const INTEGRATION_STATUS = {
-    not_applicable: { label: '連携対象外', bg: 'transparent', fg: 'var(--ink-muted)',     border: 'var(--surface-border)', icon: CloudOffRoundedIcon },
+    not_applicable: { label: '連携対象外', bg: 'transparent', fg: 'var(--ink-tertiary)', border: 'var(--surface-border)', icon: CloudOffRoundedIcon },
     pending:        { label: '連携待ち',   bg: 'var(--accent-amber-soft)', fg: 'var(--accent-amber)', border: 'transparent', icon: CloudSyncRoundedIcon },
     synced:         { label: '連携済',     bg: 'var(--accent-leaf-soft)',  fg: 'var(--accent-leaf)',  border: 'transparent', icon: CloudDoneRoundedIcon },
     error:          { label: '連携エラー', bg: 'var(--accent-rose-soft)',  fg: 'var(--accent-rose)',  border: 'transparent', icon: ErrorOutlineRoundedIcon },

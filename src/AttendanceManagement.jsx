@@ -320,7 +320,7 @@ function AttendanceManagement({ userId }) {
                                                         </Typography>
                                                     </Stack>
                                                 ) : (
-                                                    <Typography variant="caption" sx={{ color: 'var(--ink-muted)' }}>-</Typography>
+                                                    <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)' }}>-</Typography>
                                                 )}
                                             </TableCell>
                                             <TableCell>

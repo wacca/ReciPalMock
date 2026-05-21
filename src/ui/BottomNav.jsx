@@ -3,14 +3,14 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded';
 import EditNoteRoundedIcon from '@mui/icons-material/EditNoteRounded';
 import TaskAltRoundedIcon from '@mui/icons-material/TaskAltRounded';
-import AppsRoundedIcon from '@mui/icons-material/AppsRounded';
-import { usePendingCounts } from './PendingPulse.jsx';
+import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
+import { usePendingCounts, tonePending } from './PendingPulse.jsx';
 
 const tabs = [
-    { id: 'home', label: 'ホーム', icon: DashboardRoundedIcon, path: '/dashboard', match: ['/dashboard'] },
-    { id: 'apply', label: '申請', icon: EditNoteRoundedIcon, path: '/application', match: ['/application', '/leave-application', '/attendance-input'] },
-    { id: 'approve', label: '承認', icon: TaskAltRoundedIcon, path: '/approvals', match: ['/approvals', '/leave-approvals'] },
-    { id: 'more', label: 'メニュー', icon: AppsRoundedIcon, path: '/flow-settings-menu', match: ['/flow-settings-menu', '/reminder-settings', '/account-management', '/master-settings', '/permission-settings', '/submitted', '/leave-submitted'] },
+    { id: 'home', label: 'ホーム', icon: DashboardRoundedIcon, kind: 'route', path: '/dashboard', match: ['/dashboard'] },
+    { id: 'apply', label: '申請', icon: EditNoteRoundedIcon, kind: 'route', path: '/application', match: ['/application', '/leave-application', '/attendance-input'] },
+    { id: 'approve', label: '承認', icon: TaskAltRoundedIcon, kind: 'route', path: '/approvals', match: ['/approvals', '/leave-approvals'] },
+    { id: 'search', label: '検索', icon: SearchRoundedIcon, kind: 'action', match: [] },
 ];
 
 export const BottomNav = ({ onOpenPalette }) => {
@@ -18,7 +18,7 @@ export const BottomNav = ({ onOpenPalette }) => {
     const location = useLocation();
     const counts = usePendingCounts();
 
-    const isActive = (tab) => tab.match.some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`));
+    const isActive = (tab) => tab.kind === 'route' && tab.match.some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`));
 
     return (
         <Box
@@ -49,7 +49,7 @@ export const BottomNav = ({ onOpenPalette }) => {
                         <Box
                             key={tab.id}
                             component="button"
-                            onClick={() => tab.id === 'more' && onOpenPalette ? onOpenPalette() : navigate(tab.path)}
+                            onClick={() => (tab.kind === 'action' ? onOpenPalette?.() : navigate(tab.path))}
                             sx={{
                                 all: 'unset',
                                 cursor: 'pointer',
@@ -69,27 +69,30 @@ export const BottomNav = ({ onOpenPalette }) => {
                         >
                             <Box sx={{ position: 'relative' }}>
                                 <Icon sx={{ fontSize: 22 }} />
-                                {badge > 0 && (
-                                    <Box
-                                        sx={{
-                                            position: 'absolute',
-                                            top: -4,
-                                            right: -10,
-                                            minWidth: 16,
-                                            height: 16,
-                                            paddingInline: 0.5,
-                                            borderRadius: 'var(--radius-pill)',
-                                            background: 'var(--accent-amber)',
-                                            color: '#fff',
-                                            fontSize: 10,
-                                            fontWeight: 800,
-                                            display: 'grid',
-                                            placeItems: 'center',
-                                        }}
-                                    >
-                                        {badge}
-                                    </Box>
-                                )}
+                                {badge > 0 && (() => {
+                                    const t = tonePending(badge);
+                                    return (
+                                        <Box
+                                            sx={{
+                                                position: 'absolute',
+                                                top: -4,
+                                                right: -10,
+                                                minWidth: 16,
+                                                height: 16,
+                                                paddingInline: 0.5,
+                                                borderRadius: 'var(--radius-pill)',
+                                                background: t.solid,
+                                                color: '#fff',
+                                                fontSize: 10,
+                                                fontWeight: 800,
+                                                display: 'grid',
+                                                placeItems: 'center',
+                                            }}
+                                        >
+                                            {badge}
+                                        </Box>
+                                    );
+                                })()}
                             </Box>
                             <Typography variant="caption" sx={{ fontWeight: 700, fontSize: 11, lineHeight: 1 }}>
                                 {tab.label}

@@ -8,6 +8,8 @@ import {
     Menu,
     MenuItem,
     Stack,
+    ToggleButton,
+    ToggleButtonGroup,
     Tooltip,
     Typography,
 } from '@mui/material';
@@ -32,46 +34,76 @@ const isMacLike = () =>
     typeof navigator !== 'undefined' &&
     /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent || '');
 
-const ThemeToggle = () => {
-    const { prefs, setMode } = useUiPreferences();
-    const cycle = () => {
-        const order = ['auto', 'light', 'dark'];
-        const i = order.indexOf(prefs.mode);
-        setMode(order[(i + 1) % order.length]);
+const DisplayPreferences = () => {
+    const { prefs, setMode, setDensity } = useUiPreferences();
+    const toggleSx = {
+        flex: 1,
+        textTransform: 'none',
+        paddingBlock: 0.5,
+        fontSize: 12,
+        fontWeight: 600,
+        color: 'var(--ink-secondary)',
+        borderColor: 'var(--ink-line)',
+        gap: 0.5,
+        '&.Mui-selected': {
+            background: 'var(--accent-primary-soft)',
+            color: 'var(--accent-primary-ink)',
+            borderColor: 'var(--accent-primary-soft)',
+        },
+        '&.Mui-selected:hover': { background: 'var(--accent-primary-soft)' },
     };
-    const labelMap = { auto: '自動', light: 'ライト', dark: 'ダーク' };
-    const Icon = prefs.mode === 'auto' ? AutoModeRoundedIcon : prefs.mode === 'dark' ? DarkModeRoundedIcon : LightModeRoundedIcon;
     return (
-        <Tooltip title={`テーマ：${labelMap[prefs.mode]}（クリックで切替）`} arrow>
-            <IconButton size="small" onClick={cycle} aria-label="テーマ切替"
-                sx={{
-                    width: 36, height: 36,
-                    color: 'var(--ink-secondary)',
-                    '&:hover': { background: 'var(--surface-sunken)', color: 'var(--ink-primary)' },
-                }}
-            >
-                <Icon fontSize="small" />
-            </IconButton>
-        </Tooltip>
-    );
-};
-
-const DensityToggle = () => {
-    const { prefs, setDensity } = useUiPreferences();
-    const isCompact = prefs.density === 'compact';
-    return (
-        <Tooltip title={isCompact ? '密度：コンパクト' : '密度：コンフォート'} arrow>
-            <IconButton size="small" onClick={() => setDensity(isCompact ? 'comfortable' : 'compact')}
-                aria-label="密度切替"
-                sx={{
-                    width: 36, height: 36,
-                    color: 'var(--ink-secondary)',
-                    '&:hover': { background: 'var(--surface-sunken)', color: 'var(--ink-primary)' },
-                }}
-            >
-                {isCompact ? <DensitySmallRoundedIcon fontSize="small" /> : <DensityMediumRoundedIcon fontSize="small" />}
-            </IconButton>
-        </Tooltip>
+        <Stack spacing={1.25} sx={{ paddingInline: 1.5, paddingBlock: 1 }}>
+            <Box>
+                <Typography
+                    variant="caption"
+                    sx={{ color: 'var(--ink-tertiary)', fontWeight: 700, letterSpacing: 0.5, display: 'block', mb: 0.5 }}
+                >
+                    テーマ
+                </Typography>
+                <ToggleButtonGroup
+                    size="small"
+                    value={prefs.mode}
+                    exclusive
+                    onChange={(_, v) => v && setMode(v)}
+                    fullWidth
+                    aria-label="テーマ"
+                >
+                    <ToggleButton value="auto" sx={toggleSx} aria-label="自動">
+                        <AutoModeRoundedIcon sx={{ fontSize: 14 }} />自動
+                    </ToggleButton>
+                    <ToggleButton value="light" sx={toggleSx} aria-label="ライト">
+                        <LightModeRoundedIcon sx={{ fontSize: 14 }} />ライト
+                    </ToggleButton>
+                    <ToggleButton value="dark" sx={toggleSx} aria-label="ダーク">
+                        <DarkModeRoundedIcon sx={{ fontSize: 14 }} />ダーク
+                    </ToggleButton>
+                </ToggleButtonGroup>
+            </Box>
+            <Box>
+                <Typography
+                    variant="caption"
+                    sx={{ color: 'var(--ink-tertiary)', fontWeight: 700, letterSpacing: 0.5, display: 'block', mb: 0.5 }}
+                >
+                    密度
+                </Typography>
+                <ToggleButtonGroup
+                    size="small"
+                    value={prefs.density}
+                    exclusive
+                    onChange={(_, v) => v && setDensity(v)}
+                    fullWidth
+                    aria-label="密度"
+                >
+                    <ToggleButton value="comfortable" sx={toggleSx} aria-label="ふつう">
+                        <DensityMediumRoundedIcon sx={{ fontSize: 14 }} />ふつう
+                    </ToggleButton>
+                    <ToggleButton value="compact" sx={toggleSx} aria-label="コンパクト">
+                        <DensitySmallRoundedIcon sx={{ fontSize: 14 }} />コンパクト
+                    </ToggleButton>
+                </ToggleButtonGroup>
+            </Box>
+        </Stack>
     );
 };
 
@@ -192,8 +224,6 @@ export const TopStrip = ({
                 <SearchRoundedIcon />
             </IconButton>
             <PendingPulse />
-            <DensityToggle />
-            <ThemeToggle />
             <Tooltip title={isRoleOverridden ? `ロール切替中: ${ROLE_LABELS[effectiveRole]} (本来 ${ROLE_LABELS[baseRole]})` : ROLE_LABELS[effectiveRole]} arrow>
                 <Box
                     sx={{
@@ -270,6 +300,13 @@ export const TopStrip = ({
                 <Divider sx={{ my: 0.5 }} />
                 <Box sx={{ paddingInline: 1.5, paddingBlock: 0.5 }}>
                     <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)', fontWeight: 700, letterSpacing: 0.5 }}>
+                        表示
+                    </Typography>
+                </Box>
+                <DisplayPreferences />
+                <Divider sx={{ my: 0.5 }} />
+                <Box sx={{ paddingInline: 1.5, paddingBlock: 0.5 }}>
+                    <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)', fontWeight: 700, letterSpacing: 0.5 }}>
                         ロール切替（デモ用）
                     </Typography>
                 </Box>
@@ -298,7 +335,7 @@ export const TopStrip = ({
                                             {ROLE_LABELS[role]}
                                         </Typography>
                                         {isBase && (
-                                            <Typography variant="caption" sx={{ color: 'var(--ink-muted)', fontSize: 10, fontWeight: 600 }}>
+                                            <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)', fontSize: 11, fontWeight: 600 }}>
                                                 本来
                                             </Typography>
                                         )}

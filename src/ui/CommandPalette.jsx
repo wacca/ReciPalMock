@@ -184,7 +184,7 @@ export const CommandPalette = ({ open, onClose, commands }) => {
                             flex: 1,
                             fontSize: 17,
                             color: 'var(--ink-primary)',
-                            '::placeholder': { color: 'var(--ink-muted)' },
+                            '::placeholder': { color: 'var(--ink-tertiary)' },
                         }}
                     />
                     <KeyHint keys={['Esc']} />
@@ -218,7 +218,7 @@ export const CommandPalette = ({ open, onClose, commands }) => {
                                         sx={{
                                             paddingInline: 2.5,
                                             paddingBlock: 0.75,
-                                            color: 'var(--ink-muted)',
+                                            color: 'var(--ink-tertiary)',
                                             fontSize: 11,
                                             fontWeight: 700,
                                             letterSpacing: 1.4,

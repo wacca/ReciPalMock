@@ -305,7 +305,7 @@ function MasterSettings() {
                                 ))}
                         </Stack>
                     ) : (
-                        <Box sx={{ paddingInline: 1.5, paddingBlock: 3, color: 'var(--ink-muted)', textAlign: 'center' }}>
+                        <Box sx={{ paddingInline: 1.5, paddingBlock: 3, color: 'var(--ink-tertiary)', textAlign: 'center' }}>
                             <Typography variant="body2">役職がまだ登録されていません。</Typography>
                         </Box>
                     )}

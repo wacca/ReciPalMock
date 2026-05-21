@@ -143,7 +143,7 @@ function Approvals() {
                     <Section padded sx={{ textAlign: 'center', paddingBlock: 6 }}>
                         <FactCheckRoundedIcon sx={{ fontSize: 40, color: 'var(--accent-leaf)' }} />
                         <Typography variant="body2" sx={{ color: 'var(--ink-tertiary)', mt: 1, fontWeight: 600 }}>承認待ちの経費申請はありません。</Typography>
-                        <Typography variant="caption" sx={{ color: 'var(--ink-muted)' }}>お疲れさまです。</Typography>
+                        <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)' }}>お疲れさまです。</Typography>
                     </Section>
                 ) : (
                     <Stack spacing={1.5}>

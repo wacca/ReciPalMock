@@ -16,7 +16,7 @@ import PageScaffold from './ui/PageScaffold.jsx';
 import Section from './ui/Section.jsx';
 import FocusCard from './ui/FocusCard.jsx';
 import { KeyHint } from './ui/KeyHint.jsx';
-import { usePendingCounts } from './ui/PendingPulse.jsx';
+import { usePendingCounts, tonePending } from './ui/PendingPulse.jsx';
 import { loadExpenseApplications, getExpenseIntegrationStatus } from './expenseApplicationStore';
 import { loadLeaveApplications, getLeaveIntegrationStatus } from './leaveApplicationStore';
 import { loadAttendanceTimesheets, getAttendanceIntegrationStatus } from './attendanceStore';
@@ -132,20 +132,20 @@ const buildPrimaryActions = ({ role, counts }) => {
         list.push({
             title: '経費承認',
             description: counts.expense > 0 ? `${counts.expense}件の承認待ち` : '承認待ちなし',
-            path: '/approvals', icon: <FactCheckRoundedIcon />, tone: 'leaf', badge: counts.expense,
+            path: '/approvals', icon: <FactCheckRoundedIcon />, tone: 'iris', badge: counts.expense,
         });
     }
     if (hasPermission(role, PERMISSIONS.APPROVE_LEAVE)) {
         list.push({
             title: '勤怠申請承認',
             description: counts.leave > 0 ? `${counts.leave}件の承認待ち` : '承認待ちなし',
-            path: '/leave-approvals', icon: <BeenhereRoundedIcon />, tone: 'leaf', badge: counts.leave,
+            path: '/leave-approvals', icon: <BeenhereRoundedIcon />, tone: 'iris', badge: counts.leave,
         });
     }
     if (hasPermission(role, PERMISSIONS.APPROVE_ATTENDANCE)) {
         list.push({
             title: '勤怠承認', description: '部下の月次勤怠を承認',
-            path: '/attendance-approvals', icon: <HowToRegRoundedIcon />, tone: 'leaf',
+            path: '/attendance-approvals', icon: <HowToRegRoundedIcon />, tone: 'iris',
         });
     }
     return list;
@@ -198,11 +198,16 @@ function Dashboard({ username = '', role = ROLES.EMPLOYEE }) {
 
     const metrics = useMemo(() => {
         const list = [];
+        const metricTone = (count) => {
+            if (!count) return 'leaf';
+            if (count >= 9) return 'amber';
+            return 'iris';
+        };
         if (hasPermission(role, PERMISSIONS.APPROVE_EXPENSE)) {
-            list.push({ label: '承認待ち 経費', value: counts.expense, unit: '件', tone: counts.expense ? 'amber' : 'leaf' });
+            list.push({ label: '承認待ち 経費', value: counts.expense, unit: '件', tone: metricTone(counts.expense) });
         }
         if (hasPermission(role, PERMISSIONS.APPROVE_LEAVE)) {
-            list.push({ label: '承認待ち 勤怠申請', value: counts.leave, unit: '件', tone: counts.leave ? 'amber' : 'leaf' });
+            list.push({ label: '承認待ち 勤怠申請', value: counts.leave, unit: '件', tone: metricTone(counts.leave) });
         }
         list.push({ label: '進行中 下書き', value: counts.drafts, unit: '件', tone: 'iris' });
         list.push({
@@ -218,7 +223,7 @@ function Dashboard({ username = '', role = ROLES.EMPLOYEE }) {
         <PageScaffold
             eyebrow={`${greetingByHour()} ・ ${ROLE_LABELS[role]}`}
             title={username ? `${username}さん、おかえりなさい` : 'おかえりなさい'}
-            subtitle="今やるべきことを一つに絞ってお見せします。落ち着いて、目の前のひとつから。"
+            subtitle="今日の業務の入口です。承認待ち・進行中の状況をひと目で確認できます。"
         >
             <FocusCard
                 eyebrow={focus.eyebrow}
@@ -402,7 +407,7 @@ function Dashboard({ username = '', role = ROLES.EMPLOYEE }) {
                 {primaryActions.length > 0 && (
                     <Section
                         title="主要アクション"
-                        subtitle="迷ったらここから。脳のステップを1つに絞ります。"
+                        subtitle="よく使う操作。Ctrl/⌘+K でも開けます。"
                         actions={<KeyHint keys={['Mod', 'K']} />}
                     >
                         <Box
@@ -458,30 +463,35 @@ function Dashboard({ username = '', role = ROLES.EMPLOYEE }) {
                                             }}
                                         >
                                             {action.icon}
-                                            {badge > 0 && (
-                                                <Box
-                                                    aria-label={`${badge}件の承認待ち`}
-                                                    sx={{
-                                                        position: 'absolute',
-                                                        top: -6,
-                                                        right: -6,
-                                                        minWidth: 20,
-                                                        height: 20,
-                                                        paddingInline: 0.5,
-                                                        borderRadius: 'var(--radius-pill)',
-                                                        background: 'var(--accent-amber)',
-                                                        color: '#fff',
-                                                        fontSize: 11,
-                                                        fontWeight: 800,
-                                                        display: 'grid',
-                                                        placeItems: 'center',
-                                                        boxShadow: 'var(--shadow-1)',
-                                                        animation: 'recrovaPulse 1800ms ease-in-out infinite',
-                                                    }}
-                                                >
-                                                    {badge}
-                                                </Box>
-                                            )}
+                                            {badge > 0 && (() => {
+                                                const tBadge = tonePending(badge);
+                                                return (
+                                                    <Box
+                                                        aria-label={`${badge}件の承認待ち`}
+                                                        sx={{
+                                                            position: 'absolute',
+                                                            top: -6,
+                                                            right: -6,
+                                                            minWidth: 20,
+                                                            height: 20,
+                                                            paddingInline: 0.5,
+                                                            borderRadius: 'var(--radius-pill)',
+                                                            background: tBadge.solid,
+                                                            color: '#fff',
+                                                            fontSize: 11,
+                                                            fontWeight: 800,
+                                                            display: 'grid',
+                                                            placeItems: 'center',
+                                                            boxShadow: 'var(--shadow-1)',
+                                                            animation: tBadge.level === 'overload'
+                                                                ? 'recrovaPulse 1800ms ease-in-out infinite'
+                                                                : 'none',
+                                                        }}
+                                                    >
+                                                        {badge}
+                                                    </Box>
+                                                );
+                                            })()}
                                         </Box>
                                         <Box sx={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
                                             <Stack direction="row" alignItems="center" spacing={0.75}>
@@ -491,16 +501,16 @@ function Dashboard({ username = '', role = ROLES.EMPLOYEE }) {
                                                 <Typography
                                                     variant="caption"
                                                     sx={{
-                                                        color: 'var(--ink-muted)',
+                                                        color: 'var(--ink-tertiary)',
                                                         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-                                                        fontSize: 10,
+                                                        fontSize: 11,
                                                     }}
                                                 >
                                                     {idx + 1}
                                                 </Typography>
                                             </Stack>
                                             <Typography variant="body2" sx={{
-                                                color: badge > 0 ? 'var(--accent-amber)' : 'var(--ink-tertiary)',
+                                                color: badge > 0 ? tonePending(badge).fg : 'var(--ink-tertiary)',
                                                 fontWeight: badge > 0 ? 600 : 400,
                                             }}>
                                                 {action.description}

@@ -40,7 +40,7 @@ export const PageScaffold = ({
                         {eyebrow}
                     </Typography>
                 )}
-                <Typography variant="h4" sx={{ fontSize: { xs: 22, md: 28 }, lineHeight: 1.2, color: 'var(--ink-primary)' }}>
+                <Typography component="h1" variant="h4" sx={{ fontSize: { xs: 22, md: 28 }, lineHeight: 1.2, color: 'var(--ink-primary)', m: 0 }}>
                     {title}
                 </Typography>
                 {subtitle && (

@@ -569,7 +569,7 @@ function LeaveApplication({ userId }) {
                     </Button>
                     <Box sx={{ flex: { xs: 'auto', sm: '0 0 auto' } }}>
                         <KeyHint keys={['Tab']} />
-                        <Typography variant="caption" sx={{ color: 'var(--ink-muted)', ml: 1 }}>で次の入力へ</Typography>
+                        <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)', ml: 1 }}>で次の入力へ</Typography>
                     </Box>
                 </Stack>
             </Box>

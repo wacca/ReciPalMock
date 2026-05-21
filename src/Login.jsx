@@ -89,7 +89,7 @@ function Login({ onLogin }) {
                                 おかえりなさい
                             </Typography>
                             <Typography variant="body2" sx={{ color: 'var(--ink-tertiary)', mt: 0.5 }}>
-                                落ち着いた呼吸で、一日の業務を整えましょう。
+                                ログインして業務を始めましょう。
                             </Typography>
                         </Box>
                     </Stack>
@@ -182,7 +182,7 @@ function Login({ onLogin }) {
                                         <Typography variant="caption" sx={{ color: 'var(--ink-primary)', fontWeight: 600, lineHeight: 1.2 }}>
                                             {u.name}
                                         </Typography>
-                                        <Typography variant="caption" sx={{ color: 'var(--ink-muted)', fontSize: 10, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)', fontSize: 11, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                             {u.id}
                                         </Typography>
                                     </Box>
@@ -194,7 +194,7 @@ function Login({ onLogin }) {
                         </Stack>
                     </Box>
 
-                    <Typography variant="caption" sx={{ color: 'var(--ink-muted)', textAlign: 'center', lineHeight: 1.6 }}>
+                    <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)', textAlign: 'center', lineHeight: 1.6 }}>
                         Recrova はモック環境です。<br />
                         実データは保存されません。
                     </Typography>

@@ -51,6 +51,33 @@ const sample = () => ({
     drafts: countDrafts(),
 });
 
+export const PENDING_OVERLOAD_THRESHOLD = 9;
+
+export const tonePending = (count) => {
+    if (!count || count <= 0) {
+        return {
+            level: 'idle',
+            fg: 'var(--ink-tertiary)',
+            bg: 'var(--surface-sunken)',
+            solid: 'var(--accent-leaf)',
+        };
+    }
+    if (count >= PENDING_OVERLOAD_THRESHOLD) {
+        return {
+            level: 'overload',
+            fg: 'var(--accent-amber)',
+            bg: 'var(--accent-amber-soft)',
+            solid: 'var(--accent-amber)',
+        };
+    }
+    return {
+        level: 'active',
+        fg: 'var(--accent-iris)',
+        bg: 'var(--accent-iris-soft)',
+        solid: 'var(--accent-iris)',
+    };
+};
+
 export const usePendingCounts = () => {
     const [counts, setCounts] = useState(() => sample());
 
@@ -76,7 +103,8 @@ export const PendingPulse = () => {
     const { prefs } = useUiPreferences();
     const counts = usePendingCounts();
     const total = counts.expense + counts.leave;
-    const pulsing = prefs.pulse && total > 0;
+    const tone = tonePending(total);
+    const pulsing = prefs.pulse && tone.level === 'overload';
 
     const dest = useMemo(() => (counts.expense >= counts.leave ? '/approvals' : '/leave-approvals'), [counts]);
 
@@ -90,13 +118,13 @@ export const PendingPulse = () => {
                     paddingInline: 1.25,
                     paddingBlock: 0.5,
                     borderRadius: 'var(--radius-pill)',
-                    background: 'var(--surface-sunken)',
-                    color: 'var(--ink-tertiary)',
+                    background: tone.bg,
+                    color: tone.fg,
                     fontSize: 12,
                     fontWeight: 600,
                 }}
             >
-                <Box sx={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-leaf)' }} />
+                <Box sx={{ width: 6, height: 6, borderRadius: '50%', background: tone.solid }} />
                 <Typography variant="caption" sx={{ fontWeight: 700 }}>承認待ち 0</Typography>
             </Stack>
         );
@@ -113,8 +141,8 @@ export const PendingPulse = () => {
                 paddingInline: 1.25,
                 paddingBlock: 0.5,
                 borderRadius: 'var(--radius-pill)',
-                background: 'var(--accent-amber-soft)',
-                color: 'var(--accent-amber)',
+                background: tone.bg,
+                color: tone.fg,
                 transition: 'var(--motion-base)',
                 '&:hover': { transform: 'translateY(-1px)', boxShadow: 'var(--shadow-1)' },
             }}
@@ -130,7 +158,7 @@ export const PendingPulse = () => {
                         position: 'absolute',
                         inset: 0,
                         borderRadius: '50%',
-                        background: 'var(--accent-amber)',
+                        background: tone.solid,
                         animation: pulsing ? 'recrovaPulse 1800ms ease-in-out infinite' : 'none',
                     },
                 }}
