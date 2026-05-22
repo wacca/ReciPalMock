@@ -257,6 +257,7 @@ export const normalizeLeaveApplication = (application) => {
         integrationStatus: application.integrationStatus || 'not_applicable',
         integrationSyncedAt: application.integrationSyncedAt || '',
         integrationError: application.integrationError || '',
+        history: Array.isArray(application.history) ? application.history : [],
     };
 };
 

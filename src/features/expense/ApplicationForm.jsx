@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
     TextField, Button, Typography, Box, MenuItem,
-    Dialog, DialogContent, Snackbar, Alert, IconButton, Tooltip, Stack,
+    Dialog, DialogContent, Snackbar, Alert, IconButton, Tooltip, Stack, CircularProgress,
 } from '@mui/material';
 import { useLocation } from 'react-router-dom';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
@@ -42,6 +42,7 @@ function ApplicationForm({ userId }) {
     const [mode, setMode] = useState('list');
     const [snackbar, setSnackbar] = useState({ open: false, message: '' });
     const [deleteTargetIndex, setDeleteTargetIndex] = useState(null);
+    const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
         const saved = JSON.parse(localStorage.getItem('expenseDrafts') || '[]');
@@ -99,18 +100,25 @@ function ApplicationForm({ userId }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        const app = buildExpenseApplication({ rows: formDataList, draftId: selectedDraftId, applicantId: userId });
-        const apps = loadExpenseApplications();
-        saveExpenseApplications([app, ...apps]);
-        if (selectedDraftId !== 'new') {
-            const next = drafts.filter((d) => d.id !== selectedDraftId);
-            setDrafts(next);
-            localStorage.setItem('expenseDrafts', JSON.stringify(next));
-        }
-        setSelectedDraftId('new');
-        setFormDataList([emptyExpenseRow()]);
-        setSnackbar({ open: true, message: '経費申請を送信しました' });
-        setMode('list');
+        if (submitting) return;
+        // ボタン側で「✓ 送信しました」を 600ms ほど見せてから実 persist + 一覧に戻す。
+        // 視線がボタンにある瞬間に状態変化を返すことで「押せた」感を出す。
+        setSubmitting(true);
+        setTimeout(() => {
+            const app = buildExpenseApplication({ rows: formDataList, draftId: selectedDraftId, applicantId: userId });
+            const apps = loadExpenseApplications();
+            saveExpenseApplications([app, ...apps]);
+            if (selectedDraftId !== 'new') {
+                const next = drafts.filter((d) => d.id !== selectedDraftId);
+                setDrafts(next);
+                localStorage.setItem('expenseDrafts', JSON.stringify(next));
+            }
+            setSelectedDraftId('new');
+            setFormDataList([emptyExpenseRow()]);
+            setSnackbar({ open: true, message: '経費申請を送信しました' });
+            setMode('list');
+            setSubmitting(false);
+        }, 600);
     };
 
     const handleSelectDraft = (id) => {
@@ -156,7 +164,7 @@ function ApplicationForm({ userId }) {
                 <Section padded>
                     {drafts.length === 0 ? (
                         <Box sx={{ paddingBlock: 4, textAlign: 'center', color: 'var(--ink-tertiary)' }}>
-                            <ReceiptLongRoundedIcon sx={{ fontSize: 40, color: 'var(--ink-muted)' }} />
+                            <ReceiptLongRoundedIcon sx={{ fontSize: 40, color: 'var(--ink-tertiary)' }} />
                             <Typography variant="body2" sx={{ mt: 1 }}>下書きはありません。</Typography>
                             <Typography variant="caption">右上の「新規作成」から始めましょう。</Typography>
                         </Box>
@@ -220,7 +228,14 @@ function ApplicationForm({ userId }) {
                     <Button variant="outlined" color="primary" startIcon={<SaveRoundedIcon />} onClick={handleSaveDraft}>
                         下書き保存
                     </Button>
-                    <Button form="expense-form" type="submit" variant="contained" color="primary" startIcon={<SendRoundedIcon />}>
+                    <Button
+                        form="expense-form"
+                        type="submit"
+                        variant="contained"
+                        color="primary"
+                        startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : <SendRoundedIcon />}
+                        disabled={submitting}
+                    >
                         送信
                     </Button>
                 </>

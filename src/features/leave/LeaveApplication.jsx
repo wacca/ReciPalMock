@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
     Box, TextField, Button, MenuItem, FormControl, InputLabel, Select, Snackbar, Alert, IconButton, Tooltip, Stack, Typography,
-    FormControlLabel, Switch, Chip,
+    FormControlLabel, Switch, Chip, CircularProgress,
 } from '@mui/material';
 import { useLocation } from 'react-router-dom';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
@@ -52,6 +52,7 @@ function LeaveApplication({ userId }) {
     const [snackbar, setSnackbar] = useState({ open: false, message: '' });
     const [deleteTargetId, setDeleteTargetId] = useState(null);
     const [deleteRowTargetIndex, setDeleteRowTargetIndex] = useState(null);
+    const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
         loadLeaveApplications();
@@ -153,6 +154,7 @@ function LeaveApplication({ userId }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        if (submitting) return;
         const dateInvalid = leaveRows.findIndex((r) => !r.isHourly && r.dateFrom && r.dateTo && r.dateTo < r.dateFrom);
         if (dateInvalid >= 0) {
             setSnackbar({ open: true, message: `#${dateInvalid + 1} の終了日が開始日より前です` });
@@ -163,15 +165,19 @@ function LeaveApplication({ userId }) {
             setSnackbar({ open: true, message: `#${hoursInvalid + 1} の時間数を入力してください（0より大きい値）` });
             return;
         }
-        const apps = buildLeaveApplications({ editId, rows: leaveRows, applicantId: userId });
-        const prev = loadLeaveApplications();
-        saveLeaveApplications([...apps, ...prev]);
-        const next = leaveList.filter((d) => d.id !== editId);
-        setLeaveList(next);
-        saveLeaveDrafts(next);
-        setSnackbar({ open: true, message: `${apps.length}件の勤怠申請を送信しました` });
-        resetForm();
-        setMode('list');
+        setSubmitting(true);
+        setTimeout(() => {
+            const apps = buildLeaveApplications({ editId, rows: leaveRows, applicantId: userId });
+            const prev = loadLeaveApplications();
+            saveLeaveApplications([...apps, ...prev]);
+            const next = leaveList.filter((d) => d.id !== editId);
+            setLeaveList(next);
+            saveLeaveDrafts(next);
+            setSnackbar({ open: true, message: `${apps.length}件の勤怠申請を送信しました` });
+            resetForm();
+            setMode('list');
+            setSubmitting(false);
+        }, 600);
     };
 
     const handleNew = () => { resetForm(); setMode('edit'); };
@@ -264,7 +270,14 @@ function LeaveApplication({ userId }) {
                     <Button variant="outlined" color="primary" startIcon={<SaveRoundedIcon />} onClick={handleSaveDraft}>
                         下書き保存
                     </Button>
-                    <Button form="leave-form" type="submit" variant="contained" color="primary" startIcon={<SendRoundedIcon />}>
+                    <Button
+                        form="leave-form"
+                        type="submit"
+                        variant="contained"
+                        color="primary"
+                        startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : <SendRoundedIcon />}
+                        disabled={submitting}
+                    >
                         送信
                     </Button>
                 </>

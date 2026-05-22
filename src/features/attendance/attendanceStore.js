@@ -151,6 +151,7 @@ export const normalizeAttendanceTimesheet = (record = {}) => ({
     integrationSyncedAt: record.integrationSyncedAt || '',
     integrationError: record.integrationError || '',
     closingStatus: record.closingStatus || 'open',
+    history: Array.isArray(record.history) ? record.history : [],
 });
 
 export const loadAttendanceTimesheets = () => {
@@ -339,5 +340,75 @@ export const applyLeaveToAttendance = (leaveApp) => {
 
     saveAttendanceTimesheets(all);
     result.months = Array.from(monthsTouched);
+    return result;
+};
+
+/**
+ * 承認された勤怠申請の反映を取り消す。`applyLeaveToAttendance` の逆操作（モック簡易版）。
+ *
+ * - 平日のみ対象（土日はもともと反映していない）
+ * - 締め済の月は変更しない
+ * - 全日休: 該当日の entry を平日の標準出勤に戻す
+ * - 時間休/遅刻/早退: clockIn/clockOut を業務時間の標準値に戻す
+ * - note 末尾の `[勤怠反映] ...` 行は除去する
+ *
+ * @returns {{reverted: number, skippedClosed: number}}
+ */
+export const revertLeaveFromAttendance = (leaveApp) => {
+    const result = { reverted: 0, skippedClosed: 0 };
+    if (!leaveApp?.dateFrom || !leaveApp.applicantId) return result;
+
+    const dates = [];
+    const from = new Date(`${leaveApp.dateFrom}T00:00:00`);
+    const to = new Date(`${leaveApp.isHourly ? leaveApp.dateFrom : (leaveApp.dateTo || leaveApp.dateFrom)}T00:00:00`);
+    if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return result;
+    const cur = new Date(from);
+    while (cur <= to && dates.length < 366) {
+        const y = cur.getFullYear();
+        const m = String(cur.getMonth() + 1).padStart(2, '0');
+        const d = String(cur.getDate()).padStart(2, '0');
+        dates.push(`${y}-${m}-${d}`);
+        cur.setDate(cur.getDate() + 1);
+    }
+
+    let all = loadAttendanceTimesheets();
+
+    for (const dateKey of dates) {
+        if (isWeekend(dateKey)) continue;
+        const [y, m] = dateKey.split('-');
+        const year = Number(y);
+        const month = Number(m);
+
+        const record = findAttendance(all, leaveApp.applicantId, year, month);
+        if (!record) continue;
+        if (record.closingStatus === 'closed') { result.skippedClosed += 1; continue; }
+
+        const existing = record.entries[dateKey];
+        if (!existing) continue;
+
+        // note から「[勤怠反映]」行を除去
+        const cleanedNote = (existing.note || '')
+            .split('\n')
+            .filter((line) => !line.startsWith('[勤怠反映]'))
+            .join('\n');
+
+        let nextEntry;
+        if (FULL_DAY_LEAVE_TYPE[leaveApp.leaveType] && !leaveApp.isHourly) {
+            // 全日休 → 標準出勤に戻す
+            nextEntry = { type: '出勤', clockIn: BUSINESS_START, clockOut: BUSINESS_END, note: cleanedNote };
+        } else if (leaveApp.isHourly && (leaveApp.leaveType === '遅刻' || leaveApp.leaveType === '早退')) {
+            // 時間調整を標準値に戻す
+            nextEntry = { ...existing, clockIn: BUSINESS_START, clockOut: BUSINESS_END, note: cleanedNote };
+        } else {
+            // その他 / 時間休 → note のみ巻き戻し
+            nextEntry = { ...existing, note: cleanedNote };
+        }
+
+        const nextEntries = { ...record.entries, [dateKey]: nextEntry };
+        all = upsertAttendance(all, { ...record, entries: nextEntries });
+        result.reverted += 1;
+    }
+
+    saveAttendanceTimesheets(all);
     return result;
 };

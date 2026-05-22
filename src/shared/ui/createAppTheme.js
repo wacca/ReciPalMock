@@ -100,6 +100,14 @@ export const createAppTheme = (mode = 'light', density = 'comfortable') => {
                             scrollBehavior: 'auto !important',
                         },
                     },
+                    // BottomNav 表示中(=md未満)は Snackbar をその上に出すため bottom を底上げする。
+                    // MuiSnackbar.defaultProps.sx で書くと MUI v6 のバグで ClickAwayListener に
+                    // ownerState が伝播してしまうため、CssBaseline 経由でグローバル CSS を当てる。
+                    '@media (max-width: 899.95px)': {
+                        '.MuiSnackbar-anchorOriginBottomCenter, .MuiSnackbar-anchorOriginBottomLeft, .MuiSnackbar-anchorOriginBottomRight': {
+                            bottom: '88px !important',
+                        },
+                    },
                 },
             },
             MuiAppBar: {
@@ -258,18 +266,50 @@ export const createAppTheme = (mode = 'light', density = 'comfortable') => {
                     },
                 },
             },
+            MuiSnackbar: {
+                defaultProps: {
+                    anchorOrigin: { vertical: 'bottom', horizontal: 'center' },
+                },
+            },
             MuiSnackbarContent: {
                 styleOverrides: {
                     root: {
                         borderRadius: radius.md,
+                        backgroundColor: isDark ? '#F1F5FA' : '#0F172A',
+                        color: isDark ? '#0B0F17' : '#FFFFFF',
+                        boxShadow: p.shadow[3],
+                        fontWeight: 500,
                     },
                 },
             },
             MuiAlert: {
                 styleOverrides: {
+                    // Snackbar 内で使われる Alert は周囲のテーマと反転させて視認性を確保。
+                    // severity の意味は左アイコンの色で残す。
                     root: {
                         borderRadius: radius.md,
                         border: 'none',
+                        backgroundColor: isDark ? '#F1F5FA' : '#0F172A',
+                        color: isDark ? '#0B0F17' : '#FFFFFF',
+                        boxShadow: p.shadow[3],
+                        '& .MuiAlert-action': {
+                            color: 'inherit',
+                        },
+                        '& .MuiAlert-action .MuiButton-root': {
+                            color: 'inherit',
+                        },
+                    },
+                    standardSuccess: {
+                        '& .MuiAlert-icon': { color: p.accent.leaf },
+                    },
+                    standardError: {
+                        '& .MuiAlert-icon': { color: p.accent.rose },
+                    },
+                    standardWarning: {
+                        '& .MuiAlert-icon': { color: p.accent.amber },
+                    },
+                    standardInfo: {
+                        '& .MuiAlert-icon': { color: p.accent.iris },
                     },
                 },
             },

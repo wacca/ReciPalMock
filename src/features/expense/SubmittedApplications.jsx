@@ -192,12 +192,12 @@ function SubmittedApplications({ userId }) {
 
             {data.length === 0 ? (
                 <Section padded sx={{ textAlign: 'center', paddingBlock: 6 }}>
-                    <ReceiptLongRoundedIcon sx={{ fontSize: 40, color: 'var(--ink-muted)' }} />
+                    <ReceiptLongRoundedIcon sx={{ fontSize: 40, color: 'var(--ink-tertiary)' }} />
                     <Typography variant="body2" sx={{ color: 'var(--ink-tertiary)', mt: 1 }}>経費申請の履歴はありません。</Typography>
                 </Section>
             ) : filteredData.length === 0 ? (
                 <Section padded sx={{ textAlign: 'center', paddingBlock: 6 }}>
-                    <SearchOffRoundedIcon sx={{ fontSize: 40, color: 'var(--ink-muted)' }} />
+                    <SearchOffRoundedIcon sx={{ fontSize: 40, color: 'var(--ink-tertiary)' }} />
                     <Typography variant="body2" sx={{ color: 'var(--ink-tertiary)', mt: 1 }}>
                         条件に一致する申請はありません。期間や状態を見直してください。
                     </Typography>

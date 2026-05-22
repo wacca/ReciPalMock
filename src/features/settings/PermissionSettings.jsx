@@ -307,7 +307,7 @@ function PermissionSettings() {
                                                                 '&:hover': { transform: 'translateY(-1px)', boxShadow: 'var(--shadow-1)' },
                                                             }}
                                                         >
-                                                            {canAccess ? <CheckCircleRoundedIcon sx={{ fontSize: 16 }} /> : <HighlightOffRoundedIcon sx={{ fontSize: 16, color: 'var(--ink-muted)' }} />}
+                                                            {canAccess ? <CheckCircleRoundedIcon sx={{ fontSize: 16 }} /> : <HighlightOffRoundedIcon sx={{ fontSize: 16, color: 'var(--ink-tertiary)' }} />}
                                                             {screen.label}
                                                         </Box>
                                                     );

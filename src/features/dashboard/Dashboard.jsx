@@ -407,7 +407,7 @@ function Dashboard({ username = '', role = ROLES.EMPLOYEE }) {
                                                 </Typography>
                                             </Box>
                                         </Stack>
-                                        <ArrowForwardRoundedIcon sx={{ color: 'var(--ink-muted)', fontSize: 18 }} />
+                                        <ArrowForwardRoundedIcon sx={{ color: 'var(--ink-tertiary)', fontSize: 18 }} />
                                     </Stack>
                                     <Stack direction="row" spacing={3} sx={{ mt: 1.5 }}>
                                         <Box>
@@ -572,7 +572,7 @@ function Dashboard({ username = '', role = ROLES.EMPLOYEE }) {
                                         </Box>
                                         <ArrowForwardRoundedIcon
                                             sx={{
-                                                color: 'var(--ink-muted)',
+                                                color: 'var(--ink-tertiary)',
                                                 transition: 'var(--motion-fast)',
                                                 'button:hover &': { transform: 'translateX(2px)', color: tone.fg },
                                             }}

@@ -161,6 +161,7 @@ const normalizeExpenseApplication = (app) => ({
     applicantDepartment: app.applicantDepartment || DEFAULT_USER.department,
     integrationStatus: app.integrationStatus || 'not_applicable',
     details: Array.isArray(app.details) ? app.details.map(normalizeExpenseRow) : [],
+    history: Array.isArray(app.history) ? app.history : [],
 });
 
 export const getExpenseIntegrationStatus = (app) => {
@@ -199,6 +200,7 @@ export const buildExpenseApplication = ({ rows, draftId, applicantId }) => {
         applicantDepartment: profile.department,
         integrationStatus: 'not_applicable',
         details: rows.map((row) => normalizeExpenseRow({ ...row, status: '申請中' })),
+        history: [],
     };
 };
 

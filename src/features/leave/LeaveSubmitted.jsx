@@ -176,12 +176,12 @@ function LeaveSubmitted({ userId }) {
 
             {submitted.length === 0 ? (
                 <Section padded sx={{ textAlign: 'center', paddingBlock: 6 }}>
-                    <EventNoteRoundedIcon sx={{ fontSize: 40, color: 'var(--ink-muted)' }} />
+                    <EventNoteRoundedIcon sx={{ fontSize: 40, color: 'var(--ink-tertiary)' }} />
                     <Typography variant="body2" sx={{ color: 'var(--ink-tertiary)', mt: 1 }}>申請履歴がありません。</Typography>
                 </Section>
             ) : filtered.length === 0 ? (
                 <Section padded sx={{ textAlign: 'center', paddingBlock: 6 }}>
-                    <SearchOffRoundedIcon sx={{ fontSize: 40, color: 'var(--ink-muted)' }} />
+                    <SearchOffRoundedIcon sx={{ fontSize: 40, color: 'var(--ink-tertiary)' }} />
                     <Typography variant="body2" sx={{ color: 'var(--ink-tertiary)', mt: 1 }}>
                         条件に一致する申請はありません。期間や状態を見直してください。
                     </Typography>

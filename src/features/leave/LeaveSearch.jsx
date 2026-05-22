@@ -322,7 +322,7 @@ function LeaveSearch({ userId }) {
 
             {filtered.length === 0 ? (
                 <Section padded sx={{ textAlign: 'center', paddingBlock: 6 }}>
-                    <SearchOffRoundedIcon sx={{ fontSize: 40, color: 'var(--ink-muted)' }} />
+                    <SearchOffRoundedIcon sx={{ fontSize: 40, color: 'var(--ink-tertiary)' }} />
                     <Typography variant="body2" sx={{ color: 'var(--ink-tertiary)', mt: 1 }}>
                         条件に一致する勤怠申請はありません。
                     </Typography>

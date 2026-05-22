@@ -216,7 +216,7 @@ export function FlowSettingsScreen({ storageKey, page, sampleFlows }) {
                                                 </Typography>
                                             </Box>
                                             {i < flow.steps.length - 1 && (
-                                                <ArrowForwardRoundedIcon sx={{ fontSize: 14, color: 'var(--ink-muted)', flexShrink: 0 }} />
+                                                <ArrowForwardRoundedIcon sx={{ fontSize: 14, color: 'var(--ink-secondary)', flexShrink: 0 }} />
                                             )}
                                         </Stack>
                                     ))}

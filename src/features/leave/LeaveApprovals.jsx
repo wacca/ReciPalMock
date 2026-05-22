@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
     Box, Stack, Snackbar, Alert, TextField, FormControl, Select, MenuItem, Button, Typography, Tabs, Tab,
-    InputLabel, ToggleButton, ToggleButtonGroup,
+    InputLabel, ToggleButton, ToggleButtonGroup, CircularProgress, Collapse,
 } from '@mui/material';
 import AssignmentReturnRoundedIcon from '@mui/icons-material/AssignmentReturnRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
@@ -11,15 +11,22 @@ import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 import SearchOffRoundedIcon from '@mui/icons-material/SearchOffRounded';
 import KeyboardCommandKeyRoundedIcon from '@mui/icons-material/KeyboardCommandKeyRounded';
 import UndoRoundedIcon from '@mui/icons-material/UndoRounded';
+import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
+import ExpandLessRoundedIcon from '@mui/icons-material/ExpandLessRounded';
 import { KeyHint } from '../../shared/ui/KeyHint.jsx';
 import { formatLeavePeriod, loadLeaveApplications, saveLeaveApplications } from './leaveApplicationStore';
-import { applyLeaveToAttendance } from '../attendance/attendanceStore';
+import { applyLeaveToAttendance, revertLeaveFromAttendance } from '../attendance/attendanceStore';
 import { getLastNMonths, inDateRange } from '../../shared/utils/dateRangeHelpers';
 import PageScaffold from '../../shared/ui/PageScaffold.jsx';
 import Section from '../../shared/ui/Section.jsx';
 import StatusChip from '../../shared/ui/StatusChip.jsx';
 import ApplicationCard from '../../shared/ui/ApplicationCard.jsx';
 import IntegrationStatusChip from '../../shared/ui/IntegrationStatusChip.jsx';
+import UnapproveDialog from '../../shared/components/UnapproveDialog.jsx';
+import ApplicationHistoryTimeline from '../../shared/components/ApplicationHistoryTimeline.jsx';
+import {
+    HISTORY_EVENTS, appendHistory, createHistoryEntry,
+} from '../../shared/utils/applicationHistory';
 
 const approvers = [
     { value: 'user1', label: '油ニ 和平(univapay@univa.tech)' },
@@ -40,14 +47,21 @@ const isTypingTarget = (el) => {
     return false;
 };
 
+const MOCK_SERVER_MS = 500;
+const COLLAPSE_TOTAL_MS = 280;
+
 function LeaveApprovals() {
     const [data, setData] = useState([]);
     const [commentMap, setCommentMap] = useState({});
     const [selectedApprover, setSelectedApprover] = useState('user1');
-    const [snackbar, setSnackbar] = useState({ open: false, message: '', undoSnapshot: null });
+    const [snackbar, setSnackbar] = useState({ open: false, message: '', undoSnapshot: null, severity: 'success' });
     const [showRejectFor, setShowRejectFor] = useState(null);
     const [tab, setTab] = useState('pending');
     const [focusedIdx, setFocusedIdx] = useState(0);
+    const [pendingMap, setPendingMap] = useState({});
+    const [decidingMap, setDecidingMap] = useState({});
+    const [unapproveTargetId, setUnapproveTargetId] = useState(null);
+    const [expandedHistoryId, setExpandedHistoryId] = useState(null);
     const rowRefs = useRef({});
     const commentRefs = useRef({});
 
@@ -65,6 +79,7 @@ function LeaveApprovals() {
 
     const handleStatus = (id, status) => {
         const target = data.find((row) => row.id === id);
+        if (pendingMap[id] || decidingMap[id]) return;
         const comment = (commentMap[id] || '').trim();
         if (status === '差戻し' && !comment) {
             setShowRejectFor(id);
@@ -82,32 +97,111 @@ function LeaveApprovals() {
             approvedBy: currentApproverLabel,
             approvedAt: new Date().toISOString(),
             integrationStatus: status === '承認済' ? 'pending' : 'not_applicable',
+            history: appendHistory(target.history, createHistoryEntry({
+                eventType: status === '承認済' ? HISTORY_EVENTS.APPROVE : HISTORY_EVENTS.REJECT,
+                actorLabel: currentApproverLabel,
+                fromStatus: '申請中',
+                toStatus: status,
+                comment: status === '差戻し' ? comment : '',
+            })),
         } : null;
-        const next = data.map((row) => (row.id === id && approvedRow ? approvedRow : row));
-        persist(next);
-        setCommentMap({ ...commentMap, [id]: '' });
-        setShowRejectFor(null);
+        const decideKey = status === '承認済' ? 'approved' : 'rejected';
+        // Phase 1: サーバ往復中はボタン spinner
+        setPendingMap((m) => ({ ...m, [id]: decideKey }));
 
-        let message = status === '承認済' ? '勤怠申請を承認しました' : '勤怠申請を差戻しました';
-        if (status === '承認済' && approvedRow) {
-            const r = applyLeaveToAttendance(approvedRow);
-            if (r.updated > 0) {
-                const unitLabel = approvedRow.isHourly ? '時間休 1 件' : `${r.updated} 日分`;
-                message = `勤怠申請を承認しました（勤怠に ${unitLabel} を反映）`;
-            } else if (r.skippedWeekend > 0 && r.updated === 0) {
-                message = '勤怠申請を承認しました（対象期間がすべて土日のため勤怠反映なし）';
-            } else if (r.skippedClosed > 0) {
-                message = `勤怠申請を承認しました（締め済の月 ${r.skippedClosed} 日分は勤怠反映スキップ）`;
+        setTimeout(() => {
+            // Phase 2: レスポンス到達 → Snackbar + カード退場アニメ
+            setPendingMap((m) => {
+                const { [id]: _, ...rest } = m;
+                return rest;
+            });
+            setDecidingMap((m) => ({ ...m, [id]: decideKey }));
+
+            let message = status === '承認済' ? '勤怠申請を承認しました' : '勤怠申請を差戻しました';
+            if (status === '承認済' && approvedRow) {
+                const r = applyLeaveToAttendance(approvedRow);
+                if (r.updated > 0) {
+                    const unitLabel = approvedRow.isHourly ? '時間休 1 件' : `${r.updated} 日分`;
+                    message = `勤怠申請を承認しました（勤怠に ${unitLabel} を反映）`;
+                } else if (r.skippedWeekend > 0 && r.updated === 0) {
+                    message = '勤怠申請を承認しました（対象期間がすべて土日のため勤怠反映なし）';
+                } else if (r.skippedClosed > 0) {
+                    message = `勤怠申請を承認しました（締め済の月 ${r.skippedClosed} 日分は勤怠反映スキップ）`;
+                }
             }
-        }
-        setSnackbar({ open: true, message, undoSnapshot: snapshot });
+            setSnackbar({ open: true, message, undoSnapshot: snapshot, severity: 'success' });
+
+            setTimeout(() => {
+                // Phase 3: 退場完了 → persist + map クリア
+                const next = data.map((row) => (row.id === id && approvedRow ? approvedRow : row));
+                persist(next);
+                setCommentMap((cm) => ({ ...cm, [id]: '' }));
+                setShowRejectFor(null);
+                setDecidingMap((m) => {
+                    const { [id]: _, ...rest } = m;
+                    return rest;
+                });
+            }, COLLAPSE_TOTAL_MS);
+        }, MOCK_SERVER_MS);
     };
 
     const handleUndo = () => {
         const snap = snackbar.undoSnapshot;
         if (!snap) return;
         persist(snap);
-        setSnackbar({ open: false, message: '', undoSnapshot: null });
+        setSnackbar({ open: false, message: '', undoSnapshot: null, severity: 'success' });
+    };
+
+    const unapproveTarget = useMemo(() => (
+        data.find((row) => row.id === unapproveTargetId) || null
+    ), [data, unapproveTargetId]);
+
+    const canUnapprove = (row) => {
+        if (!row) return false;
+        if (row.status !== '承認済') return false;
+        if (row.integrationStatus === 'synced') return false;
+        return true;
+    };
+
+    const handleUnapproveConfirm = (reason) => {
+        if (!unapproveTarget) return;
+        const targetId = unapproveTarget.id;
+        const snapshot = data;
+        // 勤怠への反映分をロールバック
+        const revertResult = revertLeaveFromAttendance(unapproveTarget);
+        const historyEntry = createHistoryEntry({
+            eventType: HISTORY_EVENTS.UNAPPROVE,
+            actorLabel: currentApproverLabel,
+            fromStatus: '承認済',
+            toStatus: '申請中',
+            comment: reason,
+        });
+        const next = data.map((row) => (
+            row.id === targetId
+                ? {
+                    ...row,
+                    status: '申請中',
+                    approvedBy: '',
+                    approvedAt: '',
+                    integrationStatus: 'not_applicable',
+                    remarks: '',
+                    history: appendHistory(row.history, historyEntry),
+                }
+                : row
+        ));
+        persist(next);
+        setUnapproveTargetId(null);
+        const detail = revertResult.reverted > 0
+            ? `勤怠 ${revertResult.reverted} 日分の反映を取り消しました`
+            : revertResult.skippedClosed > 0
+                ? `締め済の月 ${revertResult.skippedClosed} 日分は勤怠を変更していません`
+                : '';
+        setSnackbar({
+            open: true,
+            message: detail ? `承認を取り消しました（${detail}）` : '承認を取り消しました。',
+            undoSnapshot: snapshot,
+            severity: 'info',
+        });
     };
 
     const approvalTargets = useMemo(() => (
@@ -265,18 +359,14 @@ function LeaveApprovals() {
                             const showReject = showRejectFor === row.id;
                             const isFocused = idx === focusedIdx;
                             return (
-                                <Box
+                                <ApplicationCard
                                     key={row.id}
                                     ref={(el) => { rowRefs.current[row.id] = el; }}
+                                    statusKey="pending"
+                                    decidingAs={decidingMap[row.id] || null}
+                                    focused={isFocused}
                                     onClick={() => setFocusedIdx(idx)}
-                                    sx={{
-                                        borderRadius: 'var(--radius-lg)',
-                                        outline: isFocused ? '2px solid var(--accent-primary)' : '2px solid transparent',
-                                        outlineOffset: 2,
-                                        transition: 'var(--motion-fast)',
-                                    }}
                                 >
-                                <ApplicationCard statusKey="pending">
                                     <Box sx={{ paddingInline: { xs: 2, md: 3 }, paddingLeft: { xs: 2.5, md: 3.5 }, paddingBlock: 2 }}>
                                         <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'center' }} spacing={1.5}>
                                             <Box>
@@ -312,17 +402,40 @@ function LeaveApprovals() {
                                                 inputRef={(el) => { commentRefs.current[row.id] = el; }}
                                             />
                                             <Stack direction="row" spacing={1} justifyContent="flex-end" alignItems="center" flexShrink={0}>
-                                                <Button variant="outlined" color="warning" startIcon={<AssignmentReturnRoundedIcon />} onClick={() => handleStatus(row.id, '差戻し')}>
-                                                    差戻す
-                                                </Button>
-                                                <Button variant="contained" color="primary" startIcon={<CheckCircleRoundedIcon />} onClick={() => handleStatus(row.id, '承認済')}>
-                                                    承認する
-                                                </Button>
+                                                {(() => {
+                                                    const pending = pendingMap[row.id] || decidingMap[row.id];
+                                                    const isBusy = Boolean(pending);
+                                                    return (
+                                                        <>
+                                                            <Button
+                                                                variant="outlined"
+                                                                color="warning"
+                                                                startIcon={pending === 'rejected'
+                                                                    ? <CircularProgress size={16} color="inherit" />
+                                                                    : <AssignmentReturnRoundedIcon />}
+                                                                onClick={() => handleStatus(row.id, '差戻し')}
+                                                                disabled={isBusy}
+                                                            >
+                                                                差戻す
+                                                            </Button>
+                                                            <Button
+                                                                variant="contained"
+                                                                color="primary"
+                                                                startIcon={pending === 'approved'
+                                                                    ? <CircularProgress size={16} color="inherit" />
+                                                                    : <CheckCircleRoundedIcon />}
+                                                                onClick={() => handleStatus(row.id, '承認済')}
+                                                                disabled={isBusy}
+                                                            >
+                                                                承認する
+                                                            </Button>
+                                                        </>
+                                                    );
+                                                })()}
                                             </Stack>
                                         </Stack>
                                     </Box>
                                 </ApplicationCard>
-                                </Box>
                             );
                         })}
                     </Stack>
@@ -409,7 +522,7 @@ function LeaveApprovals() {
 
                     {historyRows.length === 0 ? (
                         <Section padded sx={{ textAlign: 'center', paddingBlock: 6 }}>
-                            <SearchOffRoundedIcon sx={{ fontSize: 40, color: 'var(--ink-muted)' }} />
+                            <SearchOffRoundedIcon sx={{ fontSize: 40, color: 'var(--ink-tertiary)' }} />
                             <Typography variant="body2" sx={{ color: 'var(--ink-tertiary)', mt: 1 }}>
                                 条件に一致する承認履歴はありません。
                             </Typography>
@@ -418,6 +531,10 @@ function LeaveApprovals() {
                         <Stack spacing={1.25}>
                             {historyRows.map((row) => {
                                 const statusKey = toStatusKey(row.status);
+                                const isExpanded = expandedHistoryId === row.id;
+                                const historyCount = (row.history || []).length;
+                                const isMine = row.approvedBy === currentApproverLabel;
+                                const unapproveEnabled = row.status === '承認済' && canUnapprove(row) && isMine;
                                 return (
                                     <ApplicationCard key={row.id} statusKey={statusKey} hoverable={false}>
                                         <Box sx={{ paddingInline: { xs: 2, md: 3 }, paddingLeft: { xs: 2.5, md: 3.5 }, paddingBlock: 1.75 }}>
@@ -456,6 +573,41 @@ function LeaveApprovals() {
                                                     )}
                                                 </Box>
                                             </Stack>
+                                            <Stack direction="row" spacing={1} sx={{ mt: 1.25 }} alignItems="center" flexWrap="wrap">
+                                                <Button
+                                                    size="small"
+                                                    variant="text"
+                                                    color="inherit"
+                                                    startIcon={isExpanded ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
+                                                    onClick={() => setExpandedHistoryId(isExpanded ? null : row.id)}
+                                                    sx={{ color: 'var(--ink-tertiary)' }}
+                                                >
+                                                    操作履歴{historyCount > 0 ? ` (${historyCount})` : ''}
+                                                </Button>
+                                                <Box sx={{ flex: 1 }} />
+                                                {row.status === '承認済' && (
+                                                    <Button
+                                                        size="small"
+                                                        variant="outlined"
+                                                        color="warning"
+                                                        startIcon={<UndoRoundedIcon />}
+                                                        onClick={() => setUnapproveTargetId(row.id)}
+                                                        disabled={!unapproveEnabled}
+                                                        title={
+                                                            !isMine ? '自分が承認した申請のみ取消できます'
+                                                            : row.integrationStatus === 'synced' ? '外部連携済のため取消できません'
+                                                            : ''
+                                                        }
+                                                    >
+                                                        承認を取り消す
+                                                    </Button>
+                                                )}
+                                            </Stack>
+                                            <Collapse in={isExpanded} unmountOnExit>
+                                                <Box sx={{ mt: 1.5, paddingInline: 1.5, paddingBlock: 1.5, borderRadius: 'var(--radius-md)', background: 'var(--surface-sunken)' }}>
+                                                    <ApplicationHistoryTimeline history={row.history} />
+                                                </Box>
+                                            </Collapse>
                                         </Box>
                                     </ApplicationCard>
                                 );
@@ -468,11 +620,11 @@ function LeaveApprovals() {
             <Snackbar
                 open={snackbar.open}
                 autoHideDuration={5000}
-                onClose={() => setSnackbar({ open: false, message: '', undoSnapshot: null })}
+                onClose={() => setSnackbar({ open: false, message: '', undoSnapshot: null, severity: 'success' })}
                 anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
             >
                 <Alert
-                    severity="success"
+                    severity={snackbar.severity || 'success'}
                     sx={{ width: '100%' }}
                     action={snackbar.undoSnapshot ? (
                         <Button
@@ -489,6 +641,16 @@ function LeaveApprovals() {
                     {snackbar.message}
                 </Alert>
             </Snackbar>
+
+            <UnapproveDialog
+                open={Boolean(unapproveTarget)}
+                title="承認を取り消しますか？"
+                description={unapproveTarget
+                    ? `${unapproveTarget.leaveType}（${formatLeavePeriod(unapproveTarget)}）の承認を取り消し、勤怠への反映もロールバックします。`
+                    : ''}
+                onCancel={() => setUnapproveTargetId(null)}
+                onConfirm={handleUnapproveConfirm}
+            />
         </PageScaffold>
     );
 }
