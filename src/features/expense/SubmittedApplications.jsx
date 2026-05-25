@@ -219,24 +219,59 @@ function SubmittedApplications({ userId }) {
                             <Box
                                 sx={{
                                     paddingInline: { xs: 2, md: 3 },
-                                    paddingBlock: 2,
+                                    paddingBlock: 1.75,
                                     paddingLeft: { xs: 2.5, md: 3.5 },
                                     display: 'grid',
-                                    gridTemplateColumns: { xs: '1fr', md: '120px 1fr 200px 140px minmax(100px, auto)' },
-                                    gap: 2,
+                                    gridTemplateColumns: {
+                                        xs: '1fr',
+                                        md: '108px 130px minmax(0, 1fr) 108px auto',
+                                    },
+                                    columnGap: 2,
+                                    rowGap: 0.5,
                                     alignItems: 'center',
                                 }}
                             >
-                                <Stack spacing={0.25}>
-                                    <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)' }}>申請日</Typography>
-                                    <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--ink-primary)' }}>{group.applicationDate}</Typography>
-                                </Stack>
-                                <Box sx={{ minWidth: 0 }}>
-                                    <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)' }}>申請ID</Typography>
-                                    <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--ink-primary)' }}>{group.applicationId}</Typography>
-                                </Box>
-                                <Typography variant="body2" sx={{ color: 'var(--ink-secondary)' }}>{getApplicationPaymentMethods(group).join(' / ') || '-'}</Typography>
-                                <Typography sx={{ fontWeight: 700, fontSize: 18, color: 'var(--accent-iris)' }} className="tabular-nums">
+                                <Typography
+                                    variant="body2"
+                                    className="tabular-nums"
+                                    sx={{ fontWeight: 600, color: 'var(--ink-primary)', whiteSpace: 'nowrap' }}
+                                >
+                                    {group.applicationDate}
+                                </Typography>
+                                <Typography
+                                    variant="body2"
+                                    sx={{
+                                        color: 'var(--ink-secondary)',
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        fontFamily: 'var(--font-mono)',
+                                        fontSize: 13,
+                                    }}
+                                >
+                                    {group.applicationId}
+                                </Typography>
+                                <Typography
+                                    variant="body2"
+                                    sx={{
+                                        color: 'var(--ink-secondary)',
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                    }}
+                                >
+                                    {getApplicationPaymentMethods(group).join(' / ') || '-'}
+                                </Typography>
+                                <Typography
+                                    className="tabular-nums"
+                                    sx={{
+                                        fontWeight: 700,
+                                        fontSize: 18,
+                                        color: 'var(--accent-iris)',
+                                        textAlign: 'right',
+                                        whiteSpace: 'nowrap',
+                                    }}
+                                >
                                     {formatYen(total)}
                                 </Typography>
                                 <Stack

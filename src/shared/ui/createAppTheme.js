@@ -270,6 +270,9 @@ export const createAppTheme = (mode = 'light', density = 'comfortable') => {
                 defaultProps: {
                     anchorOrigin: { vertical: 'bottom', horizontal: 'center' },
                 },
+                // MUI v6 のバグで styleOverrides を入れると ClickAwayListener に
+                // ownerState が伝播してしまうため、ここには書かない。
+                // Snackbar 内 Alert の反転スタイルは MuiAlert.root の親セレクタ側に置く。
             },
             MuiSnackbarContent: {
                 styleOverrides: {
@@ -284,32 +287,50 @@ export const createAppTheme = (mode = 'light', density = 'comfortable') => {
             },
             MuiAlert: {
                 styleOverrides: {
-                    // Snackbar 内で使われる Alert は周囲のテーマと反転させて視認性を確保。
-                    // severity の意味は左アイコンの色で残す。
+                    // インライン Alert は severity に応じた淡色バナーとして描画。
+                    // Snackbar 内で使われる場合は MuiSnackbar.root の親セレクタで反転スタイルに上書きする。
                     root: {
                         borderRadius: radius.md,
-                        border: 'none',
-                        backgroundColor: isDark ? '#F1F5FA' : '#0F172A',
-                        color: isDark ? '#0B0F17' : '#FFFFFF',
-                        boxShadow: p.shadow[3],
-                        '& .MuiAlert-action': {
-                            color: 'inherit',
-                        },
-                        '& .MuiAlert-action .MuiButton-root': {
-                            color: 'inherit',
+                        border: '1px solid transparent',
+                        boxShadow: 'none',
+                        '& .MuiAlert-action': { color: 'inherit' },
+                        '& .MuiAlert-action .MuiButton-root': { color: 'inherit' },
+                        // Snackbar 内 Alert はトーストとして高コントラスト反転にする。
+                        // 親セレクタの分だけ詳細度が上がり severity 別の地色より優先される。
+                        '.MuiSnackbar-root &': {
+                            backgroundColor: isDark ? '#F1F5FA' : '#0F172A',
+                            color: isDark ? '#0B0F17' : '#FFFFFF',
+                            boxShadow: p.shadow[3],
+                            borderColor: 'transparent',
                         },
                     },
                     standardSuccess: {
+                        backgroundColor: p.accent.leafSoft,
+                        color: isDark ? p.ink.primary : '#14532D',
+                        borderColor: isDark ? 'transparent' : 'rgba(22,163,74,0.24)',
                         '& .MuiAlert-icon': { color: p.accent.leaf },
+                        '& .MuiAlertTitle-root': { color: 'inherit' },
                     },
                     standardError: {
+                        backgroundColor: p.accent.roseSoft,
+                        color: isDark ? p.ink.primary : '#7F1D1D',
+                        borderColor: isDark ? 'transparent' : 'rgba(220,38,38,0.24)',
                         '& .MuiAlert-icon': { color: p.accent.rose },
+                        '& .MuiAlertTitle-root': { color: 'inherit' },
                     },
                     standardWarning: {
+                        backgroundColor: p.accent.amberSoft,
+                        color: isDark ? p.ink.primary : '#7C2D12',
+                        borderColor: isDark ? 'rgba(245,158,11,0.32)' : 'rgba(217,119,6,0.28)',
                         '& .MuiAlert-icon': { color: p.accent.amber },
+                        '& .MuiAlertTitle-root': { color: 'inherit' },
                     },
                     standardInfo: {
+                        backgroundColor: p.accent.irisSoft,
+                        color: isDark ? p.ink.primary : '#1E3A8A',
+                        borderColor: isDark ? 'transparent' : 'rgba(91,108,255,0.24)',
                         '& .MuiAlert-icon': { color: p.accent.iris },
+                        '& .MuiAlertTitle-root': { color: 'inherit' },
                     },
                 },
             },

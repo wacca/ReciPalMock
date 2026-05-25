@@ -1,4 +1,5 @@
 import { DEFAULT_USER, getUserProfile } from '../../shared/utils/userDirectory';
+import { HISTORY_EVENTS, createHistoryEntry } from '../../shared/utils/applicationHistory';
 
 const STORAGE_KEY = 'expenseApplications_v5';
 
@@ -191,6 +192,7 @@ export const saveExpenseApplications = (applications) => {
 
 export const buildExpenseApplication = ({ rows, draftId, applicantId }) => {
     const profile = getUserProfile(applicantId);
+    const actorLabel = `${profile.name}(${profile.id})`;
     return {
         applicationId: `A${new Date().toISOString().replace(/\D/g, '').slice(0, 14)}`,
         applicationDate: new Date().toISOString().slice(0, 10),
@@ -200,7 +202,15 @@ export const buildExpenseApplication = ({ rows, draftId, applicantId }) => {
         applicantDepartment: profile.department,
         integrationStatus: 'not_applicable',
         details: rows.map((row) => normalizeExpenseRow({ ...row, status: '申請中' })),
-        history: [],
+        history: [
+            createHistoryEntry({
+                eventType: HISTORY_EVENTS.SUBMIT,
+                actorLabel,
+                actorRole: profile.role,
+                fromStatus: '下書き',
+                toStatus: '申請中',
+            }),
+        ],
     };
 };
 

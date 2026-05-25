@@ -1,4 +1,5 @@
 import { DEFAULT_USER, getUserProfile } from '../../shared/utils/userDirectory';
+import { HISTORY_EVENTS, createHistoryEntry } from '../../shared/utils/applicationHistory';
 
 const APPLICATIONS_KEY = 'leaveApplications_v7';
 const DRAFTS_KEY = 'leaveDrafts_v4';
@@ -344,6 +345,7 @@ export const buildLeaveApplications = ({ editId, rows, applicantId }) => {
     const submittedAt = new Date().toISOString();
     const baseId = editId === 'new' ? `leave_${Date.now()}` : editId;
     const profile = getUserProfile(applicantId);
+    const actorLabel = `${profile.name}(${profile.id})`;
 
     return rows.map((row, index) => {
         const normalized = normalizeLeaveRow(row);
@@ -357,6 +359,15 @@ export const buildLeaveApplications = ({ editId, rows, applicantId }) => {
             submittedAt,
             remarks: '',
             integrationStatus: 'not_applicable',
+            history: [
+                createHistoryEntry({
+                    eventType: HISTORY_EVENTS.SUBMIT,
+                    actorLabel,
+                    actorRole: profile.role,
+                    fromStatus: '下書き',
+                    toStatus: '申請中',
+                }),
+            ],
         };
     });
 };

@@ -21,6 +21,7 @@ import {
     upsertAttendance,
 } from './attendanceStore';
 import { getUserProfile } from '../../shared/utils/userDirectory';
+import { HISTORY_EVENTS, appendHistory, createHistoryEntry } from '../../shared/utils/applicationHistory';
 
 const ATTENDANCE_TYPES = ['出勤', '欠勤', '有給', '振替休日'];
 
@@ -241,6 +242,14 @@ function AttendanceInput({ username = '', userId = '' }) {
             setSnackbar({ open: true, message: '勤怠が未入力です', severity: 'warning' });
             return;
         }
+        const profile = getUserProfile(record.userId);
+        const submitEvent = createHistoryEntry({
+            eventType: HISTORY_EVENTS.SUBMIT,
+            actorLabel: `${profile.name}(${profile.id})`,
+            actorRole: profile.role,
+            fromStatus: record.approvalStatus || '下書き',
+            toStatus: '申請中',
+        });
         const updated = {
             ...record,
             approvalStatus: '申請中',
@@ -248,6 +257,7 @@ function AttendanceInput({ username = '', userId = '' }) {
             remarks: '',
             approvedBy: '',
             approvedAt: '',
+            history: appendHistory(record.history, submitEvent),
         };
         persist(updated);
         setRecord(updated);
