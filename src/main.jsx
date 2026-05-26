@@ -8,6 +8,10 @@ import { UiPreferencesProvider, useUiPreferences } from './shared/ui/UiPreferenc
 import { createAppTheme } from './shared/ui/createAppTheme.js';
 import { AppGlobalStyles } from './shared/ui/globalStyles.jsx';
 
+const routerBasename = import.meta.env.BASE_URL === '/'
+    ? undefined
+    : import.meta.env.BASE_URL.replace(/\/$/, '');
+
 function ThemedApp() {
     const { resolvedMode, prefs } = useUiPreferences();
     const theme = useMemo(() => createAppTheme(resolvedMode, prefs.density), [resolvedMode, prefs.density]);
@@ -24,7 +28,7 @@ function ThemedApp() {
 createRoot(document.getElementById('root')).render(
     <StrictMode>
         <UiPreferencesProvider>
-            <BrowserRouter>
+            <BrowserRouter basename={routerBasename}>
                 <ThemedApp />
             </BrowserRouter>
         </UiPreferencesProvider>

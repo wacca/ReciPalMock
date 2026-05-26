@@ -49,7 +49,7 @@ npm run lint
 npm run deploy      # predeploy で build → dist/ を gh-pages ブランチに publish
 ```
 
-`vite.config.js` の `base: './'` により、GitHub Pages のサブパス配信でも相対パスで動作します。
+本番ビルドでは `vite.config.js` の `base: '/ReciPalMock/'` と `BrowserRouter` の `basename` を揃え、GitHub Pages のサブパス配信でアプリ内遷移と静的アセット参照が同じ配下を向くようにしています。
 
 ---
 
