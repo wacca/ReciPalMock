@@ -1,0 +1,29 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<</Type/Catalog/Pages 2 0 R>>
+endobj
+2 0 obj
+<</Type/Pages/Kids[3 0 R]/Count 1>>
+endobj
+3 0 obj
+<</Type/Page/Parent 2 0 R/MediaBox[0 0 480 280]/Resources<</Font<</F1<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>>>>>/Contents 4 0 R>>
+endobj
+4 0 obj
+<</Length 299>>
+stream
+BT /F1 16 Tf 60 280 Td (RECEIPT - Sample) Tj 0 -22 Td (Date: 2026-05-13) Tj 0 -22 Td (Store: Tokyo Books) Tj 0 -22 Td (Item: Accounting Practice x2) Tj 0 -22 Td (Subtotal: JPY 6,000) Tj 0 -22 Td (Tax 10%: JPY 600) Tj 0 -22 Td (Total: JPY 6,600) Tj 0 -22 Td (-- mock receipt for ReciPalMock --) Tj ET
+endstream
+endobj
+xref
+0 5
+0000000000 65535 f 
+0000000015 00000 n 
+0000000060 00000 n 
+0000000111 00000 n 
+0000000264 00000 n 
+trailer
+<</Size 5/Root 1 0 R>>
+startxref
+612
+%%EOF
