@@ -1,7 +1,11 @@
 import { DEFAULT_USER, getUserProfile } from '../../shared/utils/userDirectory';
 import { HISTORY_EVENTS, createHistoryEntry } from '../../shared/utils/applicationHistory';
 
-const STORAGE_KEY = 'expenseApplications_v5';
+const STORAGE_KEY = 'expenseApplications_v6';
+
+// サンプル領収書は public/sample-receipts/ に配置し、Vite の base 設定を尊重した相対 URL で参照する。
+// 申請者がアップロードしたファイルは URL.createObjectURL で blob: URL になり、こちらは別経路で扱う。
+const sampleReceiptUrl = (filename) => `${import.meta.env.BASE_URL}sample-receipts/${filename}`;
 
 export const EXPENSE_CATEGORIES = [
     '旅費交通費',
@@ -30,6 +34,7 @@ export const emptyExpenseRow = () => ({
     paymentMethod: '個人立替払用',
     receiptName: '',
     receiptPreview: '',
+    receiptMimeType: '',
 });
 
 const SAMPLE_APPLICATIONS = [
@@ -41,8 +46,8 @@ const SAMPLE_APPLICATIONS = [
         applicantDepartment: '営業部',
         integrationStatus: 'not_applicable',
         details: [
-            { date: '2026-05-13', description: '出張電車代', destination: '東京-新大阪', category: '旅費交通費', amount: 13870, paymentMethod: '個人立替払用', status: '申請中' },
-            { date: '2026-05-13', description: '〇〇（店名）', destination: '××社××様 会食', category: '接待交際費', amount: 19440, paymentMethod: '個人立替払用', status: '申請中' },
+            { date: '2026-05-13', description: '出張電車代', destination: '東京-新大阪', category: '旅費交通費', amount: 13870, paymentMethod: '個人立替払用', status: '申請中', receiptName: 'sample-train.svg', receiptPreview: sampleReceiptUrl('sample-train.svg'), receiptMimeType: 'image/svg+xml' },
+            { date: '2026-05-13', description: '〇〇（店名）', destination: '××社××様 会食', category: '接待交際費', amount: 19440, paymentMethod: '個人立替払用', status: '申請中', receiptName: 'sample-meal.svg', receiptPreview: sampleReceiptUrl('sample-meal.svg'), receiptMimeType: 'image/svg+xml' },
         ],
     },
     {
@@ -79,7 +84,7 @@ const SAMPLE_APPLICATIONS = [
         applicantDepartment: '経理部',
         integrationStatus: 'not_applicable',
         details: [
-            { date: '2026-04-24', description: '書籍購入', destination: '会計実務本 2冊', category: '新聞図書費', amount: 6600, paymentMethod: '個人立替払用', status: '申請中' },
+            { date: '2026-04-24', description: '書籍購入', destination: '会計実務本 2冊', category: '新聞図書費', amount: 6600, paymentMethod: '個人立替払用', status: '申請中', receiptName: 'sample-receipt.pdf', receiptPreview: sampleReceiptUrl('sample-receipt.pdf'), receiptMimeType: 'application/pdf' },
         ],
     },
     {
@@ -129,8 +134,8 @@ const SAMPLE_APPLICATIONS = [
         applicantDepartment: '営業部',
         integrationStatus: 'not_applicable',
         details: [
-            { date: '2026-05-17', description: 'タクシー', destination: '羽田-取引先', category: '旅費交通費', amount: 5240, paymentMethod: '個人立替払用', status: '申請中' },
-            { date: '2026-05-17', description: '会食(△△レストラン)', destination: '◇◇商事 営業部長 接待', category: '接待交際費', amount: 28600, paymentMethod: '法人カード経費分', status: '申請中' },
+            { date: '2026-05-17', description: 'タクシー', destination: '羽田-取引先', category: '旅費交通費', amount: 5240, paymentMethod: '個人立替払用', status: '申請中', receiptName: 'sample-taxi.svg', receiptPreview: sampleReceiptUrl('sample-taxi.svg'), receiptMimeType: 'image/svg+xml' },
+            { date: '2026-05-17', description: '会食(△△レストラン)', destination: '◇◇商事 営業部長 接待', category: '接待交際費', amount: 28600, paymentMethod: '法人カード経費分', status: '申請中', receiptName: 'sample-meal.svg', receiptPreview: sampleReceiptUrl('sample-meal.svg'), receiptMimeType: 'image/svg+xml' },
         ],
         remarks: '出張1回分で立替とカード払いが混在',
     },
@@ -148,8 +153,26 @@ export const normalizeExpenseRow = (row) => ({
     paymentMethod: row.paymentMethod || '個人立替払用',
     receiptName: row.receiptName || '',
     receiptPreview: row.receiptPreview || '',
+    // 旧データ互換: receiptMimeType が無ければファイル名から推測する
+    receiptMimeType: row.receiptMimeType || inferMimeTypeFromName(row.receiptName) || '',
     status: migrateExpenseStatus(row.status || '申請中'),
 });
+
+const inferMimeTypeFromName = (name) => {
+    if (!name) return '';
+    const lower = String(name).toLowerCase();
+    if (lower.endsWith('.pdf')) return 'application/pdf';
+    if (lower.endsWith('.svg')) return 'image/svg+xml';
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+    if (lower.endsWith('.gif')) return 'image/gif';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    if (lower.endsWith('.heic') || lower.endsWith('.heif')) return 'image/heic';
+    return '';
+};
+
+export const isPdfReceipt = (mimeType) => mimeType === 'application/pdf';
+export const isImageReceipt = (mimeType) => Boolean(mimeType && mimeType.startsWith('image/'));
 
 export const getApplicationPaymentMethods = (app) => (
     Array.from(new Set((app?.details || []).map((d) => d.paymentMethod).filter(Boolean)))

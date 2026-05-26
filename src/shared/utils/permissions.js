@@ -44,6 +44,7 @@ export const PERMISSIONS = {
     ADMIN_ACCOUNT: 'admin:account',
     ADMIN_MASTER: 'admin:master',
     ADMIN_PERMISSION: 'admin:permission',
+    ADMIN_HOLIDAY: 'admin:holiday',
 };
 
 const EMPLOYEE_PERMS = [
@@ -65,6 +66,7 @@ const HR_ADMIN_PERMS = [
     PERMISSIONS.MANAGE_EXPENSE,
     PERMISSIONS.MANAGE_LEAVE,
     PERMISSIONS.MANAGE_ATTENDANCE,
+    PERMISSIONS.ADMIN_HOLIDAY,
 ];
 
 const SYSTEM_ADMIN_PERMS = [

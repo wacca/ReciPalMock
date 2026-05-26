@@ -36,6 +36,7 @@ import {
 } from './expenseApplicationStore';
 import { buildCsv, downloadCsv, todayStamp } from '../../shared/utils/csvHelpers.js';
 import AdminConfirmDialog from '../../shared/components/AdminConfirmDialog';
+import ReceiptPreviewDialog, { ReceiptThumbnail } from '../../shared/components/ReceiptPreviewDialog.jsx';
 import PageScaffold from '../../shared/ui/PageScaffold.jsx';
 import Section from '../../shared/ui/Section.jsx';
 import StatusChip, { statusBarColor } from '../../shared/ui/StatusChip.jsx';
@@ -87,6 +88,9 @@ const toDetailRows = (app) => {
             statusKey: 'pending',
             remarks: app.remarks || '',
             integrationStatus,
+            receiptName: '',
+            receiptPreview: '',
+            receiptMimeType: '',
             haystack: [app.applicationId, app.applicantName, app.applicantDepartment, app.remarks]
                 .filter(Boolean).join(' ').toLowerCase(),
         }];
@@ -109,6 +113,9 @@ const toDetailRows = (app) => {
         statusKey: toStatusKey(detail.status || '申請中'),
         remarks: app.remarks || '',
         integrationStatus,
+        receiptName: detail.receiptName || '',
+        receiptPreview: detail.receiptPreview || '',
+        receiptMimeType: detail.receiptMimeType || '',
         haystack: [
             app.applicationId,
             app.applicantName,
@@ -140,6 +147,7 @@ function ExpenseSearch({ userId }) {
     const [amountMax, setAmountMax] = useState('');
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
     const [markSyncedConfirmOpen, setMarkSyncedConfirmOpen] = useState(false);
+    const [receiptPreview, setReceiptPreview] = useState(null); // { src, name, mimeType } | null
 
     useEffect(() => {
         setApps(loadExpenseApplications());
@@ -227,6 +235,7 @@ function ExpenseSearch({ userId }) {
             { label: '支払方法', value: (row) => row.paymentMethod },
             { label: '金額', value: (row) => row.amount },
             { label: '明細状態', value: (row) => row.status },
+            { label: '領収書ファイル', value: (row) => row.receiptName },
             { label: '備考', value: (row) => row.remarks },
             { label: '連携状況', value: (row) => row.integrationStatus },
         ];
@@ -417,6 +426,7 @@ function ExpenseSearch({ userId }) {
                                     <TableCell sx={{ width: 140 }}>費目</TableCell>
                                     <TableCell>内容 / 行き先</TableCell>
                                     <TableCell sx={{ width: 140 }}>支払方法</TableCell>
+                                    <TableCell sx={{ width: 64 }} align="center">領収書</TableCell>
                                     <TableCell sx={{ width: 130 }} align="right">金額</TableCell>
                                     <TableCell sx={{ width: 110 }}>明細状態</TableCell>
                                     <TableCell sx={{ width: 130 }}>連携状況</TableCell>
@@ -475,6 +485,21 @@ function ExpenseSearch({ userId }) {
                                             </Stack>
                                         </TableCell>
                                         <TableCell sx={{ color: 'var(--ink-secondary)' }}>{row.paymentMethod || '-'}</TableCell>
+                                        <TableCell align="center" sx={{ paddingBlock: 0.75 }}>
+                                            <Box sx={{ display: 'inline-flex' }}>
+                                                <ReceiptThumbnail
+                                                    src={row.receiptPreview}
+                                                    name={row.receiptName}
+                                                    mimeType={row.receiptMimeType}
+                                                    size={32}
+                                                    onClick={row.receiptPreview ? () => setReceiptPreview({
+                                                        src: row.receiptPreview,
+                                                        name: row.receiptName,
+                                                        mimeType: row.receiptMimeType,
+                                                    }) : undefined}
+                                                />
+                                            </Box>
+                                        </TableCell>
                                         <TableCell align="right" className="tabular-nums" sx={{ fontWeight: 600, color: 'var(--accent-iris)' }}>
                                             {formatYen(row.amount)}
                                         </TableCell>
@@ -506,6 +531,14 @@ function ExpenseSearch({ userId }) {
                 confirmColor="primary"
                 onCancel={() => setMarkSyncedConfirmOpen(false)}
                 onConfirm={handleMarkSynced}
+            />
+
+            <ReceiptPreviewDialog
+                open={Boolean(receiptPreview)}
+                src={receiptPreview?.src}
+                name={receiptPreview?.name}
+                mimeType={receiptPreview?.mimeType}
+                onClose={() => setReceiptPreview(null)}
             />
         </PageScaffold>
     );

@@ -31,6 +31,7 @@ import ApplicationCard from '../../shared/ui/ApplicationCard.jsx';
 import IntegrationStatusChip from '../../shared/ui/IntegrationStatusChip.jsx';
 import UnapproveDialog from '../../shared/components/UnapproveDialog.jsx';
 import ApplicationHistoryTimeline from '../../shared/components/ApplicationHistoryTimeline.jsx';
+import ReceiptPreviewDialog, { ReceiptThumbnail } from '../../shared/components/ReceiptPreviewDialog.jsx';
 import {
     HISTORY_EVENTS, appendHistory, createHistoryEntry,
 } from '../../shared/utils/applicationHistory';
@@ -71,6 +72,8 @@ function Approvals() {
     const [decidingMap, setDecidingMap] = useState({}); // 確定後の collapse 中（カード退場アニメ）
     const [unapproveTargetId, setUnapproveTargetId] = useState(null);
     const [expandedHistoryId, setExpandedHistoryId] = useState(null);
+    const [expandedDetailsId, setExpandedDetailsId] = useState(null); // 履歴タブで明細を展開している申請ID
+    const [receiptPreview, setReceiptPreview] = useState(null); // { src, name, mimeType } | null
     const rowRefs = useRef({});
     const commentRefs = useRef({});
 
@@ -227,6 +230,8 @@ function Approvals() {
             if (e.metaKey || e.ctrlKey || e.altKey) return;
             if (isTypingTarget(e.target)) return;
             if (approvalTargets.length === 0) return;
+            // 領収書プレビュー表示中は J/K/A/R を発火させない（背面の承認操作を防ぐ）
+            if (receiptPreview) return;
 
             const key = e.key;
             if (key === 'j' || key === 'ArrowDown') {
@@ -263,7 +268,7 @@ function Approvals() {
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [tab, approvalTargets, focusedIdx, commentMap, scrollFocusedIntoView]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [tab, approvalTargets, focusedIdx, commentMap, scrollFocusedIntoView, receiptPreview]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const historyRows = useMemo(() => (
         data
@@ -400,6 +405,7 @@ function Approvals() {
                                                         <TableCell>用途・行き先</TableCell>
                                                         <TableCell sx={{ width: 160 }}>費目</TableCell>
                                                         <TableCell sx={{ width: 150 }}>支払方法</TableCell>
+                                                        <TableCell sx={{ width: 70 }} align="center">領収書</TableCell>
                                                         <TableCell sx={{ width: 140 }} align="right">金額</TableCell>
                                                     </TableRow>
                                                 </TableHead>
@@ -411,6 +417,21 @@ function Approvals() {
                                                             <TableCell>{row.destination}</TableCell>
                                                             <TableCell>{row.category}</TableCell>
                                                             <TableCell sx={{ color: 'var(--ink-secondary)' }}>{row.paymentMethod || '-'}</TableCell>
+                                                            <TableCell align="center" sx={{ paddingBlock: 0.75 }}>
+                                                                <Box sx={{ display: 'inline-flex' }}>
+                                                                    <ReceiptThumbnail
+                                                                        src={row.receiptPreview}
+                                                                        name={row.receiptName}
+                                                                        mimeType={row.receiptMimeType}
+                                                                        size={36}
+                                                                        onClick={row.receiptPreview ? () => setReceiptPreview({
+                                                                            src: row.receiptPreview,
+                                                                            name: row.receiptName,
+                                                                            mimeType: row.receiptMimeType,
+                                                                        }) : undefined}
+                                                                    />
+                                                                </Box>
+                                                            </TableCell>
                                                             <TableCell align="right" className="tabular-nums" sx={{ fontWeight: 600 }}>{formatYen(row.amount)}</TableCell>
                                                         </TableRow>
                                                     ))}
@@ -565,6 +586,9 @@ function Approvals() {
                                 const total = getExpenseApplicationTotal(group);
                                 const statusKey = toStatusKey(group._status);
                                 const isExpanded = expandedHistoryId === group.applicationId;
+                                const isDetailsExpanded = expandedDetailsId === group.applicationId;
+                                const detailCount = (group.details || []).length;
+                                const receiptCount = (group.details || []).filter((d) => d.receiptPreview).length;
                                 const historyCount = (group.history || []).length;
                                 const isMine = group.approvedBy === currentApproverLabel;
                                 const unapproveEnabled = group._status === '承認済' && canUnapprove(group) && isMine;
@@ -616,6 +640,25 @@ function Approvals() {
                                                     size="small"
                                                     variant="text"
                                                     color="inherit"
+                                                    startIcon={isDetailsExpanded ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
+                                                    onClick={() => setExpandedDetailsId(isDetailsExpanded ? null : group.applicationId)}
+                                                    sx={{ color: 'var(--ink-tertiary)' }}
+                                                >
+                                                    明細{detailCount > 0 ? ` (${detailCount})` : ''}
+                                                    {receiptCount > 0 && (
+                                                        <Typography
+                                                            component="span"
+                                                            variant="caption"
+                                                            sx={{ ml: 0.5, color: 'var(--accent-iris)', fontWeight: 700 }}
+                                                        >
+                                                            領収書 {receiptCount}
+                                                        </Typography>
+                                                    )}
+                                                </Button>
+                                                <Button
+                                                    size="small"
+                                                    variant="text"
+                                                    color="inherit"
                                                     startIcon={isExpanded ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
                                                     onClick={() => setExpandedHistoryId(isExpanded ? null : group.applicationId)}
                                                     sx={{ color: 'var(--ink-tertiary)' }}
@@ -641,6 +684,50 @@ function Approvals() {
                                                     </Button>
                                                 )}
                                             </Stack>
+                                            <Collapse in={isDetailsExpanded} unmountOnExit>
+                                                <TableContainer sx={{ mt: 1.5, borderRadius: 'var(--radius-md)', background: 'var(--surface-sunken)' }}>
+                                                    <Table size="small">
+                                                        <TableHead>
+                                                            <TableRow>
+                                                                <TableCell sx={{ width: 110 }}>日付</TableCell>
+                                                                <TableCell sx={{ width: 200 }}>内容</TableCell>
+                                                                <TableCell>用途・行き先</TableCell>
+                                                                <TableCell sx={{ width: 140 }}>費目</TableCell>
+                                                                <TableCell sx={{ width: 130 }}>支払方法</TableCell>
+                                                                <TableCell sx={{ width: 70 }} align="center">領収書</TableCell>
+                                                                <TableCell sx={{ width: 120 }} align="right">金額</TableCell>
+                                                            </TableRow>
+                                                        </TableHead>
+                                                        <TableBody>
+                                                            {group.details.map((row, idx) => (
+                                                                <TableRow key={`${group.applicationId}_h_${idx}`}>
+                                                                    <TableCell>{row.date}</TableCell>
+                                                                    <TableCell sx={{ fontWeight: 500 }}>{row.description}</TableCell>
+                                                                    <TableCell>{row.destination}</TableCell>
+                                                                    <TableCell>{row.category}</TableCell>
+                                                                    <TableCell sx={{ color: 'var(--ink-secondary)' }}>{row.paymentMethod || '-'}</TableCell>
+                                                                    <TableCell align="center" sx={{ paddingBlock: 0.75 }}>
+                                                                        <Box sx={{ display: 'inline-flex' }}>
+                                                                            <ReceiptThumbnail
+                                                                                src={row.receiptPreview}
+                                                                                name={row.receiptName}
+                                                                                mimeType={row.receiptMimeType}
+                                                                                size={36}
+                                                                                onClick={row.receiptPreview ? () => setReceiptPreview({
+                                                                                    src: row.receiptPreview,
+                                                                                    name: row.receiptName,
+                                                                                    mimeType: row.receiptMimeType,
+                                                                                }) : undefined}
+                                                                            />
+                                                                        </Box>
+                                                                    </TableCell>
+                                                                    <TableCell align="right" className="tabular-nums" sx={{ fontWeight: 600 }}>{formatYen(row.amount)}</TableCell>
+                                                                </TableRow>
+                                                            ))}
+                                                        </TableBody>
+                                                    </Table>
+                                                </TableContainer>
+                                            </Collapse>
                                             <Collapse in={isExpanded} unmountOnExit>
                                                 <Box sx={{ mt: 1.5, paddingInline: 1.5, paddingBlock: 1.5, borderRadius: 'var(--radius-md)', background: 'var(--surface-sunken)' }}>
                                                     <ApplicationHistoryTimeline history={group.history} />
@@ -688,6 +775,14 @@ function Approvals() {
                     : ''}
                 onCancel={() => setUnapproveTargetId(null)}
                 onConfirm={handleUnapproveConfirm}
+            />
+
+            <ReceiptPreviewDialog
+                open={Boolean(receiptPreview)}
+                src={receiptPreview?.src}
+                name={receiptPreview?.name}
+                mimeType={receiptPreview?.mimeType}
+                onClose={() => setReceiptPreview(null)}
             />
         </PageScaffold>
     );

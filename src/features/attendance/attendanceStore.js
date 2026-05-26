@@ -1,6 +1,6 @@
 import { DEFAULT_USER, getUserProfile } from '../../shared/utils/userDirectory';
 
-const STORAGE_KEY = 'attendanceTimesheets_v1';
+const STORAGE_KEY = 'attendanceTimesheets_v2';
 
 export const ATTENDANCE_APPROVAL_STATUSES = ['下書き', '申請中', '承認済', '差戻し', '取消'];
 
@@ -26,6 +26,20 @@ export const attendanceId = (userId, year, month) => (
 
 const SAMPLE_TIMESHEETS = [
     {
+        id: attendanceId('univatech@univa.tech', 2026, 3),
+        userId: 'univatech@univa.tech', userName: '由仁場 技朗', department: '営業部',
+        year: 2026, month: 3,
+        entries: sampleWeekdayEntries(2026, 3),
+        approvalStatus: '承認済',
+        submittedAt: '2026-04-01T18:00:00.000Z',
+        approvedBy: '油ニ 和平(univapay@univa.tech)',
+        approvedAt: '2026-04-02T09:00:00.000Z',
+        remarks: '',
+        integrationStatus: 'synced',
+        integrationSyncedAt: '2026-04-02T10:00:00.000Z',
+        closingStatus: 'closed',
+    },
+    {
         id: attendanceId('univatech@univa.tech', 2026, 4),
         userId: 'univatech@univa.tech', userName: '由仁場 技朗', department: '営業部',
         year: 2026, month: 4,
@@ -37,15 +51,15 @@ const SAMPLE_TIMESHEETS = [
         remarks: '',
         integrationStatus: 'synced',
         integrationSyncedAt: '2026-05-02T10:00:00.000Z',
-        closingStatus: 'closed',
+        closingStatus: 'open',
     },
     {
         id: attendanceId('univatech@univa.tech', 2026, 5),
         userId: 'univatech@univa.tech', userName: '由仁場 技朗', department: '営業部',
         year: 2026, month: 5,
         entries: sampleWeekdayEntries(2026, 5, 1),
-        approvalStatus: '申請中',
-        submittedAt: '2026-05-18T19:00:00.000Z',
+        approvalStatus: '下書き',
+        submittedAt: '',
         approvedBy: '',
         approvedAt: '',
         remarks: '',

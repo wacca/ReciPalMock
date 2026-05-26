@@ -22,6 +22,7 @@ import {
 } from './expenseApplicationStore';
 import { getLastNMonths, inDateRange } from '../../shared/utils/dateRangeHelpers';
 import AdminConfirmDialog from '../../shared/components/AdminConfirmDialog';
+import ReceiptPreviewDialog, { ReceiptThumbnail } from '../../shared/components/ReceiptPreviewDialog.jsx';
 import PageScaffold from '../../shared/ui/PageScaffold.jsx';
 import Section from '../../shared/ui/Section.jsx';
 import StatusChip from '../../shared/ui/StatusChip.jsx';
@@ -41,6 +42,7 @@ function SubmittedApplications({ userId }) {
     const [snackbar, setSnackbar] = useState({ open: false, message: '' });
     const [cancelTargetId, setCancelTargetId] = useState(null);
     const [expandedId, setExpandedId] = useState(null);
+    const [receiptPreview, setReceiptPreview] = useState(null); // { src, name, mimeType } | null
 
     const defaultRange = useMemo(() => getLastNMonths(3), []);
     const [dateFrom, setDateFrom] = useState(defaultRange.from);
@@ -307,6 +309,7 @@ function SubmittedApplications({ userId }) {
                                                     <TableCell sx={{ width: 220 }}>内容</TableCell>
                                                     <TableCell>用途・行き先</TableCell>
                                                     <TableCell sx={{ width: 180 }}>費目</TableCell>
+                                                    <TableCell sx={{ width: 70 }} align="center">領収書</TableCell>
                                                     <TableCell sx={{ width: 140 }} align="right">金額</TableCell>
                                                 </TableRow>
                                             </TableHead>
@@ -317,6 +320,24 @@ function SubmittedApplications({ userId }) {
                                                         <TableCell sx={{ fontWeight: 500 }}>{row.description}</TableCell>
                                                         <TableCell>{row.destination}</TableCell>
                                                         <TableCell>{row.category}</TableCell>
+                                                        <TableCell align="center" sx={{ paddingBlock: 0.75 }}>
+                                                            <Box sx={{ display: 'inline-flex' }}>
+                                                                <ReceiptThumbnail
+                                                                    src={row.receiptPreview}
+                                                                    name={row.receiptName}
+                                                                    mimeType={row.receiptMimeType}
+                                                                    size={36}
+                                                                    onClick={row.receiptPreview ? (e) => {
+                                                                        e.stopPropagation(); // カードのトグルを発火させない
+                                                                        setReceiptPreview({
+                                                                            src: row.receiptPreview,
+                                                                            name: row.receiptName,
+                                                                            mimeType: row.receiptMimeType,
+                                                                        });
+                                                                    } : undefined}
+                                                                />
+                                                            </Box>
+                                                        </TableCell>
                                                         <TableCell align="right" className="tabular-nums" sx={{ fontWeight: 600 }}>{formatYen(row.amount)}</TableCell>
                                                     </TableRow>
                                                 ))}
@@ -407,6 +428,14 @@ function SubmittedApplications({ userId }) {
                 confirmColor="warning"
                 onCancel={() => setCancelTargetId(null)}
                 onConfirm={handleCancelGroupConfirm}
+            />
+
+            <ReceiptPreviewDialog
+                open={Boolean(receiptPreview)}
+                src={receiptPreview?.src}
+                name={receiptPreview?.name}
+                mimeType={receiptPreview?.mimeType}
+                onClose={() => setReceiptPreview(null)}
             />
         </PageScaffold>
     );

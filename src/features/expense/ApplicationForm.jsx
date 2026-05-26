@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
     TextField, Button, Typography, Box, MenuItem,
-    Dialog, DialogContent, Snackbar, Alert, IconButton, Tooltip, Stack, CircularProgress,
+    Snackbar, Alert, IconButton, Tooltip, Stack, CircularProgress,
 } from '@mui/material';
 import { useLocation } from 'react-router-dom';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
@@ -24,6 +24,7 @@ import {
     saveExpenseApplications,
 } from './expenseApplicationStore';
 import AdminConfirmDialog from '../../shared/components/AdminConfirmDialog';
+import ReceiptPreviewDialog, { ReceiptThumbnail } from '../../shared/components/ReceiptPreviewDialog.jsx';
 import PageScaffold from '../../shared/ui/PageScaffold.jsx';
 import Section from '../../shared/ui/Section.jsx';
 import StatusChip from '../../shared/ui/StatusChip.jsx';
@@ -35,8 +36,8 @@ const hasExpenseRowInput = (row = {}) =>
 function ApplicationForm({ userId }) {
     const location = useLocation();
     const [formDataList, setFormDataList] = useState([emptyExpenseRow()]);
-    const [openDialog, setOpenDialog] = useState(false);
-    const [selectedReceipt, setSelectedReceipt] = useState(null);
+    // 領収書プレビューダイアログ。画像/PDF どちらでも同じ枠で扱う。
+    const [receiptPreview, setReceiptPreview] = useState(null); // { src, name, mimeType } | null
     const [drafts, setDrafts] = useState([]);
     const [selectedDraftId, setSelectedDraftId] = useState('new');
     const [mode, setMode] = useState('list');
@@ -80,12 +81,35 @@ function ApplicationForm({ userId }) {
 
     const handleReceiptUpload = (i, e) => {
         const file = e.target.files[0];
-        if (file) {
-            const next = [...formDataList];
-            next[i].receiptName = file.name;
-            next[i].receiptPreview = URL.createObjectURL(file);
-            setFormDataList(next);
+        if (!file) return;
+        // 画像/PDF のみ受け付ける。ブラウザ依存で MIME が空になることがあるため拡張子フォールバックは
+        // store 側の inferMimeTypeFromName が肩代わりする想定（ここでは file.type を素直に保存）。
+        const accepted = file.type.startsWith('image/') || file.type === 'application/pdf'
+            || /\.(png|jpe?g|gif|webp|heic|heif|svg|pdf)$/i.test(file.name);
+        if (!accepted) {
+            setSnackbar({ open: true, message: '画像または PDF を選択してください', severity: 'warning' });
+            // input をクリアして再選択できるように
+            e.target.value = '';
+            return;
         }
+        const next = [...formDataList];
+        next[i].receiptName = file.name;
+        next[i].receiptPreview = URL.createObjectURL(file);
+        next[i].receiptMimeType = file.type || '';
+        setFormDataList(next);
+        e.target.value = ''; // 同じファイルを再選択できるよう input をリセット
+    };
+
+    const handleReceiptRemove = (i) => {
+        const next = [...formDataList];
+        // blob: URL は revokeObjectURL でメモリ解放するのが行儀が良い
+        if (next[i].receiptPreview?.startsWith?.('blob:')) {
+            try { URL.revokeObjectURL(next[i].receiptPreview); } catch { /* ignore */ }
+        }
+        next[i].receiptName = '';
+        next[i].receiptPreview = '';
+        next[i].receiptMimeType = '';
+        setFormDataList(next);
     };
 
     const handleSaveDraft = () => {
@@ -209,7 +233,7 @@ function ApplicationForm({ userId }) {
                     )}
                 </Section>
                 <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ open: false, message: '' })}>
-                    <Alert severity="success" sx={{ width: '100%' }}>{snackbar.message}</Alert>
+                    <Alert severity={snackbar.severity || 'success'} sx={{ width: '100%' }}>{snackbar.message}</Alert>
                 </Snackbar>
             </PageScaffold>
         );
@@ -364,31 +388,49 @@ function ApplicationForm({ userId }) {
                                 </Box>
                                 <Box sx={{ gridColumn: { md: 'span 4' } }}>
                                     <Stack direction="row" spacing={1.5} alignItems="center">
-                                        <Button variant="outlined" component="label" startIcon={<UploadFileRoundedIcon />} sx={{ borderStyle: 'dashed', maxWidth: 360, width: '100%' }}>
-                                            {formData.receiptName ? '領収書を変更' : '領収書をアップロード'}
-                                            <input type="file" hidden onChange={(e) => handleReceiptUpload(index, e)} />
+                                        <Button
+                                            variant="outlined"
+                                            component="label"
+                                            startIcon={<UploadFileRoundedIcon />}
+                                            sx={{ borderStyle: 'dashed', maxWidth: 360, width: '100%' }}
+                                        >
+                                            {formData.receiptName ? '領収書を変更' : '領収書をアップロード（画像 / PDF）'}
+                                            <input
+                                                type="file"
+                                                hidden
+                                                accept="image/*,application/pdf"
+                                                onChange={(e) => handleReceiptUpload(index, e)}
+                                            />
                                         </Button>
                                         {formData.receiptPreview && (
-                                            <Box
-                                                onClick={() => { setSelectedReceipt(formData.receiptPreview); setOpenDialog(true); }}
-                                                sx={{
-                                                    width: 56,
-                                                    height: 56,
-                                                    borderRadius: 'var(--radius-md)',
-                                                    overflow: 'hidden',
-                                                    cursor: 'pointer',
-                                                    boxShadow: 'var(--shadow-1)',
-                                                    transition: 'var(--motion-fast)',
-                                                    '&:hover': { transform: 'scale(1.05)', boxShadow: 'var(--shadow-2)' },
-                                                }}
-                                            >
-                                                <img src={formData.receiptPreview} alt="領収書プレビュー" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                            </Box>
+                                            <>
+                                                <ReceiptThumbnail
+                                                    src={formData.receiptPreview}
+                                                    name={formData.receiptName}
+                                                    mimeType={formData.receiptMimeType}
+                                                    size={56}
+                                                    onClick={() => setReceiptPreview({
+                                                        src: formData.receiptPreview,
+                                                        name: formData.receiptName,
+                                                        mimeType: formData.receiptMimeType,
+                                                    })}
+                                                />
+                                                <Tooltip title="領収書を削除">
+                                                    <IconButton
+                                                        size="small"
+                                                        color="error"
+                                                        onClick={() => handleReceiptRemove(index)}
+                                                    >
+                                                        <DeleteOutlineRoundedIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            </>
                                         )}
                                     </Stack>
                                     {formData.receiptName && (
                                         <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)', mt: 0.5, display: 'block' }}>
                                             {formData.receiptName}
+                                            {formData.receiptMimeType === 'application/pdf' && ' ・ PDF'}
                                         </Typography>
                                     )}
                                 </Box>
@@ -406,11 +448,13 @@ function ApplicationForm({ userId }) {
                 </Button>
             </Box>
 
-            <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md" fullWidth>
-                <DialogContent>
-                    {selectedReceipt && <img src={selectedReceipt} alt="領収書拡大表示" style={{ width: '100%', height: 'auto' }} />}
-                </DialogContent>
-            </Dialog>
+            <ReceiptPreviewDialog
+                open={Boolean(receiptPreview)}
+                src={receiptPreview?.src}
+                name={receiptPreview?.name}
+                mimeType={receiptPreview?.mimeType}
+                onClose={() => setReceiptPreview(null)}
+            />
             <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ open: false, message: '' })}>
                 <Alert severity="success" sx={{ width: '100%' }}>{snackbar.message}</Alert>
             </Snackbar>

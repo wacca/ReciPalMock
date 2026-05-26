@@ -20,6 +20,7 @@ import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded';
 import RequestQuoteRoundedIcon from '@mui/icons-material/RequestQuoteRounded';
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
 import WorkHistoryRoundedIcon from '@mui/icons-material/WorkHistoryRounded';
+import CalendarMonthRoundedIcon from '@mui/icons-material/CalendarMonthRounded';
 
 import Login from './features/auth/Login';
 import { SideRail } from './shared/ui/SideRail.jsx';
@@ -48,6 +49,7 @@ const ExpenseSearch = lazy(() => import('./features/expense/ExpenseSearch'));
 const LeaveSearch = lazy(() => import('./features/leave/LeaveSearch'));
 const AttendanceApprovals = lazy(() => import('./features/attendance/AttendanceApprovals'));
 const AttendanceManagement = lazy(() => import('./features/attendance/AttendanceManagement'));
+const HolidaySettings = lazy(() => import('./features/settings/HolidaySettings'));
 
 const menuGroups = [
     {
@@ -63,7 +65,7 @@ const menuGroups = [
             { label: '経費履歴', path: '/submitted', icon: <ReceiptLongRoundedIcon />, subtitle: '自分の経費申請の履歴・状態確認', keywords: 'expense history submitted', permissions: [PERMISSIONS.APPLY_EXPENSE] },
             { label: '勤怠申請', path: '/leave-application', icon: <EventAvailableRoundedIcon />, subtitle: '休暇・時間休・遅刻・早退の作成', keywords: 'attendance leave application form', permissions: [PERMISSIONS.APPLY_LEAVE] },
             { label: '勤怠申請履歴', path: '/leave-submitted', icon: <EventNoteRoundedIcon />, subtitle: '自分の勤怠申請の履歴', keywords: 'attendance leave history submitted', permissions: [PERMISSIONS.APPLY_LEAVE] },
-            { label: '月次勤怠入力', path: '/attendance-input', icon: <PunchClockRoundedIcon />, subtitle: '月次タイムシート（打刻・出退勤の入力）', keywords: 'attendance timesheet monthly', permissions: [PERMISSIONS.APPLY_ATTENDANCE] },
+            { label: '月次タイムシート', path: '/attendance-input', icon: <PunchClockRoundedIcon />, subtitle: '月次勤怠の入力・参照（過去月も含む）', keywords: 'attendance timesheet monthly history input 月次勤怠 履歴', permissions: [PERMISSIONS.APPLY_ATTENDANCE] },
         ],
     },
     {
@@ -97,6 +99,7 @@ const menuGroups = [
             { label: 'アラート設定', path: '/reminder-settings', icon: <NotificationsActiveRoundedIcon />, subtitle: '通知条件', keywords: 'alert reminder', permissions: [PERMISSIONS.ADMIN_REMINDER] },
             { label: 'アカウント管理', path: '/account-management', icon: <ManageAccountsRoundedIcon />, subtitle: '利用者管理', keywords: 'account user', permissions: [PERMISSIONS.ADMIN_ACCOUNT] },
             { label: 'マスタ管理', path: '/master-settings', icon: <TuneRoundedIcon />, subtitle: '部署/役職', keywords: 'master department position', permissions: [PERMISSIONS.ADMIN_MASTER] },
+            { label: '祝日マスタ', path: '/holiday-settings', icon: <CalendarMonthRoundedIcon />, subtitle: '法定祝日・会社休業日', keywords: 'holiday calendar master 祝日 休業日', permissions: [PERMISSIONS.ADMIN_HOLIDAY] },
             { label: '権限設定', path: '/permission-settings', icon: <AdminPanelSettingsRoundedIcon />, subtitle: 'ロール管理', keywords: 'permission role', permissions: [PERMISSIONS.ADMIN_PERMISSION] },
         ],
     },
@@ -198,8 +201,8 @@ function App() {
                 actionCmds.push({
                     id: 'action:attendance',
                     kind: 'action',
-                    label: '今月の勤怠を入力',
-                    subtitle: '月次タイムシートを開く',
+                    label: '今月のタイムシートを開く',
+                    subtitle: '月次タイムシート',
                     keywords: 'attendance timesheet',
                     icon: () => <PunchClockRoundedIcon />,
                     run: () => navigate('/attendance-input'),
@@ -263,6 +266,7 @@ function App() {
                             <Route path="/reminder-settings" element={<Guard role={effectiveRole} permission={PERMISSIONS.ADMIN_REMINDER}><ReminderSettings /></Guard>} />
                             <Route path="/account-management" element={<Guard role={effectiveRole} permission={PERMISSIONS.ADMIN_ACCOUNT}><AccountManagement /></Guard>} />
                             <Route path="/master-settings" element={<Guard role={effectiveRole} permission={PERMISSIONS.ADMIN_MASTER}><MasterSettings /></Guard>} />
+                            <Route path="/holiday-settings" element={<Guard role={effectiveRole} permission={PERMISSIONS.ADMIN_HOLIDAY}><HolidaySettings /></Guard>} />
                             <Route path="/leave-application" element={<Guard role={effectiveRole} permission={PERMISSIONS.APPLY_LEAVE}><LeaveApplication userId={userId} /></Guard>} />
                             <Route path="/leave-submitted" element={<Guard role={effectiveRole} permission={PERMISSIONS.APPLY_LEAVE}><LeaveSubmitted userId={userId} /></Guard>} />
                             <Route path="/leave-approvals" element={<Guard role={effectiveRole} permission={PERMISSIONS.APPROVE_LEAVE}><LeaveApprovals /></Guard>} />

@@ -3,14 +3,17 @@ import { TextField, Button, Box, Typography, Stack, InputAdornment } from '@mui/
 import AccountCircleRoundedIcon from '@mui/icons-material/AccountCircleRounded';
 import LockRoundedIcon from '@mui/icons-material/LockRounded';
 import KeyboardArrowRightRoundedIcon from '@mui/icons-material/KeyboardArrowRightRounded';
+import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 import { SideRailLogo } from '../../shared/ui/SideRail.jsx';
 import { USER_DIRECTORY, getUserProfile } from '../../shared/utils/userDirectory';
 import { ROLE_LABELS } from '../../shared/utils/permissions';
+import AdminConfirmDialog from '../../shared/components/AdminConfirmDialog.jsx';
 
 function Login({ onLogin }) {
     const [userId, setUserId] = useState('univatech@univa.tech');
     const [password, setPassword] = useState('1111111');
     const [capsLock, setCapsLock] = useState(false);
+    const [resetOpen, setResetOpen] = useState(false);
 
     useEffect(() => {
         const onKey = (e) => {
@@ -32,6 +35,14 @@ function Login({ onLogin }) {
             const profile = getUserProfile(userId);
             onLogin(profile.name, profile.id);
         }
+    };
+
+    const handleResetLocalData = () => {
+        try {
+            window.localStorage.clear();
+            window.sessionStorage.clear();
+        } catch { /* ignore */ }
+        window.location.reload();
     };
 
     return (
@@ -196,12 +207,40 @@ function Login({ onLogin }) {
                         </Stack>
                     </Box>
 
-                    <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)', textAlign: 'center', lineHeight: 1.6 }}>
-                        Recrova はモック環境です。<br />
-                        実データは保存されません。
-                    </Typography>
+                    <Stack spacing={1} alignItems="center">
+                        <Button
+                            variant="text"
+                            size="small"
+                            color="inherit"
+                            startIcon={<RestartAltRoundedIcon fontSize="small" />}
+                            onClick={() => setResetOpen(true)}
+                            sx={{
+                                color: 'var(--ink-tertiary)',
+                                fontSize: 12,
+                                fontWeight: 600,
+                                textTransform: 'none',
+                                '&:hover': { color: 'var(--accent-rose)', background: 'transparent' },
+                            }}
+                        >
+                            ローカルデータをリセット
+                        </Button>
+                        <Typography variant="caption" sx={{ color: 'var(--ink-tertiary)', textAlign: 'center', lineHeight: 1.6 }}>
+                            Recrova はモック環境です。<br />
+                            実データは保存されません。
+                        </Typography>
+                    </Stack>
                 </Stack>
             </Box>
+            <AdminConfirmDialog
+                open={resetOpen}
+                title="ローカルデータをリセットしますか？"
+                message="ブラウザに保存されているモックデータ（経費・勤怠・申請履歴・マスタ・設定など）をすべて初期状態に戻します。元に戻すことはできません。"
+                confirmLabel="リセットして再読み込み"
+                cancelLabel="キャンセル"
+                confirmColor="error"
+                onCancel={() => setResetOpen(false)}
+                onConfirm={handleResetLocalData}
+            />
         </Box>
     );
 }
