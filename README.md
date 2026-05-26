@@ -65,21 +65,31 @@ src/
 │   ├── dashboard/              # ダッシュボード
 │   ├── expense/                # 経費 申請 / 履歴 / 承認 / 承認フロー設定 / 検索
 │   ├── leave/                  # 勤怠申請（休暇等） 申請 / 履歴 / 承認 / 承認フロー設定 / 検索
-│   ├── attendance/             # 月次勤怠の入力 / 承認 / 管理
-│   └── settings/               # アカウント / マスタ / 権限 / アラート / フロー設定メニュー
+│   ├── attendance/             # 月次タイムシートの入力 / 承認 / 管理
+│   └── settings/               # アカウント / マスタ / 祝日 / 権限 / アラート / フロー設定メニュー
 └── shared/
-    ├── ui/                     # 横断 UI コンポーネント
+    ├── ui/                     # 横断 UI コンポーネント（PageScaffold / Section / StatusChip 等）
     │   ├── SideRail.jsx        # 左サイドレール（PC）
     │   ├── BottomNav.jsx       # 下部ナビ（モバイル）
-    │   ├── TopStrip.jsx        # ヘッダ／パンくず／ロール切替
+    │   ├── TopStrip.jsx        # ヘッダ／パンくず／ロール切替／表示設定
     │   ├── CommandPalette.jsx  # Ctrl/⌘+K のコマンドパレット
+    │   ├── PageScaffold.jsx    # eyebrow / title / actions の標準ページ枠
+    │   ├── Section.jsx         # トーン付きセクション枠
+    │   ├── StatusChip.jsx      # 申請ステータス共通チップ
     │   ├── createAppTheme.js   # MUI テーマ
     │   ├── tokens.js           # デザイントークン
     │   └── ...
-    ├── components/             # 汎用ダイアログ等
+    ├── components/             # 横断ダイアログ / 監査タイムライン
+    │   ├── AdminConfirmDialog.jsx
+    │   ├── ApplicationHistoryTimeline.jsx  # 操作履歴の時系列表示
+    │   ├── ReceiptPreviewDialog.jsx        # 領収書プレビュー（画像 / PDF）
+    │   └── UnapproveDialog.jsx             # 承認取消ダイアログ
     └── utils/
-        ├── permissions.js      # ROLES / PERMISSIONS / hasPermission
-        ├── userDirectory.js    # デモユーザー定義
+        ├── permissions.js          # ROLES / PERMISSIONS / hasPermission
+        ├── userDirectory.js        # デモユーザー定義
+        ├── applicationHistory.js   # 積み上げ式 操作履歴ユーティリティ
+        ├── holidayStore.js         # 祝日マスタの永続化 / キャッシュ
+        ├── holidays.js             # 祝日判定の参照ヘルパー
         ├── csvHelpers.js
         └── dateRangeHelpers.js
 ```
