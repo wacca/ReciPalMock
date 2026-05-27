@@ -17,28 +17,45 @@ import AdminConfirmDialog from '../../shared/components/AdminConfirmDialog';
 import PageScaffold from '../../shared/ui/PageScaffold.jsx';
 import Section from '../../shared/ui/Section.jsx';
 import StatusChip from '../../shared/ui/StatusChip.jsx';
+import { ROLE_ORDER, ROLE_LABELS, PERMISSIONS, hasPermission } from '../../shared/utils/permissions';
+import { getUserProfile } from '../../shared/utils/userDirectory';
 
 const SCREEN_GROUPS = [
-    { title: 'ホーム', screens: [{ key: 'dashboard', label: 'ダッシュボード' }] },
-    { title: '申請', screens: [
-        { key: 'application', label: '経費申請' }, { key: 'submitted', label: '経費履歴' }, { key: 'approvals', label: '経費承認' },
-        { key: 'leave-application', label: '勤怠申請' }, { key: 'leave-submitted', label: '勤怠申請履歴' }, { key: 'leave-approvals', label: '勤怠申請承認' },
+    { title: 'ホーム', screens: [
+        { key: 'dashboard', label: 'ダッシュボード', permission: PERMISSIONS.VIEW_DASHBOARD },
     ] },
-    { title: '勤怠', screens: [{ key: 'attendance-input', label: '勤怠入力' }] },
-    { title: '管理', screens: [
-        { key: 'flow-settings-menu', label: '申請フロー設定' }, { key: 'reminder-settings', label: 'アラート設定' },
-        { key: 'account-management', label: 'アカウント管理' }, { key: 'master-settings', label: 'マスタ管理' },
-        { key: 'permission-settings', label: '権限設定' },
+    { title: '自分の申請', screens: [
+        { key: 'application', label: '経費申請', permission: PERMISSIONS.APPLY_EXPENSE },
+        { key: 'submitted', label: '経費履歴', permission: PERMISSIONS.APPLY_EXPENSE },
+        { key: 'leave-application', label: '勤怠申請', permission: PERMISSIONS.APPLY_LEAVE },
+        { key: 'leave-submitted', label: '勤怠申請履歴', permission: PERMISSIONS.APPLY_LEAVE },
+        { key: 'attendance-input', label: '月次タイムシート', permission: PERMISSIONS.APPLY_ATTENDANCE },
+    ] },
+    { title: '承認業務', screens: [
+        { key: 'approvals', label: '経費承認', permission: PERMISSIONS.APPROVE_EXPENSE },
+        { key: 'leave-approvals', label: '勤怠申請承認', permission: PERMISSIONS.APPROVE_LEAVE },
+        { key: 'attendance-approvals', label: '月次勤怠承認', permission: PERMISSIONS.APPROVE_ATTENDANCE },
+    ] },
+    { title: '管理業務', screens: [
+        { key: 'expense-search', label: '経費申請検索', permission: PERMISSIONS.MANAGE_EXPENSE },
+        { key: 'leave-search', label: '勤怠申請検索', permission: PERMISSIONS.MANAGE_LEAVE },
+        { key: 'attendance-management', label: '月次勤怠管理', permission: PERMISSIONS.MANAGE_ATTENDANCE },
+    ] },
+    { title: 'システム設定', screens: [
+        { key: 'flow-settings-menu', label: '申請フロー設定', permission: PERMISSIONS.ADMIN_FLOW },
+        { key: 'reminder-settings', label: 'アラート設定', permission: PERMISSIONS.ADMIN_REMINDER },
+        { key: 'account-management', label: 'アカウント管理', permission: PERMISSIONS.ADMIN_ACCOUNT },
+        { key: 'master-settings', label: 'マスタ管理', permission: PERMISSIONS.ADMIN_MASTER },
+        { key: 'holiday-settings', label: '祝日マスタ', permission: PERMISSIONS.ADMIN_HOLIDAY },
+        { key: 'permission-settings', label: '権限設定', permission: PERMISSIONS.ADMIN_PERMISSION },
     ] },
 ];
 
 const SCREENS = SCREEN_GROUPS.flatMap((g) => g.screens);
 
-const INITIAL_ROLES = [
-    { key: 'admin', label: '管理者' },
-    { key: 'approver', label: '承認者' },
-    { key: 'user', label: '一般ユーザー' },
-];
+const PERMISSION_MODEL_VERSION = 2;
+
+const INITIAL_ROLES = ROLE_ORDER.map((key) => ({ key, label: ROLE_LABELS[key] }));
 
 const SAMPLE_ACCOUNTS = [
     { name: '由仁場 技朗', userId: 'univatech@univa.tech', department: '開発部', position: '部長', email: 'univatech@univa.tech', status: true },
@@ -46,21 +63,15 @@ const SAMPLE_ACCOUNTS = [
     { name: '由引 安人', userId: 'ubiast@univa.tech', department: '総務部', position: '一般社員', email: 'ubiast@univa.tech', status: false },
 ];
 
-const ROLE_PERMISSION_PRESETS = {
-    admin: SCREENS.map((s) => s.key),
-    approver: ['dashboard', 'submitted', 'approvals', 'leave-submitted', 'leave-approvals', 'attendance-input'],
-    user: ['dashboard', 'application', 'submitted', 'leave-application', 'leave-submitted', 'attendance-input'],
-};
+const createPermissionsFromKeys = (keys) => SCREENS.reduce((p, s) => ({ ...p, [s.key]: keys.includes(s.key) }), {});
+const screenKeysForRole = (roleKey) => SCREENS.filter((s) => hasPermission(roleKey, s.permission)).map((s) => s.key);
+const createDefaultPermissions = () => INITIAL_ROLES.reduce((p, r) => ({ ...p, [r.key]: createPermissionsFromKeys(screenKeysForRole(r.key)) }), {});
 
+const TEMPLATE_ICONS = ['👤', '✅', '🏢', '🛡'];
 const TEMPLATES = [
-    { key: 'admin', label: '管理者向け（すべて）', icon: '🛡', keys: SCREENS.map((s) => s.key) },
-    { key: 'approver', label: '承認者向け', icon: '✅', keys: ROLE_PERMISSION_PRESETS.approver },
-    { key: 'user', label: '一般ユーザー向け', icon: '👤', keys: ROLE_PERMISSION_PRESETS.user },
+    ...ROLE_ORDER.map((key, i) => ({ key, label: `${ROLE_LABELS[key]}向け`, icon: TEMPLATE_ICONS[i] || '🛡', keys: screenKeysForRole(key) })),
     { key: 'readonly', label: '閲覧のみ', icon: '👁', keys: ['dashboard', 'submitted', 'leave-submitted'] },
 ];
-
-const createPermissionsFromKeys = (keys) => SCREENS.reduce((p, s) => ({ ...p, [s.key]: keys.includes(s.key) }), {});
-const createDefaultPermissions = () => INITIAL_ROLES.reduce((p, r) => ({ ...p, [r.key]: createPermissionsFromKeys(ROLE_PERMISSION_PRESETS[r.key] || []) }), {});
 
 const loadJson = (key, fallback) => { try { const v = JSON.parse(localStorage.getItem(key) || 'null'); return v || fallback; } catch { return fallback; } };
 const loadAccounts = () => {
@@ -83,6 +94,12 @@ function PermissionSettings() {
     const [deleteTarget, setDeleteTarget] = useState(null);
 
     useEffect(() => {
+        if (loadJson('permissionModelVersion', null) !== PERMISSION_MODEL_VERSION) {
+            localStorage.removeItem('definedRoles');
+            localStorage.removeItem('rolesPermissions');
+            localStorage.removeItem('userRoles');
+            localStorage.setItem('permissionModelVersion', JSON.stringify(PERMISSION_MODEL_VERSION));
+        }
         const loadedAccounts = loadAccounts();
         const loadedRoles = loadJson('definedRoles', INITIAL_ROLES);
         const savedPermissions = loadJson('rolesPermissions', {});
@@ -92,8 +109,8 @@ function PermissionSettings() {
             [r.key]: { ...(defaultPermissions[r.key] || createPermissionsFromKeys([])), ...(savedPermissions[r.key] || {}) },
         }), {});
         const savedUserRoles = loadJson('userRoles', {});
-        const normalizedUserRoles = loadedAccounts.reduce((r, a, i) => ({
-            ...r, [a.userId]: savedUserRoles[a.userId] || (i === 0 ? 'admin' : i === 1 ? 'approver' : 'user'),
+        const normalizedUserRoles = loadedAccounts.reduce((r, a) => ({
+            ...r, [a.userId]: savedUserRoles[a.userId] || getUserProfile(a.userId).role,
         }), {});
 
         setAccounts(loadedAccounts);
